@@ -20,7 +20,9 @@ import {
   Check,
   Camera,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Pencil,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Bike as BikeType, BikeCategory, Booking } from '../types';
@@ -58,6 +60,53 @@ export const Catalog: React.FC = () => {
   } | null>(null);
   const [detailBike, setDetailBike] = useState<BikeType | null>(null);
   const [scheduleBike, setScheduleBike] = useState<BikeType | null>(null);
+
+  // Quick edit bike info directly from catalog for staff/admin
+  const [editingBikeInCatalog, setEditingBikeInCatalog] = useState<BikeType | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editBrand, setEditBrand] = useState('');
+  const [editPriceHour, setEditPriceHour] = useState('');
+  const [editPriceDay, setEditPriceDay] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+
+  const handleOpenEditBike = (b: BikeType) => {
+    setEditingBikeInCatalog(b);
+    setEditName(b.name);
+    setEditBrand(b.brand);
+    setEditPriceHour(b.pricePerHour.toString());
+    setEditPriceDay(b.pricePerDay.toString());
+    setEditDesc(b.description);
+  };
+
+  const handleSaveEditBike = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBikeInCatalog) return;
+    const updatedName = editName.trim() || editingBikeInCatalog.name;
+    const updatedBrand = editBrand.trim() || editingBikeInCatalog.brand;
+    const updatedPriceH = parseInt(editPriceHour, 10) || editingBikeInCatalog.pricePerHour;
+    const updatedPriceD = parseInt(editPriceDay, 10) || editingBikeInCatalog.pricePerDay;
+    const updatedDesc = editDesc.trim() || editingBikeInCatalog.description;
+
+    updateBike(editingBikeInCatalog.id, {
+      name: updatedName,
+      brand: updatedBrand,
+      pricePerHour: updatedPriceH,
+      pricePerDay: updatedPriceD,
+      description: updatedDesc,
+    });
+
+    if (detailBike && detailBike.id === editingBikeInCatalog.id) {
+      setDetailBike(prev => prev ? {
+        ...prev,
+        name: updatedName,
+        brand: updatedBrand,
+        pricePerHour: updatedPriceH,
+        pricePerDay: updatedPriceD,
+        description: updatedDesc,
+      } : null);
+    }
+    setEditingBikeInCatalog(null);
+  };
 
   // Device upload state on catalog
   const [uploadingBikeId, setUploadingBikeId] = useState<string | null>(null);
@@ -589,9 +638,22 @@ export const Catalog: React.FC = () => {
 
             <div className="p-6 space-y-4">
               <div>
-                <span className="text-xs uppercase font-bold text-emerald-600">
-                  {getCategoryLabel(detailBike.category)} • {detailBike.brand}
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs uppercase font-bold text-emerald-600">
+                    {getCategoryLabel(detailBike.category)} • {detailBike.brand}
+                  </span>
+                  {isAdminOrStaff && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditBike(detailBike)}
+                      className="px-2.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg border border-emerald-300 transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Edit Nama dan Spesifikasi Sepeda"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Edit Nama Sepeda</span>
+                    </button>
+                  )}
+                </div>
                 <h3 className="text-xl font-extrabold text-slate-900 mt-1">{detailBike.name}</h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
                   {detailBike.description}
@@ -694,6 +756,104 @@ export const Catalog: React.FC = () => {
             // Keep open so confirmation is shown
           }}
         />
+      )}
+
+      {/* ADMIN & STAF: QUICK EDIT INFORMASI SEPEDA */}
+      {editingBikeInCatalog && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Edit Nama & Info Sepeda</h3>
+                  <p className="text-[11px] text-slate-400">Kode Unit: {editingBikeInCatalog.licenseNumber}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingBikeInCatalog(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditBike} className="space-y-3.5">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Nama / Tipe Sepeda: *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="Contoh: Polygon Strattos S3 Disc"
+                  className="w-full text-xs font-bold px-3 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">
+                    Merk / Brand:
+                  </label>
+                  <input
+                    type="text"
+                    value={editBrand}
+                    onChange={e => setEditBrand(e.target.value)}
+                    placeholder="Polygon / United / dll"
+                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">
+                    Tarif Harian (Rp):
+                  </label>
+                  <input
+                    type="number"
+                    value={editPriceDay}
+                    onChange={e => setEditPriceDay(e.target.value)}
+                    placeholder="50000"
+                    className="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600 block mb-1">
+                  Deskripsi Singkat:
+                </label>
+                <textarea
+                  rows={2}
+                  value={editDesc}
+                  onChange={e => setEditDesc(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingBikeInCatalog(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

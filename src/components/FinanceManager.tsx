@@ -11,6 +11,7 @@ import {
   Receipt,
   AlertCircle,
   CheckCircle2,
+  Check,
   Lock,
   ArrowRight,
   FileSpreadsheet,
@@ -176,9 +177,9 @@ export const FinanceManager: React.FC = () => {
     return days;
   }, [selectedPeriod, currentWeekRange, activePeriodBookings, todayStr]);
 
-  // Save changes (Hanya pendapatan/rasio bulanan yang dapat disimpan)
+  // Save changes (Berlaku untuk semua laporan bagi hasil)
   const handleSaveSettings = () => {
-    if (!isAdmin || selectedPeriod !== 'bulanan') return;
+    if (!isAdmin) return;
     updateFinancialSettings({
       partner1Name,
       partner1Percentage: partner1Pct,
@@ -828,62 +829,39 @@ export const FinanceManager: React.FC = () => {
 
       {/* SETTINGS CONTROLS (Khusus Admin dan HANYA BISA DI-SETTING PADA PENDAPATAN BULANAN) */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-emerald-600" />
-                Pengaturan Rasio Bagi Hasil & Persentase Beban Bulanan
+                Pengaturan Rasio Bagi Hasil & Nama Mitra Bisnis
               </h3>
-              <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
-                selectedPeriod === 'bulanan'
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  : 'bg-amber-100 text-amber-900 border border-amber-200'
-              }`}>
-                {selectedPeriod === 'bulanan' ? '✓ Mode Setting Aktif' : '🔒 Terkunci (Mode Bulanan Saja)'}
+              <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                ✓ Bebas Diedit Kapan Saja
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Rasio persentase bagi hasil (default 60/40) dan pos anggaran ini menjadi acuan kalkulasi bagi hasil harian, mingguan, dan bulanan.
+              Rasio persentase bagi hasil dan nama pengelola di bawah ini berlaku untuk semua ringkasan laporan keuangan (Harian, Mingguan, & Bulanan).
             </p>
           </div>
 
-          {isAdmin && selectedPeriod === 'bulanan' && (
+          <div className="flex items-center gap-2">
+            {isSavedNotice && (
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 animate-pulse">
+                ✓ Berhasil Disimpan!
+              </span>
+            )}
             <button
               onClick={handleSaveSettings}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
             >
-              Simpan Pengaturan Bulanan
-            </button>
-          )}
-        </div>
-
-        {/* Notice jika pengguna sedang di mode Harian atau Mingguan */}
-        {selectedPeriod !== 'bulanan' && (
-          <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900">
-            <div className="flex items-center gap-2.5">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-              <div className="text-xs">
-                <span className="font-bold block">
-                  Pengaturan Rasio Hanya Dapat Diubah Pada Mode Bulanan
-                </span>
-                <span className="text-amber-800 text-[11px]">
-                  Saat ini Anda sedang memantau hasil mode <strong>{selectedPeriod === 'harian' ? 'Harian' : 'Mingguan'}</strong>.
-                  Formulir di bawah terkunci otomatis dan kalkulasi mengacu pada persentase bulanan yang telah ditetapkan.
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedPeriod('bulanan')}
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
-            >
-              Beralih ke Setting Bulanan
+              <Check className="w-4 h-4" />
+              <span>Simpan Nama & Rasio</span>
             </button>
           </div>
-        )}
+        </div>
 
-        {/* 1. Pengaturan Bagi Hasil 2 Pihak */}
+        {/* 1. Pengaturan Bagi Hasil 2 Pihak & Nama Penerima */}
         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -891,12 +869,12 @@ export const FinanceManager: React.FC = () => {
                 1. Rasio Pembagian Hasil 2 Mitra ({partner1Pct} / {100 - partner1Pct})
               </span>
               <span className="text-xs text-slate-500">
-                Geser slider atau pilih tombol preset cepat di bawah
+                Pilih preset cepat atau sesuaikan nama mitra & persentase di bawah
               </span>
             </div>
 
             {/* Preset Buttons */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-slate-400 font-medium mr-1">Preset:</span>
               {[
                 { label: '60 / 40', p1: 60 },
@@ -906,12 +884,12 @@ export const FinanceManager: React.FC = () => {
               ].map(preset => (
                 <button
                   key={preset.label}
-                  disabled={!isAdmin || selectedPeriod !== 'bulanan'}
+                  type="button"
                   onClick={() => handleApplyPreset(preset.p1)}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all ${
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                     partner1Pct === preset.p1
                       ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
                   {preset.label}
@@ -923,45 +901,44 @@ export const FinanceManager: React.FC = () => {
           {/* Slider */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-semibold text-slate-700">
-              <span>Penerima 1: {partner1Pct}%</span>
-              <span>Penerima 2: {100 - partner1Pct}%</span>
+              <span>{partner1Name}: <strong>{partner1Pct}%</strong></span>
+              <span>{partner2Name}: <strong>{100 - partner1Pct}%</strong></span>
             </div>
             <input
               type="range"
               min="10"
               max="90"
               step="5"
-              disabled={!isAdmin || selectedPeriod !== 'bulanan'}
               value={partner1Pct}
               onChange={e => handlePartner1Slider(parseInt(e.target.value, 10))}
-              className="w-full accent-amber-500 h-2 bg-slate-200 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full accent-amber-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
             />
           </div>
 
-          {/* Name Customization */}
+          {/* Name Customization - Langsung bisa diketik tanpa terkunci */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">
-                Nama Penerima 1 ({partner1Pct}%):
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Nama Penerima 1 ({partner1Pct}%): *
               </label>
               <input
                 type="text"
-                disabled={!isAdmin || selectedPeriod !== 'bulanan'}
                 value={partner1Name}
                 onChange={e => setPartner1Name(e.target.value)}
-                className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                placeholder="Contoh: Pengelola Toko"
+                className="w-full text-xs font-semibold px-3 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">
-                Nama Penerima 2 ({100 - partner1Pct}%):
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Nama Penerima 2 ({100 - partner1Pct}%): *
               </label>
               <input
                 type="text"
-                disabled={!isAdmin || selectedPeriod !== 'bulanan'}
                 value={partner2Name}
                 onChange={e => setPartner2Name(e.target.value)}
-                className="w-full text-xs font-medium px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                placeholder="Contoh: Investor / Mitra Sepeda"
+                className="w-full text-xs font-semibold px-3 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
               />
             </div>
           </div>
@@ -974,13 +951,13 @@ export const FinanceManager: React.FC = () => {
               2. Persentase Alokasi 3 Pos Wajib dari Omzet
             </span>
             <span className="text-xs text-slate-500">
-              Total disisihkan: {maintPct + contentPct + opsPct}% dari pendapatan kotor bulanan
+              Total disisihkan: {maintPct + contentPct + opsPct}% dari pendapatan kotor
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Mentenest */}
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
               <div className="flex justify-between items-center text-xs mb-1">
                 <span className="font-bold text-slate-800 flex items-center gap-1">
                   <Wrench className="w-3.5 h-3.5 text-amber-500" /> Mentenest
@@ -992,10 +969,9 @@ export const FinanceManager: React.FC = () => {
                 min="0"
                 max="40"
                 step="1"
-                disabled={!isAdmin || selectedPeriod !== 'bulanan'}
                 value={maintPct}
                 onChange={e => setMaintPct(parseInt(e.target.value, 10))}
-                className="w-full accent-amber-500 h-1.5 bg-slate-200 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full accent-amber-500 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
               />
               <span className="text-[11px] text-slate-400 block mt-1">
                 Nominal ({periodLabel}): {formatRupiah(maintAmount)}
@@ -1003,7 +979,7 @@ export const FinanceManager: React.FC = () => {
             </div>
 
             {/* Konten */}
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
               <div className="flex justify-between items-center text-xs mb-1">
                 <span className="font-bold text-slate-800 flex items-center gap-1">
                   <Video className="w-3.5 h-3.5 text-sky-500" /> Konten & Ads
@@ -1015,10 +991,9 @@ export const FinanceManager: React.FC = () => {
                 min="0"
                 max="30"
                 step="1"
-                disabled={!isAdmin || selectedPeriod !== 'bulanan'}
                 value={contentPct}
                 onChange={e => setContentPct(parseInt(e.target.value, 10))}
-                className="w-full accent-sky-500 h-1.5 bg-slate-200 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full accent-sky-500 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
               />
               <span className="text-[11px] text-slate-400 block mt-1">
                 Nominal ({periodLabel}): {formatRupiah(contentAmount)}
@@ -1026,7 +1001,7 @@ export const FinanceManager: React.FC = () => {
             </div>
 
             {/* Pengeluaran */}
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
               <div className="flex justify-between items-center text-xs mb-1">
                 <span className="font-bold text-slate-800 flex items-center gap-1">
                   <Receipt className="w-3.5 h-3.5 text-purple-500" /> Operasional Toko
@@ -1038,10 +1013,9 @@ export const FinanceManager: React.FC = () => {
                 min="0"
                 max="30"
                 step="1"
-                disabled={!isAdmin || selectedPeriod !== 'bulanan'}
                 value={opsPct}
                 onChange={e => setOpsPct(parseInt(e.target.value, 10))}
-                className="w-full accent-purple-500 h-1.5 bg-slate-200 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full accent-purple-500 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
               />
               <span className="text-[11px] text-slate-400 block mt-1">
                 Nominal ({periodLabel}): {formatRupiah(opsAmount)}

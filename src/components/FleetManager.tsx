@@ -27,6 +27,7 @@ export const FleetManager: React.FC = () => {
   const { bikes, addBike, updateBike, deleteBike, updateBikeStatus, currentRole } = useApp();
 
   const isAdmin = currentRole === 'admin';
+  const isStaffOrAdmin = currentRole === 'admin' || currentRole === 'karyawan';
 
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -181,10 +182,10 @@ export const FleetManager: React.FC = () => {
           </p>
         </div>
 
-        {isAdmin && (
+        {isStaffOrAdmin && (
           <button
             onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Sepeda Baru</span>
@@ -328,26 +329,30 @@ export const FleetManager: React.FC = () => {
                   </div>
                 </div>
 
-                {isAdmin && (
+                {isStaffOrAdmin && (
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       onClick={() => handleOpenEdit(b)}
-                      className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg font-semibold flex items-center gap-1"
+                      className="px-2.5 py-1 text-xs text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Edit Nama & Data Sepeda"
                     >
-                      <Edit className="w-3.5 h-3.5" />
+                      <Edit className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Edit Unit</span>
                     </button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Hapus sepeda ${b.name} (${b.licenseNumber}) dari armada?`)) {
-                          deleteBike(b.id);
-                        }
-                      }}
-                      className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-semibold flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Hapus</span>
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Hapus sepeda ${b.name} (${b.licenseNumber}) dari armada?`)) {
+                            deleteBike(b.id);
+                          }
+                        }}
+                        className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Hapus Unit dari Sistem"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
