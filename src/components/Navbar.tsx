@@ -3,7 +3,6 @@ import {
   Bike,
   ShieldCheck,
   UserCheck,
-  User,
   LayoutDashboard,
   CalendarCheck,
   Layers,
@@ -21,7 +20,9 @@ import {
   Menu,
   MessageCircle,
   ChevronRight,
-  Sparkles
+  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -40,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const [shareTab, setShareTab] = useState<'qr' | 'links'>('qr');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const applyRoleChange = (role: UserRole) => {
     setCurrentRole(role);
@@ -85,10 +87,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     return () => window.removeEventListener('hashchange', handleHash);
   }, [currentRole]);
 
-  // Tutup drawer mobile saat ukuran layar berubah ke desktop
+  // Tutup drawer mobile saat ukuran layar berubah ke tablet/desktop
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
+      if (window.innerWidth >= 768) {
         setIsMobileDrawerOpen(false);
       }
     };
@@ -161,52 +163,48 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             p.sub {
               font-size: 14px;
               color: #475569;
-              margin: 0 0 18px 0;
+              margin: 0 0 20px 0;
             }
             .qr-box {
-              background: #ffffff;
               padding: 16px;
-              border: 2px dashed #94a3b8;
-              border-radius: 18px;
+              background: white;
               display: inline-block;
-              margin-bottom: 18px;
+              border: 2px dashed #0f172a;
+              border-radius: 20px;
+              margin-bottom: 16px;
             }
             .qr-box img {
-              width: 230px;
-              height: 230px;
+              width: 240px;
+              height: 240px;
               display: block;
             }
-            .callout {
-              background: #f1f5f9;
-              border-radius: 14px;
-              padding: 12px;
-              font-size: 13px;
+            .instructions {
+              font-size: 14px;
               font-weight: 700;
-              color: #1e293b;
-              margin-bottom: 14px;
-              line-height: 1.4;
+              color: #0f172a;
+              margin-bottom: 10px;
             }
             .footer-info {
               font-size: 12px;
               color: #64748b;
               border-top: 1px solid #e2e8f0;
-              padding-top: 12px;
-              line-height: 1.5;
+              padding-top: 14px;
+              margin-top: 10px;
             }
           </style>
         </head>
         <body>
           <div class="card">
-            <div class="badge">Official UKSW Salatiga</div>
+            <div class="badge">UKSW Salatiga</div>
             <h1>Kravent Bike</h1>
-            <p class="sub">Rental Sepeda Kampus Salatiga</p>
-
+            <p class="sub">Rental Sepeda Resmi Kampus UKSW Salatiga</p>
+            
             <div class="qr-box">
-              <img src="${qrStandImageUrl}" alt="QR Code Katalog Kravent Bike" />
+              <img src="${qrStandImageUrl}" alt="Scan QR Kravent Bike" />
             </div>
 
-            <div class="callout">
-              📷 Arahkan Kamera HP ke QR Code di atas<br/>
+            <div class="instructions">
+              Arahkan Kamera HP ke QR Code<br/>
               untuk lihat stok sepeda ready & tarif sewa!
             </div>
 
@@ -284,9 +282,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   return (
     <>
       {/* ============================================================== */}
-      {/* 1. TOP BAR KHUSUS MOBILE & TABLET (< lg)                      */}
+      {/* 1. TOP HEADER KHUSUS HP (< md)                                 */}
       {/* ============================================================== */}
-      <div className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+      <div className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         {/* Banner Status Staf jika sedang login */}
         {isStaffMode && (
           <div className="bg-slate-900 text-white text-[11px] px-3 py-1 flex items-center justify-between">
@@ -322,67 +320,74 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
         {/* Bar Utama Mobile */}
         <div className="px-3 sm:px-4 h-14 flex items-center justify-between gap-3">
-          {/* Tombol Buka Menu Sidebar (Hamburger) */}
+          {/* Tombol Buka Menu Sidebar (Drawer) */}
           <button
             onClick={() => setIsMobileDrawerOpen(true)}
-            className="p-2 -ml-1 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-2 cursor-pointer"
-            aria-label="Buka Menu Navigasi"
+            className="p-2 -ml-1.5 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-2 cursor-pointer border border-slate-200/60"
+            aria-label="Buka Menu Sidebar"
           >
             <Menu className="w-5 h-5 text-slate-800" />
-            <span className="text-xs font-bold text-slate-700 sm:inline hidden">Menu</span>
+            <span className="text-xs font-bold text-slate-800">Sidebar Menu</span>
           </button>
 
           {/* Logo & Judul Brand */}
           <div
-            className="flex items-center gap-2 cursor-pointer flex-1 truncate"
+            className="flex items-center gap-2 cursor-pointer flex-1 justify-center truncate"
             onClick={() => handleNavClick(currentRole === 'customer' ? 'catalog' : 'dashboard')}
           >
-            <div className="w-8 h-8 rounded-xl bg-white p-0.5 flex items-center justify-center shadow-xs border border-slate-200 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-white p-0.5 flex items-center justify-center shadow-2xs border border-slate-200 shrink-0">
               <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
             </div>
-            <div className="truncate">
+            <div className="truncate text-left">
               <span className="font-extrabold text-sm text-slate-900 tracking-tight flex items-center gap-1">
                 Kravent Bike
                 <span className="text-[9px] font-bold px-1 rounded bg-blue-100 text-blue-800 uppercase">
                   UKSW
                 </span>
               </span>
-              <p className="text-[10px] text-slate-500 truncate">Rental Sepeda Kampus</p>
             </div>
           </div>
 
           {/* Aksi Kanan Mobile */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {currentRole === 'customer' ? (
               <button
                 onClick={() => setPinModalTarget('karyawan')}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                title="Akses Staf / Admin"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer bg-slate-50"
+                title="Akses Staf & Admin"
               >
-                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
                 <span>Staf</span>
               </button>
-            ) : null}
+            ) : (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="p-2 rounded-xl text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                title="Stand QR Kasir"
+              >
+                <QrCode className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* 2. DRAWER SIDEBAR SLIDE-OVER KHUSUS MOBILE & TABLET (< lg)     */}
+      {/* 2. DRAWER SIDEBAR SLIDE-OVER KHUSUS HP (< md)                   */}
       {/* ============================================================== */}
       {isMobileDrawerOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex animate-in fade-in duration-200">
+        <div className="md:hidden fixed inset-0 z-50 flex animate-in fade-in duration-200">
           {/* Backdrop Blur */}
           <div
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileDrawerOpen(false)}
           />
 
-          {/* Panel Drawer */}
+          {/* Panel Drawer Sidebar */}
           <aside className="relative w-72 sm:w-80 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left duration-200 z-10">
             <div>
               {/* Drawer Header */}
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-slate-200 shrink-0">
                     <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
@@ -394,7 +399,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                         UKSW
                       </span>
                     </span>
-                    <p className="text-[10px] text-slate-500">Menu Navigasi</p>
+                    <p className="text-[10px] text-slate-500">Menu Sidebar Pos Rental</p>
                   </div>
                 </div>
 
@@ -424,6 +429,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   </span>
                 </div>
 
+                {isStaffMode ? (
+                  <div className="text-[11px] text-slate-300 pb-2 mb-2 border-b border-slate-800 flex items-center justify-between">
+                    <span>Unit disewa hari ini:</span>
+                    <span className="font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded">
+                      {bikesOutToday} unit
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* Tombol switch role (Murni tanpa membocorkan kode PIN) */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-800">
                   <button
                     onClick={() => {
@@ -436,7 +451,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
-                    <UserCheck className="w-3 h-3" />
+                    <UserCheck className="w-3.5 h-3.5" />
                     <span>Kasir</span>
                   </button>
 
@@ -451,30 +466,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
-                    <ShieldCheck className="w-3 h-3" />
+                    <ShieldCheck className="w-3.5 h-3.5" />
                     <span>Admin</span>
                   </button>
                 </div>
-
-                {isStaffMode && (
-                  <button
-                    onClick={() => {
-                      setIsMobileDrawerOpen(false);
-                      applyRoleChange('customer');
-                    }}
-                    className="w-full mt-2 py-1 px-2 rounded-lg bg-rose-950/80 text-rose-300 hover:bg-rose-900 border border-rose-800/60 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <LogOut className="w-3 h-3" />
-                    <span>Kunci / Kembali ke Mode Publik</span>
-                  </button>
-                )}
               </div>
 
-              {/* Daftar Menu Vertikal */}
-              <div className="px-3 py-2 space-y-1">
+              {/* List Menu Navigasi di Drawer */}
+              <nav className="p-3 space-y-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1 block">
-                  Menu Utama
+                  Daftar Halaman
                 </span>
+
                 {navItems.map(item => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
@@ -484,7 +487,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                       onClick={() => handleNavClick(item.id)}
                       className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs font-extrabold'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs font-extrabold'
                           : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
@@ -500,11 +503,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                     </button>
                   );
                 })}
-              </div>
+              </nav>
 
               {/* Fitur Pintas di Drawer */}
-              <div className="px-3 py-2 space-y-1.5 border-t border-slate-100 mx-3 pt-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+              <div className="p-3 border-t border-slate-100 space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 block">
                   Pintasan Cepat
                 </span>
 
@@ -513,40 +516,46 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                     setIsMobileDrawerOpen(false);
                     setShowShareModal(true);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
-                  <QrCode className="w-4 h-4 text-emerald-600" />
-                  <span>Stand QR Meja Kasir</span>
+                  <div className="flex items-center gap-2">
+                    <QrCode className="w-4 h-4 text-emerald-600" />
+                    <span>Stand QR Meja Kasir</span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                 </button>
 
                 <a
                   href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors"
                 >
-                  <MessageCircle className="w-4 h-4 text-emerald-600" />
-                  <span>WhatsApp CS (089647123671)</span>
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-emerald-600" />
+                    <span>Chat WA Admin CS</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-700 font-bold">Chat</span>
                 </a>
 
-                {currentRole === 'admin' && (
+                {isStaffMode && (
                   <button
                     onClick={() => {
-                      if (window.confirm('Reset data ke kondisi awal demo?')) {
-                        resetToDefaults();
-                        setIsMobileDrawerOpen(false);
-                      }
+                      setIsMobileDrawerOpen(false);
+                      applyRoleChange('customer');
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors cursor-pointer"
                   >
-                    <RotateCcw className="w-4 h-4 text-slate-400" />
-                    <span>Reset Data Demo</span>
+                    <div className="flex items-center gap-2">
+                      <LogOut className="w-4 h-4 text-rose-600" />
+                      <span>Kunci Sesi (Kembali Publik)</span>
+                    </div>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Footer Drawer */}
+            {/* Drawer Footer */}
             <div className="p-4 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-500">
               <p className="font-semibold text-slate-700">Kravent Bike UKSW Salatiga</p>
               <p className="text-[10px] text-slate-400">Jam Operasional: 06:00 - 23:00 WIB</p>
@@ -556,9 +565,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       )}
 
       {/* ============================================================== */}
-      {/* 3. BOTTOM NAVIGATION BAR UNTUK HP (< lg)                        */}
+      {/* 3. BOTTOM NAVIGATION BAR UNTUK HP (< md)                       */}
       {/* ============================================================== */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 py-1 px-2 flex justify-around items-center shadow-lg">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 py-1 px-2 flex justify-around items-center shadow-lg">
         {isStaffMode ? (
           <>
             <button
@@ -596,10 +605,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
-              className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+              className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-700 hover:text-slate-900 transition-colors cursor-pointer font-bold"
             >
-              <Menu className="w-4 h-4 mb-0.5" />
-              <span className="text-[10px]">Menu</span>
+              <Menu className="w-4 h-4 mb-0.5 text-slate-800" />
+              <span className="text-[10px]">Sidebar</span>
             </button>
           </>
         ) : (
@@ -634,37 +643,58 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       </nav>
 
       {/* ============================================================== */}
-      {/* 4. SIDEBAR PERMANEN KHUSUS DESKTOP & LAYAR LEBAR (>= lg)       */}
+      {/* 4. SIDEBAR KHUSUS TABLET & DESKTOP (>= md)                     */}
       {/* ============================================================== */}
-      <aside className="hidden lg:flex w-64 shrink-0 bg-white border-r border-slate-200/80 min-h-screen flex-col justify-between sticky top-0 h-screen overflow-y-auto z-30">
+      <aside
+        className={`hidden md:flex shrink-0 bg-white border-r border-slate-200/80 min-h-screen flex-col justify-between sticky top-0 h-screen overflow-y-auto z-30 transition-all duration-200 ${
+          isSidebarCollapsed ? 'w-20' : 'w-56 lg:w-64'
+        }`}
+      >
         <div>
-          {/* Logo & Brand Header Desktop */}
-          <div
-            className="p-5 border-b border-slate-100 flex items-center gap-3 cursor-pointer group"
-            onClick={() => handleNavClick(currentRole === 'customer' ? 'catalog' : 'dashboard')}
-          >
-            <div className="w-11 h-11 rounded-2xl bg-white p-1 flex items-center justify-center shadow-md shadow-slate-200/90 ring-1 ring-slate-200 group-hover:scale-105 transition-all shrink-0">
-              <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-slate-900 group-hover:text-blue-800 transition-colors">
-                  Kravent Bike
-                </span>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 uppercase tracking-wider">
-                  UKSW
-                </span>
+          {/* Logo & Brand Header Desktop/Tablet */}
+          <div className="p-3.5 lg:p-4 border-b border-slate-100 flex items-center justify-between">
+            <div
+              className="flex items-center gap-2.5 cursor-pointer group truncate"
+              onClick={() => handleNavClick(currentRole === 'customer' ? 'catalog' : 'dashboard')}
+            >
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-slate-200 group-hover:scale-105 transition-all shrink-0">
+                <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
               </div>
-              <p className="text-[11px] text-slate-500">Rental Sepeda Salatiga</p>
+              {!isSidebarCollapsed && (
+                <div className="truncate">
+                  <div className="flex items-center gap-1">
+                    <span className="font-extrabold text-sm lg:text-base tracking-tight text-slate-900 group-hover:text-blue-800 transition-colors">
+                      Kravent Bike
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 uppercase tracking-wider">
+                      UKSW
+                    </span>
+                  </div>
+                  <p className="text-[10px] lg:text-[11px] text-slate-500 truncate">Rental Sepeda Salatiga</p>
+                </div>
+              )}
             </div>
+
+            {/* Toggle Collapse/Expand Sidebar untuk tablet & desktop */}
+            <button
+              onClick={() => setIsSidebarCollapsed(prev => !prev)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer hidden lg:block"
+              title={isSidebarCollapsed ? 'Perlebar Sidebar' : 'Persempit Sidebar'}
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </button>
           </div>
 
-          {/* Kartu Status Role di Sidebar Desktop */}
-          <div className="p-3 m-3 rounded-2xl bg-slate-900 text-white shadow-xs">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
+          {/* Kartu Status Role di Sidebar Desktop/Tablet */}
+          <div className="p-2.5 lg:p-3 m-2 lg:m-3 rounded-2xl bg-slate-900 text-white shadow-xs">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5 truncate">
                 <span
-                  className={`w-2 h-2 rounded-full animate-pulse ${
+                  className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${
                     currentRole === 'admin'
                       ? 'bg-amber-400'
                       : currentRole === 'karyawan'
@@ -672,15 +702,17 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                       : 'bg-emerald-400'
                   }`}
                 />
-                <span className="text-xs font-bold text-slate-200 capitalize">
-                  Mode {currentRole}
-                </span>
+                {!isSidebarCollapsed && (
+                  <span className="text-xs font-bold text-slate-200 capitalize truncate">
+                    Mode {currentRole}
+                  </span>
+                )}
               </div>
 
-              {isStaffMode && (
+              {isStaffMode && !isSidebarCollapsed && (
                 <button
                   onClick={() => applyRoleChange('customer')}
-                  title="Kunci sesi & kembali ke tampilan publik"
+                  title="Kunci sesi & kembali ke publik"
                   className="p-1 rounded-md text-rose-300 hover:text-white hover:bg-rose-900/60 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -688,54 +720,54 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               )}
             </div>
 
-            {isStaffMode ? (
-              <div className="text-[11px] text-slate-300 font-medium pt-1 border-t border-slate-800 flex items-center justify-between">
+            {isStaffMode && !isSidebarCollapsed ? (
+              <div className="text-[10px] lg:text-[11px] text-slate-300 font-medium pt-1 border-t border-slate-800 flex items-center justify-between">
                 <span>Unit di luar:</span>
                 <span className="font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded">
                   {bikesOutToday} ({activeBookingsCount} jalan)
                 </span>
               </div>
-            ) : (
-              <p className="text-[10px] text-slate-400 leading-tight">
-                Katalog publik sepeda mahasiswa & civitas UKSW
-              </p>
-            )}
+            ) : null}
 
-            {/* Tombol switch role */}
-            <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => handleRoleButtonClick('karyawan')}
-                className={`py-1 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                  currentRole === 'karyawan'
-                    ? 'bg-sky-500 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-                title="Akses Karyawan"
-              >
-                <UserCheck className="w-3 h-3" />
-                <span>Kasir</span>
-              </button>
+            {/* Tombol switch role (Murni tanpa menampilkan angka PIN) */}
+            {!isSidebarCollapsed ? (
+              <div className="grid grid-cols-2 gap-1 mt-2 pt-2 border-t border-slate-800">
+                <button
+                  onClick={() => handleRoleButtonClick('karyawan')}
+                  className={`py-1 px-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                    currentRole === 'karyawan'
+                      ? 'bg-sky-500 text-white'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                  title="Akses Kasir"
+                >
+                  <UserCheck className="w-3 h-3" />
+                  <span>Kasir</span>
+                </button>
 
-              <button
-                onClick={() => handleRoleButtonClick('admin')}
-                className={`py-1 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                  currentRole === 'admin'
-                    ? 'bg-amber-500 text-slate-950'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-                title="Akses Admin"
-              >
-                <ShieldCheck className="w-3 h-3" />
-                <span>Admin</span>
-              </button>
-            </div>
+                <button
+                  onClick={() => handleRoleButtonClick('admin')}
+                  className={`py-1 px-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                    currentRole === 'admin'
+                      ? 'bg-amber-500 text-slate-950'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                  title="Akses Admin"
+                >
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Admin</span>
+                </button>
+              </div>
+            ) : null}
           </div>
 
-          {/* Navigasi Vertikal Desktop */}
-          <nav className="px-3 py-2 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 block">
-              Menu Navigasi
-            </span>
+          {/* Navigasi Vertikal Sidebar */}
+          <nav className="px-2 lg:px-3 py-1 space-y-1">
+            {!isSidebarCollapsed && (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1 block">
+                Menu Utama
+              </span>
+            )}
 
             {navItems.map(item => {
               const Icon = item.icon;
@@ -744,18 +776,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  title={item.label}
+                  className={`w-full flex items-center ${
+                    isSidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3 py-2.5'
+                  } rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
+                  <div className="flex items-center gap-2.5 truncate">
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-emerald-700' : 'text-slate-500'}`} />
+                    {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                   </div>
-                  {item.badge && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded text-white ${item.badgeColor || 'bg-slate-700'}`}>
+                  {!isSidebarCollapsed && item.badge && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded text-white shrink-0 ${item.badgeColor || 'bg-slate-700'}`}>
                       {item.badge}
                     </span>
                   )}
@@ -765,41 +800,46 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           </nav>
         </div>
 
-        {/* Bagian Bawah Sidebar Desktop */}
-        <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/50">
+        {/* Bagian Bawah Sidebar */}
+        <div className="p-2 lg:p-3 border-t border-slate-100 space-y-1.5 bg-slate-50/50">
           <button
             onClick={() => setShowShareModal(true)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-all cursor-pointer shadow-2xs"
+            className={`w-full flex items-center ${
+              isSidebarCollapsed ? 'justify-center p-2' : 'justify-between px-3 py-2'
+            } rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-all cursor-pointer shadow-2xs`}
             title="Buka QR Meja Kasir & Salin Link"
           >
             <div className="flex items-center gap-2">
-              <QrCode className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Stand QR Kasir</span>
+              <QrCode className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              {!isSidebarCollapsed && <span>Stand QR Kasir</span>}
             </div>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            {!isSidebarCollapsed && <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
           </button>
 
           <a
             href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
             target="_blank"
             rel="noreferrer"
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50/80 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+            className={`w-full flex items-center ${
+              isSidebarCollapsed ? 'justify-center p-2' : 'justify-between px-3 py-2'
+            } rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50/80 border border-emerald-200 hover:bg-emerald-100 transition-colors`}
+            title="Chat WA CS"
           >
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-              <span>WA Admin CS</span>
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              {!isSidebarCollapsed && <span>WA Admin CS</span>}
             </div>
-            <span className="text-[10px] text-emerald-700 font-bold">Chat</span>
+            {!isSidebarCollapsed && <span className="text-[10px] text-emerald-700 font-bold">Chat</span>}
           </a>
 
-          {currentRole === 'admin' && (
+          {currentRole === 'admin' && !isSidebarCollapsed && (
             <button
               onClick={() => {
                 if (window.confirm('Reset data ke kondisi awal demo?')) {
                   resetToDefaults();
                 }
               }}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-1.5 py-1 text-[11px] text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               title="Reset Data Demo"
             >
               <RotateCcw className="w-3 h-3" />
@@ -807,9 +847,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </button>
           )}
 
-          <div className="text-[10px] text-slate-400 text-center pt-1 border-t border-slate-200/60">
-            Kravent Bike UKSW • Buka 06:00-23:00
-          </div>
+          {!isSidebarCollapsed && (
+            <div className="text-[10px] text-slate-400 text-center pt-1 border-t border-slate-200/60">
+              Kravent Bike UKSW • 06:00-23:00
+            </div>
+          )}
         </div>
       </aside>
 
@@ -878,11 +920,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 /* TAB 1: QR MEJA KASIR (PALING PRAKTIS) */
                 <div className="space-y-4 text-center">
                   <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed text-left">
-                    💡 <strong>Cara Paling Praktis di Pos Rental:</strong> Cetak QR Code ini dan taruh di meja kasir / stand akrilik. Pelanggan datang tinggal buka kamera HP & scan, langsung melihat katalog sepeda dan tarif tanpa perlu mengeja URL web!
+                    💡 <strong>Cara Paling Praktis di Pos Rental:</strong> Cetak QR Code ini dan letakkan di meja kasir / stand akrilik. Pelanggan datang tinggal buka kamera HP & scan, langsung melihat katalog sepeda dan tarif tanpa perlu mengetik URL!
                   </div>
 
                   {/* QR Stand Preview Card */}
-                  <div className="p-6 rounded-2xl border-2 border-slate-200 bg-linear-to-b from-slate-50 to-white flex flex-col items-center justify-center shadow-xs">
+                  <div className="p-6 rounded-2xl border-2 border-slate-200 bg-gradient-to-b from-slate-50 to-white flex flex-col items-center justify-center shadow-xs">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-6 h-6 rounded-md bg-white border border-slate-200 p-0.5 shadow-2xs">
                         <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
@@ -941,7 +983,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 /* TAB 2: LINK LENGKAP */
                 <div className="space-y-3.5">
                   <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
-                    💡 <strong>1 Link Utama:</strong> Anda cukup menyebarkan link utama ke publik (Bio IG/WA). Pelanggan otomatis melihat katalog bersih, dan fitur rahasia staf terkunci aman di balik PIN.
+                    💡 <strong>1 Link Utama:</strong> Cukup sebarkan link utama ke publik (Bio IG/WA). Pelanggan otomatis melihat katalog bersih, dan akses staf terkunci aman di balik PIN.
                   </div>
 
                   {/* Link 1: Pelanggan (Publik) */}

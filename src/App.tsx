@@ -25,11 +25,11 @@ function MainApp() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col lg:flex-row font-sans">
+    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col md:flex-row font-sans">
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-24 lg:pb-8">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-20 md:pb-8">
           {/* TAB ROUTING */}
           {activeTab === 'dashboard' && (
             <Dashboard
@@ -48,7 +48,7 @@ function MainApp() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 mb-14 lg:mb-0">
+        <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 mb-14 md:mb-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-2xs shrink-0">
