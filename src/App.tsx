@@ -25,45 +25,54 @@ function MainApp() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col lg:flex-row font-sans">
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* TAB ROUTING */}
-        {activeTab === 'dashboard' && (
-          <Dashboard
-            onNavigateTab={tab => setActiveTab(tab)}
-            onOpenBooking={() => setActiveTab('catalog')}
-          />
-        )}
+      <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-24 lg:pb-8">
+          {/* TAB ROUTING */}
+          {activeTab === 'dashboard' && (
+            <Dashboard
+              onNavigateTab={tab => setActiveTab(tab)}
+              onOpenBooking={() => setActiveTab('catalog')}
+            />
+          )}
 
-        {(activeTab === 'catalog' || currentRole === 'customer') && <Catalog />}
+          {(activeTab === 'catalog' || currentRole === 'customer') && <Catalog />}
 
-        {activeTab === 'bookings' && <BookingList />}
+          {activeTab === 'bookings' && <BookingList />}
 
-        {activeTab === 'fleet' && <FleetManager />}
+          {activeTab === 'fleet' && <FleetManager />}
 
-        {activeTab === 'finance' && <FinanceManager />}
-      </main>
+          {activeTab === 'finance' && <FinanceManager />}
+        </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 mt-12 py-8 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-xs shrink-0">
-              <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+        {/* Footer */}
+        <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 mb-14 lg:mb-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-2xs shrink-0">
+                <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+              </div>
+              <span className="font-bold text-slate-800">Kravent Bike • UKSW Salatiga</span>
+              <span className="hidden sm:inline text-slate-400">• Rental Sepeda & Finansial Bisnis</span>
             </div>
-            <span className="font-bold text-slate-800">Kravent Bike • UKSW</span>
-            <span>• Rental Sepeda Kampus & Finansial Bisnis Bagi Hasil (60/40)</span>
-          </div>
 
-          <div className="flex items-center gap-4 text-slate-400">
-            <span>Role Aktif: <strong className="text-slate-700 capitalize">{currentRole}</strong></span>
-            <span>•</span>
-            <span>WhatsApp CS: 0896-4712-3671</span>
+            <div className="flex items-center gap-3 text-slate-400">
+              <span>Mode: <strong className="text-slate-700 capitalize">{currentRole}</strong></span>
+              <span>•</span>
+              <a
+                href="https://wa.me/6289647123671"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-emerald-700 transition-colors"
+              >
+                WA: 0896-4712-3671
+              </a>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }

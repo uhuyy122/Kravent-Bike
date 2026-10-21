@@ -9,7 +9,6 @@ import {
   Layers,
   PieChart,
   RotateCcw,
-  Sparkles,
   Lock,
   LogOut,
   Share2,
@@ -18,7 +17,11 @@ import {
   X,
   QrCode,
   Printer,
-  Smartphone
+  Smartphone,
+  Menu,
+  MessageCircle,
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -36,10 +39,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTab, setShareTab] = useState<'qr' | 'links'>('qr');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   const applyRoleChange = (role: UserRole) => {
     setCurrentRole(role);
-    // If switching to customer and current tab was admin-only, switch to catalog
     if (role === 'customer' && (activeTab === 'dashboard' || activeTab === 'bookings' || activeTab === 'fleet' || activeTab === 'finance')) {
       setActiveTab('catalog');
     } else if (role === 'karyawan' && activeTab === 'finance') {
@@ -81,6 +84,17 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, [currentRole]);
+
+  // Tutup drawer mobile saat ukuran layar berubah ke desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileDrawerOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const getBaseUrl = () => {
     if (typeof window !== 'undefined') {
@@ -214,80 +228,594 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
   const isStaffMode = currentRole === 'admin' || currentRole === 'karyawan';
 
+  // Item navigasi berdasarkan role aktif
+  const navItems = [
+    ...(currentRole === 'admin' || currentRole === 'karyawan'
+      ? [
+          {
+            id: 'dashboard',
+            label: currentRole === 'admin' ? 'Dashboard & Grafik' : 'Dashboard Harian',
+            icon: LayoutDashboard,
+            badge: null,
+          },
+        ]
+      : []),
+    {
+      id: 'catalog',
+      label: 'Katalog Sepeda',
+      icon: Bike,
+      badge: null,
+    },
+    ...(currentRole === 'admin' || currentRole === 'karyawan'
+      ? [
+          {
+            id: 'bookings',
+            label: currentRole === 'admin' ? 'Kelola Booking' : 'Serah Terima & Kasir',
+            icon: CalendarCheck,
+            badge: activeBookingsCount > 0 ? `${activeBookingsCount} aktif` : null,
+            badgeColor: currentRole === 'admin' ? 'bg-amber-500' : 'bg-sky-600',
+          },
+          {
+            id: 'fleet',
+            label: currentRole === 'admin' ? 'Armada Sepeda' : 'Status Armada',
+            icon: Layers,
+            badge: null,
+          },
+        ]
+      : []),
+    ...(currentRole === 'admin'
+      ? [
+          {
+            id: 'finance',
+            label: 'Bagi Hasil & Finansial',
+            icon: PieChart,
+            badge: '60/40',
+            badgeColor: 'bg-emerald-600',
+          },
+        ]
+      : []),
+  ];
+
+  const handleNavClick = (tabId: string) => {
+    setActiveTab(tabId);
+    setIsMobileDrawerOpen(false);
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-      {/* Top Banner Staf: HANYA tampil jika sedang login sebagai Karyawan atau Admin */}
-      {isStaffMode && (
-        <div className="bg-slate-900 text-white text-xs px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
-            <span
-              className={`flex h-2.5 w-2.5 rounded-full animate-pulse ${
-                currentRole === 'admin' ? 'bg-amber-400' : 'bg-sky-400'
-              }`}
-            ></span>
-            <span className="font-semibold text-slate-200">
-              {currentRole === 'admin' ? 'Akses Admin (Owner)' : 'Akses Karyawan (Kasir)'} •
-            </span>
-            <span className="text-slate-300 hidden sm:inline">
-              {bikesOutToday} Sepeda Keluar Hari Ini ({activeBookingsCount} Sedang di Luar)
-            </span>
-          </div>
-
-          {/* Right side controls: Bagikan Link/QR & Role Switcher */}
-          <div className="flex items-center gap-2">
-            {/* Tombol Bagikan Link & QR Stand */}
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 text-[11px] font-semibold transition-all cursor-pointer"
-              title="Lihat QR Code Meja Kasir & Salin Link"
-            >
-              <QrCode className="w-3.5 h-3.5 text-emerald-400" />
-              <span>QR & Link</span>
-            </button>
-
-            {/* Role Switcher Pill Bar dengan Proteksi PIN */}
-            <div className="flex items-center gap-1 bg-slate-800/90 p-0.5 rounded-lg border border-slate-700">
-              <button
-                onClick={() => handleRoleButtonClick('admin')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
-                  currentRole === 'admin'
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+    <>
+      {/* ============================================================== */}
+      {/* 1. TOP BAR KHUSUS MOBILE & TABLET (< lg)                      */}
+      {/* ============================================================== */}
+      <div className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+        {/* Banner Status Staf jika sedang login */}
+        {isStaffMode && (
+          <div className="bg-slate-900 text-white text-[11px] px-3 py-1 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 truncate">
+              <span
+                className={`flex h-2 w-2 rounded-full animate-pulse shrink-0 ${
+                  currentRole === 'admin' ? 'bg-amber-400' : 'bg-sky-400'
                 }`}
-                title="Akses Admin: Finansial bagi hasil & armada"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-current" />
-                <span>Admin</span>
-              </button>
-
+              ></span>
+              <span className="font-semibold truncate">
+                {currentRole === 'admin' ? 'Admin' : 'Kasir'} • {bikesOutToday} Unit Keluar
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
               <button
-                onClick={() => handleRoleButtonClick('karyawan')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
-                  currentRole === 'karyawan'
-                    ? 'bg-sky-500 text-white font-bold shadow-xs'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
-                }`}
-                title="Akses Karyawan: Kasir & booking"
+                onClick={() => setShowShareModal(true)}
+                className="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
               >
-                <UserCheck className="w-3.5 h-3.5 text-current" />
-                <span>Kasir</span>
+                <QrCode className="w-3 h-3 text-emerald-400" />
+                <span>QR</span>
               </button>
-
-              {/* Tombol Kunci / Keluar ke Mode Pelanggan */}
               <button
                 onClick={() => applyRoleChange('customer')}
-                title="Kunci sesi & kembali ke tampilan katalog publik pelanggan"
-                className="ml-1 px-2 py-1 rounded-md bg-rose-950/70 text-rose-300 hover:text-white hover:bg-rose-900 border border-rose-800/60 text-[11px] flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+                className="px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                title="Kunci sesi"
               >
                 <LogOut className="w-3 h-3" />
-                <span>Kunci (Mode Publik)</span>
+                <span>Kunci</span>
               </button>
             </div>
           </div>
+        )}
+
+        {/* Bar Utama Mobile */}
+        <div className="px-3 sm:px-4 h-14 flex items-center justify-between gap-3">
+          {/* Tombol Buka Menu Sidebar (Hamburger) */}
+          <button
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="p-2 -ml-1 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-2 cursor-pointer"
+            aria-label="Buka Menu Navigasi"
+          >
+            <Menu className="w-5 h-5 text-slate-800" />
+            <span className="text-xs font-bold text-slate-700 sm:inline hidden">Menu</span>
+          </button>
+
+          {/* Logo & Judul Brand */}
+          <div
+            className="flex items-center gap-2 cursor-pointer flex-1 truncate"
+            onClick={() => handleNavClick(currentRole === 'customer' ? 'catalog' : 'dashboard')}
+          >
+            <div className="w-8 h-8 rounded-xl bg-white p-0.5 flex items-center justify-center shadow-xs border border-slate-200 shrink-0">
+              <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+            </div>
+            <div className="truncate">
+              <span className="font-extrabold text-sm text-slate-900 tracking-tight flex items-center gap-1">
+                Kravent Bike
+                <span className="text-[9px] font-bold px-1 rounded bg-blue-100 text-blue-800 uppercase">
+                  UKSW
+                </span>
+              </span>
+              <p className="text-[10px] text-slate-500 truncate">Rental Sepeda Kampus</p>
+            </div>
+          </div>
+
+          {/* Aksi Kanan Mobile */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {currentRole === 'customer' ? (
+              <button
+                onClick={() => setPinModalTarget('karyawan')}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                title="Akses Staf / Admin"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span>Staf</span>
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 2. DRAWER SIDEBAR SLIDE-OVER KHUSUS MOBILE & TABLET (< lg)     */}
+      {/* ============================================================== */}
+      {isMobileDrawerOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex animate-in fade-in duration-200">
+          {/* Backdrop Blur */}
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileDrawerOpen(false)}
+          />
+
+          {/* Panel Drawer */}
+          <aside className="relative w-72 sm:w-80 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left duration-200 z-10">
+            <div>
+              {/* Drawer Header */}
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-slate-200 shrink-0">
+                    <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-sm text-slate-900 tracking-tight flex items-center gap-1">
+                      Kravent Bike
+                      <span className="text-[9px] font-bold px-1 rounded bg-blue-100 text-blue-800 uppercase">
+                        UKSW
+                      </span>
+                    </span>
+                    <p className="text-[10px] text-slate-500">Menu Navigasi</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsMobileDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                  title="Tutup Menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status & Switcher Role di Drawer */}
+              <div className="p-3 bg-slate-900 text-white m-3 rounded-2xl shadow-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-slate-300">Mode Akses:</span>
+                  <span
+                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full capitalize ${
+                      currentRole === 'admin'
+                        ? 'bg-amber-400 text-slate-950'
+                        : currentRole === 'karyawan'
+                        ? 'bg-sky-400 text-slate-950'
+                        : 'bg-emerald-400 text-slate-950'
+                    }`}
+                  >
+                    {currentRole}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-800">
+                  <button
+                    onClick={() => {
+                      setIsMobileDrawerOpen(false);
+                      handleRoleButtonClick('karyawan');
+                    }}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                      currentRole === 'karyawan'
+                        ? 'bg-sky-500 text-white'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <UserCheck className="w-3 h-3" />
+                    <span>Kasir</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileDrawerOpen(false);
+                      handleRoleButtonClick('admin');
+                    }}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                      currentRole === 'admin'
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Admin</span>
+                  </button>
+                </div>
+
+                {isStaffMode && (
+                  <button
+                    onClick={() => {
+                      setIsMobileDrawerOpen(false);
+                      applyRoleChange('customer');
+                    }}
+                    className="w-full mt-2 py-1 px-2 rounded-lg bg-rose-950/80 text-rose-300 hover:bg-rose-900 border border-rose-800/60 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <LogOut className="w-3 h-3" />
+                    <span>Kunci / Kembali ke Mode Publik</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Daftar Menu Vertikal */}
+              <div className="px-3 py-2 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1 block">
+                  Menu Utama
+                </span>
+                {navItems.map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavClick(item.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs font-extrabold'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700' : 'text-slate-500'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded text-white ${item.badgeColor || 'bg-slate-700'}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Fitur Pintas di Drawer */}
+              <div className="px-3 py-2 space-y-1.5 border-t border-slate-100 mx-3 pt-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Pintasan Cepat
+                </span>
+
+                <button
+                  onClick={() => {
+                    setIsMobileDrawerOpen(false);
+                    setShowShareModal(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4 text-emerald-600" />
+                  <span>Stand QR Meja Kasir</span>
+                </button>
+
+                <a
+                  href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  <span>WhatsApp CS (089647123671)</span>
+                </a>
+
+                {currentRole === 'admin' && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Reset data ke kondisi awal demo?')) {
+                        resetToDefaults();
+                        setIsMobileDrawerOpen(false);
+                      }
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4 text-slate-400" />
+                    <span>Reset Data Demo</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Drawer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-500">
+              <p className="font-semibold text-slate-700">Kravent Bike UKSW Salatiga</p>
+              <p className="text-[10px] text-slate-400">Jam Operasional: 06:00 - 23:00 WIB</p>
+            </div>
+          </aside>
         </div>
       )}
 
-      {/* Share Link & QR Stand Modal */}
+      {/* ============================================================== */}
+      {/* 3. BOTTOM NAVIGATION BAR UNTUK HP (< lg)                        */}
+      {/* ============================================================== */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 py-1 px-2 flex justify-around items-center shadow-lg">
+        {isStaffMode ? (
+          <>
+            <button
+              onClick={() => handleNavClick('dashboard')}
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+                activeTab === 'dashboard' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 mb-0.5" />
+              <span className="text-[10px]">Dashboard</span>
+            </button>
+
+            <button
+              onClick={() => handleNavClick('catalog')}
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+                activeTab === 'catalog' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Bike className="w-4 h-4 mb-0.5" />
+              <span className="text-[10px]">Katalog</span>
+            </button>
+
+            <button
+              onClick={() => handleNavClick('bookings')}
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl relative transition-colors cursor-pointer ${
+                activeTab === 'bookings' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <CalendarCheck className="w-4 h-4 mb-0.5" />
+              <span className="text-[10px]">Booking</span>
+              {activeBookingsCount > 0 && (
+                <span className="absolute top-0 right-1 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setIsMobileDrawerOpen(true)}
+              className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+            >
+              <Menu className="w-4 h-4 mb-0.5" />
+              <span className="text-[10px]">Menu</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => handleNavClick('catalog')}
+              className="flex flex-col items-center justify-center py-1 px-3 text-emerald-700 font-extrabold cursor-pointer"
+            >
+              <Bike className="w-4 h-4 mb-0.5" />
+              <span className="text-[10px]">Katalog Sepeda</span>
+            </button>
+
+            <a
+              href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+              target="_blank"
+              rel="noreferrer"
+              className="flex flex-col items-center justify-center py-1 px-3 text-emerald-700 hover:text-emerald-800 transition-colors"
+            >
+              <MessageCircle className="w-4 h-4 mb-0.5" />
+              <span className="text-[10px]">Chat WA</span>
+            </a>
+
+            <button
+              onClick={() => setPinModalTarget('karyawan')}
+              className="flex flex-col items-center justify-center py-1 px-3 text-slate-500 hover:text-slate-900 cursor-pointer"
+            >
+              <Lock className="w-4 h-4 mb-0.5" />
+              <span className="text-[10px]">Akses Staf</span>
+            </button>
+          </>
+        )}
+      </nav>
+
+      {/* ============================================================== */}
+      {/* 4. SIDEBAR PERMANEN KHUSUS DESKTOP & LAYAR LEBAR (>= lg)       */}
+      {/* ============================================================== */}
+      <aside className="hidden lg:flex w-64 shrink-0 bg-white border-r border-slate-200/80 min-h-screen flex-col justify-between sticky top-0 h-screen overflow-y-auto z-30">
+        <div>
+          {/* Logo & Brand Header Desktop */}
+          <div
+            className="p-5 border-b border-slate-100 flex items-center gap-3 cursor-pointer group"
+            onClick={() => handleNavClick(currentRole === 'customer' ? 'catalog' : 'dashboard')}
+          >
+            <div className="w-11 h-11 rounded-2xl bg-white p-1 flex items-center justify-center shadow-md shadow-slate-200/90 ring-1 ring-slate-200 group-hover:scale-105 transition-all shrink-0">
+              <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-base tracking-tight text-slate-900 group-hover:text-blue-800 transition-colors">
+                  Kravent Bike
+                </span>
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 uppercase tracking-wider">
+                  UKSW
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">Rental Sepeda Salatiga</p>
+            </div>
+          </div>
+
+          {/* Kartu Status Role di Sidebar Desktop */}
+          <div className="p-3 m-3 rounded-2xl bg-slate-900 text-white shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`w-2 h-2 rounded-full animate-pulse ${
+                    currentRole === 'admin'
+                      ? 'bg-amber-400'
+                      : currentRole === 'karyawan'
+                      ? 'bg-sky-400'
+                      : 'bg-emerald-400'
+                  }`}
+                />
+                <span className="text-xs font-bold text-slate-200 capitalize">
+                  Mode {currentRole}
+                </span>
+              </div>
+
+              {isStaffMode && (
+                <button
+                  onClick={() => applyRoleChange('customer')}
+                  title="Kunci sesi & kembali ke tampilan publik"
+                  className="p-1 rounded-md text-rose-300 hover:text-white hover:bg-rose-900/60 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {isStaffMode ? (
+              <div className="text-[11px] text-slate-300 font-medium pt-1 border-t border-slate-800 flex items-center justify-between">
+                <span>Unit di luar:</span>
+                <span className="font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded">
+                  {bikesOutToday} ({activeBookingsCount} jalan)
+                </span>
+              </div>
+            ) : (
+              <p className="text-[10px] text-slate-400 leading-tight">
+                Katalog publik sepeda mahasiswa & civitas UKSW
+              </p>
+            )}
+
+            {/* Tombol switch role */}
+            <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => handleRoleButtonClick('karyawan')}
+                className={`py-1 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                  currentRole === 'karyawan'
+                    ? 'bg-sky-500 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+                title="Akses Karyawan"
+              >
+                <UserCheck className="w-3 h-3" />
+                <span>Kasir</span>
+              </button>
+
+              <button
+                onClick={() => handleRoleButtonClick('admin')}
+                className={`py-1 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                  currentRole === 'admin'
+                    ? 'bg-amber-500 text-slate-950'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+                title="Akses Admin"
+              >
+                <ShieldCheck className="w-3 h-3" />
+                <span>Admin</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Navigasi Vertikal Desktop */}
+          <nav className="px-3 py-2 space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 block">
+              Menu Navigasi
+            </span>
+
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs font-extrabold'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded text-white ${item.badgeColor || 'bg-slate-700'}`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Bagian Bawah Sidebar Desktop */}
+        <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/50">
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-all cursor-pointer shadow-2xs"
+            title="Buka QR Meja Kasir & Salin Link"
+          >
+            <div className="flex items-center gap-2">
+              <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Stand QR Kasir</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+
+          <a
+            href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+            target="_blank"
+            rel="noreferrer"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50/80 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>WA Admin CS</span>
+            </div>
+            <span className="text-[10px] text-emerald-700 font-bold">Chat</span>
+          </a>
+
+          {currentRole === 'admin' && (
+            <button
+              onClick={() => {
+                if (window.confirm('Reset data ke kondisi awal demo?')) {
+                  resetToDefaults();
+                }
+              }}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              title="Reset Data Demo"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Demo</span>
+            </button>
+          )}
+
+          <div className="text-[10px] text-slate-400 text-center pt-1 border-t border-slate-200/60">
+            Kravent Bike UKSW • Buka 06:00-23:00
+          </div>
+        </div>
+      </aside>
+
+      {/* ============================================================== */}
+      {/* 5. MODAL SHARE LINK & STAND QR MEJA KASIR                      */}
+      {/* ============================================================== */}
       {showShareModal && (
         <div
           className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150"
@@ -513,7 +1041,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
         </div>
       )}
 
-      {/* PIN Authentication Modal */}
+      {/* ============================================================== */}
+      {/* 6. PIN AUTHENTICATION FULLSCREEN MODAL                         */}
+      {/* ============================================================== */}
       {pinModalTarget && (
         <PinAuthModal
           targetRole={pinModalTarget}
@@ -524,218 +1054,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           onClose={() => setPinModalTarget(null)}
         />
       )}
-
-      {/* Main Navbar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo & Brand */}
-          <div
-            className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => setActiveTab(currentRole === 'customer' ? 'catalog' : 'dashboard')}
-          >
-            <div className="relative w-11 h-11 rounded-2xl bg-white p-1 flex items-center justify-center shadow-md shadow-slate-200/90 ring-1 ring-slate-200 group-hover:scale-105 transition-all overflow-hidden shrink-0">
-              <img
-                src={ukswLogo}
-                alt="Logo UKSW"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight text-slate-900 group-hover:text-blue-800 transition-colors">
-                  Kravent Bike
-                </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 uppercase tracking-wider">
-                  UKSW
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 hidden sm:block">Rental Sepeda Kampus Salatiga</p>
-            </div>
-          </div>
-
-          {/* Navigation Links based on Current Role */}
-          <nav className="flex items-center gap-1 overflow-x-auto py-1">
-            {/* Admin Tabs */}
-            {currentRole === 'admin' && (
-              <>
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    activeTab === 'dashboard'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Dashboard & Grafik</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('catalog')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    activeTab === 'catalog'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Bike className="w-4 h-4" />
-                  <span>Katalog Sepeda</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('bookings')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap relative cursor-pointer ${
-                    activeTab === 'bookings'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <CalendarCheck className="w-4 h-4" />
-                  <span>Kelola Booking</span>
-                  {activeBookingsCount > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 text-[11px] font-bold bg-amber-500 text-white rounded-full">
-                      {activeBookingsCount}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('fleet')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    activeTab === 'fleet'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>Armada Sepeda</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('finance')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    activeTab === 'finance'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <PieChart className="w-4 h-4 text-emerald-600" />
-                  <span className="flex items-center gap-1">
-                    Bagi Hasil & Biaya
-                    <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1 rounded">60/40</span>
-                  </span>
-                </button>
-              </>
-            )}
-
-            {/* Karyawan Tabs */}
-            {currentRole === 'karyawan' && (
-              <>
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    activeTab === 'dashboard'
-                      ? 'bg-sky-50 text-sky-700 border border-sky-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Dashboard Harian</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('catalog')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    activeTab === 'catalog'
-                      ? 'bg-sky-50 text-sky-700 border border-sky-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Bike className="w-4 h-4" />
-                  <span>Katalog Sepeda</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('bookings')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap relative cursor-pointer ${
-                    activeTab === 'bookings'
-                      ? 'bg-sky-50 text-sky-700 border border-sky-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <CalendarCheck className="w-4 h-4" />
-                  <span>Serah Terima & Kasir</span>
-                  {activeBookingsCount > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 text-[11px] font-bold bg-sky-600 text-white rounded-full">
-                      {activeBookingsCount}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('fleet')}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    activeTab === 'fleet'
-                      ? 'bg-sky-50 text-sky-700 border border-sky-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>Status Armada</span>
-                </button>
-              </>
-            )}
-
-            {/* Customer Tabs: Tampilan 100% Bersih & Profesional */}
-            {currentRole === 'customer' && (
-              <>
-                <button
-                  onClick={() => setActiveTab('catalog')}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white shadow-xs whitespace-nowrap cursor-pointer"
-                >
-                  <Bike className="w-4 h-4" />
-                  <span>Katalog Sepeda</span>
-                </button>
-
-                <a
-                  href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors whitespace-nowrap border border-emerald-200"
-                >
-                  <span>Chat WA CS (089647123671)</span>
-                </a>
-              </>
-            )}
-          </nav>
-
-          {/* Right Action: Akses Staf (jika customer) atau Tombol Reset (khusus admin) */}
-          <div className="flex items-center gap-2">
-            {currentRole === 'customer' ? (
-              <button
-                onClick={() => setPinModalTarget('karyawan')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
-                title="Akses Kasir / Admin Toko dengan PIN"
-              >
-                <Lock className="w-3.5 h-3.5 text-slate-400" />
-                <span className="hidden sm:inline">Akses Staf</span>
-              </button>
-            ) : currentRole === 'admin' ? (
-              <button
-                onClick={() => {
-                  if (window.confirm('Reset data ke kondisi awal demo?')) {
-                    resetToDefaults();
-                  }
-                }}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                title="Reset Data Demo (Khusus Admin)"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </header>
+    </>
   );
 };
