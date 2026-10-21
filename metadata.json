@@ -1,0 +1,6 @@
+{
+  "name": "Kravent Bike",
+  "description": "Aplikasi booking sepeda Kravent Bike dengan dashboard grafik penjualan, pelacakan unit keluar harian/mingguan/bulanan, simulasi bagi hasil 60/40 & alokasi biaya, katalog customer, dan 3 role akses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
