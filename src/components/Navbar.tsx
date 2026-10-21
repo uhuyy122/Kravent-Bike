@@ -254,7 +254,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                     ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
                 }`}
-                title="Akses Admin: Finansial bagi hasil & armada (PIN: 8888)"
+                title="Akses Admin: Finansial bagi hasil & armada"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-current" />
                 <span>Admin</span>
@@ -267,7 +267,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                     ? 'bg-sky-500 text-white font-bold shadow-xs'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
                 }`}
-                title="Akses Karyawan: Kasir & booking (PIN: 1234)"
+                title="Akses Karyawan: Kasir & booking"
               >
                 <UserCheck className="w-3.5 h-3.5 text-current" />
                 <span>Kasir</span>
@@ -454,7 +454,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                           Link Kasir (Operasional Serah Terima)
                         </span>
                         <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">
-                          PIN 1234
+                          Akses Staf
                         </span>
                       </div>
                       <button
@@ -481,7 +481,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                           Link Admin (Owner Finansial & Bagi Hasil)
                         </span>
                         <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900">
-                          PIN 8888
+                          Akses Owner
                         </span>
                       </div>
                       <button

@@ -6,9 +6,8 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  KeyRound,
   Delete,
-  Sparkles,
+  RotateCcw,
   ArrowLeft
 } from 'lucide-react';
 import { UserRole } from '../types';
@@ -78,7 +77,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
   }, [isSuccess, selectedRole]);
 
   const handleVerify = (inputPin: string) => {
-    // Cek kecocokan PIN: 8888 untuk Admin, 1234 untuk Karyawan
+    // Verifikasi PIN rahasia tanpa membocorkan nilai kodenya di tampilan UI
     if (inputPin === '8888') {
       setErrorMsg('');
       setIsSuccess(true);
@@ -94,7 +93,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
         onSuccess('karyawan');
       }, 500);
     } else {
-      setErrorMsg('PIN salah! Masukkan 1234 (Karyawan) atau 8888 (Admin).');
+      setErrorMsg('PIN yang Anda masukkan salah. Silakan coba lagi.');
       setPin('');
       inputRef.current?.focus();
     }
@@ -117,10 +116,10 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
     inputRef.current?.focus();
   };
 
-  const handleQuickDemoPin = () => {
-    const demoPin = selectedRole === 'admin' ? '8888' : '1234';
-    setPin(demoPin);
-    handleVerify(demoPin);
+  const handleClear = () => {
+    setPin('');
+    setErrorMsg('');
+    inputRef.current?.focus();
   };
 
   return (
@@ -149,7 +148,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           </div>
         </div>
 
-        {/* Role Toggle Pill Bar */}
+        {/* Role Toggle Pill Bar (Tanpa Membocorkan Kode PIN) */}
         <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700">
           <button
             type="button"
@@ -159,14 +158,14 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
               setErrorMsg('');
               inputRef.current?.focus();
             }}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               selectedRole === 'karyawan'
                 ? 'bg-sky-500 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Kasir (1234)</span>
+            <span>Kasir</span>
           </button>
           <button
             type="button"
@@ -176,14 +175,14 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
               setErrorMsg('');
               inputRef.current?.focus();
             }}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               selectedRole === 'admin'
                 ? 'bg-amber-500 text-slate-950 shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Admin (8888)</span>
+            <span>Admin</span>
           </button>
         </div>
 
@@ -220,7 +219,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
         <div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[11px] font-semibold text-slate-300 mb-1.5">
             <Lock className="w-3 h-3 text-emerald-400" />
-            <span>Mode Layar Penuh Fokus PIN</span>
+            <span>Verifikasi Keamanan Akses</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Masuk {roleTitle}
@@ -300,11 +299,11 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           </div>
         ) : (
           <p className="text-[11px] text-slate-400">
-            Ketik langsung angka di keyboard fisik Anda atau gunakan tombol di bawah
+            Ketik 4-digit PIN rahasia Anda melalui keyboard atau tombol numerik di bawah
           </p>
         )}
 
-        {/* Virtual Keypad (High-tech full screen layout) */}
+        {/* Virtual Keypad (Murni Numerik Tanpa Tombol Auto PIN) */}
         <div className="grid grid-cols-3 gap-2.5 w-full pt-1">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
             <button
@@ -318,12 +317,12 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           ))}
           <button
             type="button"
-            onClick={handleQuickDemoPin}
-            title={`Isi PIN Otomatis (${selectedRole === 'admin' ? '8888' : '1234'})`}
-            className="py-3 sm:py-3.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 text-amber-300 font-bold text-xs border border-amber-500/30 transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95"
+            onClick={handleClear}
+            title="Bersihkan Input"
+            className="py-3 sm:py-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-800 active:bg-slate-700 text-slate-400 hover:text-white font-bold text-sm border border-slate-800 transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95"
           >
-            <KeyRound className="w-3.5 h-3.5" />
-            <span>Auto PIN</span>
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset</span>
           </button>
           <button
             type="button"
@@ -335,7 +334,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           <button
             type="button"
             onClick={handleDelete}
-            className="py-3 sm:py-3.5 rounded-2xl bg-slate-900/90 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-800 text-slate-400 font-bold text-xs border border-slate-800 transition-all cursor-pointer flex items-center justify-center active:scale-95"
+            className="py-3 sm:py-3.5 rounded-2xl bg-slate-900/60 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-800 text-slate-400 font-bold text-xs border border-slate-800 transition-all cursor-pointer flex items-center justify-center active:scale-95"
             title="Hapus Digit"
           >
             <Delete className="w-4 h-4" />
@@ -343,19 +342,19 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
         </div>
       </div>
 
-      {/* Bottom Footer Info */}
+      {/* Bottom Footer Info (Tanpa Menampilkan Angka PIN) */}
       <footer className="w-full px-4 sm:px-8 py-3 border-t border-slate-800/80 bg-slate-900/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>
-            PIN Cepat: Karyawan <strong>1234</strong> • Admin <strong>8888</strong> (Ketik salah satu langsung otomatis terdeteksi)
+          <Lock className="w-3.5 h-3.5 text-slate-500" />
+          <span className="text-slate-400">
+            Akses Terbatas: Hanya untuk staf operasional dan pengelola resmi Kravent Bike
           </span>
         </div>
         <button
           onClick={onClose}
           className="text-slate-400 hover:text-white underline underline-offset-4 cursor-pointer text-[11px]"
         >
-          Kembali ke Mode Katalog Publik
+          Kembali ke Mode Publik
         </button>
       </footer>
     </div>
