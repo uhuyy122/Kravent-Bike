@@ -570,7 +570,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
               Sepeda Keluar & Jadwal Rental Hari Ini
             </h3>
             <p className="text-xs text-slate-500">
-              Daftar unit yang disewa hari ini (10 Oktober 2026) dan status pengembalian
+              Daftar unit yang disewa hari ini ({formatDateIndo(todayStr)}) dan status pengembalian
             </p>
           </div>
           <button

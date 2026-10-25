@@ -128,7 +128,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   );
 
   // Admin / Staff submits booking directly to database
-  const handleSubmitAdminBooking = (e: React.FormEvent) => {
+  const handleSubmitAdminBooking = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (conflict.hasConflict) {
@@ -142,7 +142,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     const isPayLater = paymentMethod === 'bayar_nanti';
-    const newBooking = addBooking({
+    const newBooking = await addBooking({
       bikeId: activeBike.id,
       bikeName: activeBike.name,
       bikeImage: activeBike.imageUrl,

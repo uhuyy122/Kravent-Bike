@@ -102,7 +102,7 @@ export const BookingList: React.FC = () => {
             <span>Ekstrak Laporan (PDF & Excel)</span>
           </button>
 
-          {isAdmin && bikes.length > 0 && (
+          {bikes.length > 0 && (
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -163,9 +163,23 @@ export const BookingList: React.FC = () => {
       {/* Bookings Table */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         {filteredBookings.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">
-            <CalendarCheck className="w-10 h-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm font-medium">Tidak ada data booking yang sesuai filter.</p>
+          <div className="p-10 text-center text-slate-400 space-y-3">
+            <CalendarCheck className="w-10 h-10 mx-auto opacity-40 text-slate-400" />
+            <div>
+              <p className="text-sm font-bold text-slate-700">Belum ada data booking yang sesuai filter.</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Kasir & Admin dapat langsung menginput pesanan masuk dari WhatsApp atau pelanggan yang datang.
+              </p>
+            </div>
+            {bikes.length > 0 && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Input Booking Baru Sekarang</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -298,12 +312,22 @@ export const BookingList: React.FC = () => {
                       <div className="flex items-center justify-end gap-1.5">
                         {/* Action: Serahkan unit jika pending */}
                         {b.status === 'pending' && (
-                          <button
-                            onClick={() => handleHandover(b)}
-                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
-                          >
-                            Serahkan Unit
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleHandover(b)}
+                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
+                              title="Konfirmasi serahkan sepeda ke pelanggan"
+                            >
+                              Serahkan Unit
+                            </button>
+                            <button
+                              onClick={() => handleCancel(b)}
+                              className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-semibold rounded-lg text-[11px] transition-colors cursor-pointer"
+                              title="Batalkan pesanan ini"
+                            >
+                              Batalkan
+                            </button>
+                          </div>
                         )}
 
                         {/* Action: Terima kembali jika aktif (Buka Modal Kepulangan, Denda, & Pelunasan) */}
@@ -317,16 +341,14 @@ export const BookingList: React.FC = () => {
                           </button>
                         )}
 
-                        {/* Action: Edit Booking (Khusus Admin) */}
-                        {isAdmin && (
-                          <button
-                            onClick={() => setEditingBooking(b)}
-                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                            title="Edit Booking & Ganti Sepeda/Jam"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* Action: Edit Booking & Serah Terima (Ganti sepeda / jam / kontak) */}
+                        <button
+                          onClick={() => setEditingBooking(b)}
+                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Booking & Ganti Sepeda/Jam"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
 
                         {/* View Receipt */}
                         <button
@@ -346,7 +368,7 @@ export const BookingList: React.FC = () => {
                               }
                             }}
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="Hapus Data"
+                            title="Hapus Data (Admin)"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

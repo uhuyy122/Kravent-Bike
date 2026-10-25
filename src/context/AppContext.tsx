@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Bike,
   Booking,
@@ -19,14 +19,16 @@ import {
   checkBikeBookingConflict,
   getMondaySundayWeekRange
 } from '../utils/scheduleUtils';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, cleanForFirestore, OperationType } from '../firebase';
 import {
   collection,
   doc,
   setDoc,
   updateDoc,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  getDocs,
+  getDoc
 } from 'firebase/firestore';
 
 interface FinancialBreakdown {
@@ -54,18 +56,22 @@ interface AppContextType {
   bookings: Booking[];
   expenses: Expense[];
   financialSettings: FinancialSettings;
-  addBike: (bike: Omit<Bike, 'id' | 'totalRentedCount'>) => void;
-  updateBike: (id: string, updated: Partial<Bike>) => void;
-  deleteBike: (id: string) => void;
-  updateBikeStatus: (id: string, status: BikeStatus) => void;
-  addBooking: (booking: Omit<Booking, 'id' | 'bookingCode' | 'createdAt'>) => Booking;
-  updateBooking: (id: string, updated: Partial<Booking>) => void;
-  updateBookingStatus: (id: string, status: BookingStatus, returnDetails?: string | Partial<Booking>) => void;
-  deleteBooking: (id: string) => void;
-  addExpense: (expense: Omit<Expense, 'id'>) => void;
-  deleteExpense: (id: string) => void;
-  updateFinancialSettings: (settings: Partial<FinancialSettings>) => void;
-  resetToDefaults: () => void;
+  addBike: (bike: Omit<Bike, 'id' | 'totalRentedCount'>) => Promise<void>;
+  updateBike: (id: string, updated: Partial<Bike>) => Promise<void>;
+  deleteBike: (id: string) => Promise<void>;
+  updateBikeStatus: (id: string, status: BikeStatus) => Promise<void>;
+  addBooking: (booking: Omit<Booking, 'id' | 'bookingCode' | 'createdAt'>) => Promise<Booking>;
+  updateBooking: (id: string, updated: Partial<Booking>) => Promise<void>;
+  updateBookingStatus: (id: string, status: BookingStatus, returnDetails?: string | Partial<Booking>) => Promise<void>;
+  deleteBooking: (id: string) => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+  updateFinancialSettings: (settings: Partial<FinancialSettings>) => Promise<void>;
+  resetToDefaults: () => Promise<void>;
+  forceSyncCloud: () => Promise<{ success: boolean; message: string }>;
+  isCloudConnected: boolean;
+  isCloudSyncing: boolean;
+  lastCloudSyncTime: string;
   // Stats
   bikesOutToday: number;
   bikesOutThisWeek: number;
@@ -153,8 +159,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>('Baru saja');
 
-  // Sinkronisasi LocalStorage untuk fallback offline
+  // Simpan ke LocalStorage sebagai cadangan offline
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ROLE, currentRole);
   }, [currentRole]);
@@ -176,17 +185,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [financialSettings]);
 
   // =========================================================================
-  // REAL-TIME FIRESTORE SYNCHRONIZATION (Antar HP, Laptop & Tablet)
+  // REAL-TIME FIRESTORE SYNCHRONIZATION
   // =========================================================================
   useEffect(() => {
     // 1. Sync Bikes
     const unsubBikes = onSnapshot(
       collection(db, 'bikes'),
       snapshot => {
+        setIsCloudConnected(true);
         if (snapshot.empty) {
           // Inisialisasi awal armada ke cloud Firestore
           INITIAL_BIKES.forEach(b => {
-            setDoc(doc(db, 'bikes', b.id), b).catch(err =>
+            setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b)).catch(err =>
               handleFirestoreError(err, OperationType.WRITE, `bikes/${b.id}`)
             );
           });
@@ -199,9 +209,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           list.sort((a, b) => a.licenseNumber.localeCompare(b.licenseNumber));
           setBikes(list);
         }
+        setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
       },
       error => {
-        handleFirestoreError(error, OperationType.GET, 'bikes');
+        setIsCloudConnected(false);
+        handleFirestoreError(error, OperationType.LIST, 'bikes');
       }
     );
 
@@ -209,15 +221,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubBookings = onSnapshot(
       collection(db, 'bookings'),
       snapshot => {
-        const list: Booking[] = [];
-        snapshot.forEach(docSnap => {
-          list.push(docSnap.data() as Booking);
-        });
-        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-        setBookings(list);
+        setIsCloudConnected(true);
+        if (snapshot.empty) {
+          // Jika di Firestore masih kosong, cek apakah perangkat ini punya data booking lokal untuk dimigrasikan
+          let localBookings = INITIAL_BOOKINGS;
+          try {
+            const saved = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                localBookings = parsed;
+              }
+            }
+          } catch {
+            // ignore
+          }
+
+          if (localBookings.length > 0) {
+            localBookings.forEach(b => {
+              setDoc(doc(db, 'bookings', b.id), cleanForFirestore(b)).catch(err =>
+                handleFirestoreError(err, OperationType.WRITE, `bookings/${b.id}`)
+              );
+            });
+            setBookings(localBookings);
+          }
+        } else {
+          const list: Booking[] = [];
+          snapshot.forEach(docSnap => {
+            list.push(docSnap.data() as Booking);
+          });
+          list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          setBookings(list);
+        }
+        setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
       },
       error => {
-        handleFirestoreError(error, OperationType.GET, 'bookings');
+        setIsCloudConnected(false);
+        handleFirestoreError(error, OperationType.LIST, 'bookings');
       }
     );
 
@@ -225,15 +265,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubExpenses = onSnapshot(
       collection(db, 'expenses'),
       snapshot => {
-        const list: Expense[] = [];
-        snapshot.forEach(docSnap => {
-          list.push(docSnap.data() as Expense);
-        });
-        list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-        setExpenses(list);
+        setIsCloudConnected(true);
+        if (snapshot.empty) {
+          INITIAL_EXPENSES.forEach(e => {
+            setDoc(doc(db, 'expenses', e.id), cleanForFirestore(e)).catch(err =>
+              handleFirestoreError(err, OperationType.WRITE, `expenses/${e.id}`)
+            );
+          });
+          setExpenses(INITIAL_EXPENSES);
+        } else {
+          const list: Expense[] = [];
+          snapshot.forEach(docSnap => {
+            list.push(docSnap.data() as Expense);
+          });
+          list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          setExpenses(list);
+        }
+        setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
       },
       error => {
-        handleFirestoreError(error, OperationType.GET, 'expenses');
+        setIsCloudConnected(false);
+        handleFirestoreError(error, OperationType.LIST, 'expenses');
       }
     );
 
@@ -241,16 +293,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubSettings = onSnapshot(
       doc(db, 'financial_settings', 'default'),
       docSnap => {
+        setIsCloudConnected(true);
         if (docSnap.exists()) {
           setFinancialSettings(docSnap.data() as FinancialSettings);
         } else {
-          setDoc(doc(db, 'financial_settings', 'default'), INITIAL_FINANCIAL_SETTINGS).catch(err =>
+          setDoc(doc(db, 'financial_settings', 'default'), cleanForFirestore(INITIAL_FINANCIAL_SETTINGS)).catch(err =>
             handleFirestoreError(err, OperationType.WRITE, 'financial_settings/default')
           );
           setFinancialSettings(INITIAL_FINANCIAL_SETTINGS);
         }
+        setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
       },
       error => {
+        setIsCloudConnected(false);
         handleFirestoreError(error, OperationType.GET, 'financial_settings/default');
       }
     );
@@ -263,44 +318,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // Force Manual Sync Function: Tarik dan sinkronkan data langsung dari Cloud
+  const forceSyncCloud = useCallback(async () => {
+    setIsCloudSyncing(true);
+    try {
+      // 1. Ambil Bikes
+      const bikesSnap = await getDocs(collection(db, 'bikes'));
+      if (!bikesSnap.empty) {
+        const list: Bike[] = [];
+        bikesSnap.forEach(d => list.push(d.data() as Bike));
+        list.sort((a, b) => a.licenseNumber.localeCompare(b.licenseNumber));
+        setBikes(list);
+      } else {
+        INITIAL_BIKES.forEach(b => {
+          setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b));
+        });
+      }
+
+      // 2. Ambil Bookings
+      const bookingsSnap = await getDocs(collection(db, 'bookings'));
+      if (!bookingsSnap.empty) {
+        const list: Booking[] = [];
+        bookingsSnap.forEach(d => list.push(d.data() as Booking));
+        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        setBookings(list);
+      } else if (bookings.length > 0) {
+        // Upload data lokal jika cloud masih kosong
+        for (const b of bookings) {
+          await setDoc(doc(db, 'bookings', b.id), cleanForFirestore(b));
+        }
+      }
+
+      // 3. Ambil Expenses
+      const expSnap = await getDocs(collection(db, 'expenses'));
+      if (!expSnap.empty) {
+        const list: Expense[] = [];
+        expSnap.forEach(d => list.push(d.data() as Expense));
+        list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        setExpenses(list);
+      }
+
+      // 4. Ambil Settings
+      const setSnap = await getDoc(doc(db, 'financial_settings', 'default'));
+      if (setSnap.exists()) {
+        setFinancialSettings(setSnap.data() as FinancialSettings);
+      }
+
+      setIsCloudConnected(true);
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      setLastCloudSyncTime(timeStr);
+      return { success: true, message: `Sinkronisasi berhasil! Data ter-update pada pukul ${timeStr} WIB.` };
+    } catch (err) {
+      console.error('Force sync error:', err);
+      return { success: false, message: `Gagal sinkronisasi: ${err instanceof Error ? err.message : String(err)}` };
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  }, [bookings]);
+
   const setCurrentRole = (role: UserRole) => {
     setCurrentRoleState(role);
   };
 
-  const addBike = (bikeData: Omit<Bike, 'id' | 'totalRentedCount'>) => {
+  const addBike = async (bikeData: Omit<Bike, 'id' | 'totalRentedCount'>) => {
     const newBike: Bike = {
       ...bikeData,
       id: `bike-${Date.now()}`,
       totalRentedCount: 0,
     };
     setBikes(prev => [newBike, ...prev]);
-    setDoc(doc(db, 'bikes', newBike.id), newBike).catch(err =>
-      handleFirestoreError(err, OperationType.CREATE, `bikes/${newBike.id}`)
-    );
+    try {
+      await setDoc(doc(db, 'bikes', newBike.id), cleanForFirestore(newBike));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `bikes/${newBike.id}`);
+    }
   };
 
-  const updateBike = (id: string, updated: Partial<Bike>) => {
+  const updateBike = async (id: string, updated: Partial<Bike>) => {
     setBikes(prev => prev.map(b => (b.id === id ? { ...b, ...updated } : b)));
-    updateDoc(doc(db, 'bikes', id), updated).catch(err =>
-      handleFirestoreError(err, OperationType.UPDATE, `bikes/${id}`)
-    );
+    try {
+      await updateDoc(doc(db, 'bikes', id), cleanForFirestore(updated));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `bikes/${id}`);
+    }
   };
 
-  const deleteBike = (id: string) => {
+  const deleteBike = async (id: string) => {
     setBikes(prev => prev.filter(b => b.id !== id));
-    deleteDoc(doc(db, 'bikes', id)).catch(err =>
-      handleFirestoreError(err, OperationType.DELETE, `bikes/${id}`)
-    );
+    try {
+      await deleteDoc(doc(db, 'bikes', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `bikes/${id}`);
+    }
   };
 
-  const updateBikeStatus = (id: string, status: BikeStatus) => {
+  const updateBikeStatus = async (id: string, status: BikeStatus) => {
     setBikes(prev => prev.map(b => (b.id === id ? { ...b, status } : b)));
-    updateDoc(doc(db, 'bikes', id), { status }).catch(err =>
-      handleFirestoreError(err, OperationType.UPDATE, `bikes/${id}`)
-    );
+    try {
+      await updateDoc(doc(db, 'bikes', id), { status });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `bikes/${id}`);
+    }
   };
 
-  const addBooking = (bookingData: Omit<Booking, 'id' | 'bookingCode' | 'createdAt'>): Booking => {
+  const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingCode' | 'createdAt'>): Promise<Booking> => {
     const targetBike = bikes.find(b => b.id === bookingData.bikeId);
     const conflict = checkBikeBookingConflict(
       bookingData.bikeId,
@@ -326,31 +447,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    // Optimistic update
     setBookings(prev => [newBooking, ...prev]);
-    setDoc(doc(db, 'bookings', newBooking.id), newBooking).catch(err =>
-      handleFirestoreError(err, OperationType.CREATE, `bookings/${newBooking.id}`)
-    );
 
-    if (newBooking.status === 'aktif') {
-      const curBike = bikes.find(b => b.id === newBooking.bikeId);
-      setBikes(prev =>
-        prev.map(b =>
-          b.id === newBooking.bikeId
-            ? { ...b, status: 'disewa', totalRentedCount: b.totalRentedCount + 1 }
-            : b
-        )
-      );
-      updateDoc(doc(db, 'bikes', newBooking.bikeId), {
-        status: 'disewa',
-        totalRentedCount: (curBike?.totalRentedCount || 0) + 1,
-      }).catch(err =>
-        handleFirestoreError(err, OperationType.UPDATE, `bikes/${newBooking.bikeId}`)
-      );
+    try {
+      // Simpan booking ke Firestore dengan membersihkan field undefined
+      await setDoc(doc(db, 'bookings', newBooking.id), cleanForFirestore(newBooking));
+
+      if (newBooking.status === 'aktif') {
+        const curBike = bikes.find(b => b.id === newBooking.bikeId);
+        setBikes(prev =>
+          prev.map(b =>
+            b.id === newBooking.bikeId
+              ? { ...b, status: 'disewa', totalRentedCount: b.totalRentedCount + 1 }
+              : b
+          )
+        );
+        await updateDoc(doc(db, 'bikes', newBooking.bikeId), {
+          status: 'disewa',
+          totalRentedCount: (curBike?.totalRentedCount || 0) + 1,
+        });
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `bookings/${newBooking.id}`);
     }
+
     return newBooking;
   };
 
-  const updateBooking = (id: string, updatedFields: Partial<Booking>) => {
+  const updateBooking = async (id: string, updatedFields: Partial<Booking>) => {
     const currentBooking = bookings.find(b => b.id === id);
     if (!currentBooking) return;
 
@@ -399,7 +524,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return bike;
         })
       );
-      // Sinkronkan sepeda lama & baru ke Firestore
       if (currentBooking.status === 'aktif') {
         updateDoc(doc(db, 'bikes', currentBooking.bikeId), { status: 'tersedia' }).catch(err =>
           handleFirestoreError(err, OperationType.UPDATE, `bikes/${currentBooking.bikeId}`)
@@ -408,7 +532,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const newBikeObj = bikes.find(b => b.id === updatedFields.bikeId);
       updateDoc(doc(db, 'bikes', updatedFields.bikeId), {
         status: newStatus === 'aktif' ? 'disewa' : 'tersedia',
-        totalRentedCount: newStatus === 'aktif' ? (newBikeObj?.totalRentedCount || 0) + 1 : (newBikeObj?.totalRentedCount || 0)
+        totalRentedCount: newStatus === 'aktif' ? (newBikeObj?.totalRentedCount || 0) + 1 : (newBikeObj?.totalRentedCount || 0),
       }).catch(err =>
         handleFirestoreError(err, OperationType.UPDATE, `bikes/${updatedFields.bikeId}`)
       );
@@ -423,7 +547,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               return {
                 ...bike,
                 status: 'disewa',
-                totalRentedCount: currentBooking.status !== 'aktif' ? bike.totalRentedCount + 1 : bike.totalRentedCount
+                totalRentedCount: currentBooking.status !== 'aktif' ? bike.totalRentedCount + 1 : bike.totalRentedCount,
               };
             }
           }
@@ -438,7 +562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const curBike = bikes.find(b => b.id === finalBikeId);
         updateDoc(doc(db, 'bikes', finalBikeId), {
           status: 'disewa',
-          totalRentedCount: currentBooking.status !== 'aktif' ? (curBike?.totalRentedCount || 0) + 1 : (curBike?.totalRentedCount || 0)
+          totalRentedCount: currentBooking.status !== 'aktif' ? (curBike?.totalRentedCount || 0) + 1 : (curBike?.totalRentedCount || 0),
         }).catch(err =>
           handleFirestoreError(err, OperationType.UPDATE, `bikes/${finalBikeId}`)
         );
@@ -448,12 +572,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBookings(prev =>
       prev.map(b => (b.id === id ? { ...b, ...updatedFields } : b))
     );
-    updateDoc(doc(db, 'bookings', id), updatedFields).catch(err =>
-      handleFirestoreError(err, OperationType.UPDATE, `bookings/${id}`)
-    );
+
+    try {
+      await updateDoc(doc(db, 'bookings', id), cleanForFirestore(updatedFields));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `bookings/${id}`);
+    }
   };
 
-  const updateBookingStatus = (
+  const updateBookingStatus = async (
     id: string,
     status: BookingStatus,
     returnDetails?: string | Partial<Booking>
@@ -489,7 +616,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
       updateDoc(doc(db, 'bikes', b.bikeId), {
         status: 'disewa',
-        totalRentedCount: b.status !== 'aktif' ? (curBike?.totalRentedCount || 0) + 1 : (curBike?.totalRentedCount || 0)
+        totalRentedCount: b.status !== 'aktif' ? (curBike?.totalRentedCount || 0) + 1 : (curBike?.totalRentedCount || 0),
       }).catch(err =>
         handleFirestoreError(err, OperationType.UPDATE, `bikes/${b.bikeId}`)
       );
@@ -509,44 +636,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBookings(prev =>
       prev.map(item => (item.id === id ? updated : item))
     );
-    updateDoc(doc(db, 'bookings', id), { ...detailsObj, status }).catch(err =>
-      handleFirestoreError(err, OperationType.UPDATE, `bookings/${id}`)
-    );
+
+    try {
+      const payloadToUpdate = cleanForFirestore({ ...detailsObj, status });
+      await updateDoc(doc(db, 'bookings', id), payloadToUpdate);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `bookings/${id}`);
+    }
   };
 
-  const deleteBooking = (id: string) => {
+  const deleteBooking = async (id: string) => {
     setBookings(prev => prev.filter(b => b.id !== id));
-    deleteDoc(doc(db, 'bookings', id)).catch(err =>
-      handleFirestoreError(err, OperationType.DELETE, `bookings/${id}`)
-    );
+    try {
+      await deleteDoc(doc(db, 'bookings', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `bookings/${id}`);
+    }
   };
 
-  const addExpense = (expenseData: Omit<Expense, 'id'>) => {
+  const addExpense = async (expenseData: Omit<Expense, 'id'>) => {
     const newExpense: Expense = {
       ...expenseData,
       id: `exp-${Date.now()}`,
     };
     setExpenses(prev => [newExpense, ...prev]);
-    setDoc(doc(db, 'expenses', newExpense.id), newExpense).catch(err =>
-      handleFirestoreError(err, OperationType.CREATE, `expenses/${newExpense.id}`)
-    );
+    try {
+      await setDoc(doc(db, 'expenses', newExpense.id), cleanForFirestore(newExpense));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `expenses/${newExpense.id}`);
+    }
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = async (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
-    deleteDoc(doc(db, 'expenses', id)).catch(err =>
-      handleFirestoreError(err, OperationType.DELETE, `expenses/${id}`)
-    );
+    try {
+      await deleteDoc(doc(db, 'expenses', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `expenses/${id}`);
+    }
   };
 
-  const updateFinancialSettings = (settings: Partial<FinancialSettings>) => {
+  const updateFinancialSettings = async (settings: Partial<FinancialSettings>) => {
     setFinancialSettings(prev => ({ ...prev, ...settings }));
-    setDoc(doc(db, 'financial_settings', 'default'), settings, { merge: true }).catch(err =>
-      handleFirestoreError(err, OperationType.UPDATE, 'financial_settings/default')
-    );
+    try {
+      await setDoc(doc(db, 'financial_settings', 'default'), cleanForFirestore(settings), { merge: true });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'financial_settings/default');
+    }
   };
 
-  const resetToDefaults = () => {
+  const resetToDefaults = async () => {
     setBikes(INITIAL_BIKES);
     setBookings(INITIAL_BOOKINGS);
     setExpenses(INITIAL_EXPENSES);
@@ -554,15 +693,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentRoleState('admin');
     setSelectedMonth('2026-10');
 
-    // Reset Firestore collections
-    INITIAL_BIKES.forEach(b => {
-      setDoc(doc(db, 'bikes', b.id), b).catch(err =>
-        handleFirestoreError(err, OperationType.WRITE, `bikes/${b.id}`)
-      );
-    });
-    setDoc(doc(db, 'financial_settings', 'default'), INITIAL_FINANCIAL_SETTINGS).catch(err =>
-      handleFirestoreError(err, OperationType.WRITE, 'financial_settings/default')
-    );
+    try {
+      // Reset Firestore
+      for (const b of INITIAL_BIKES) {
+        await setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b));
+      }
+      for (const b of INITIAL_BOOKINGS) {
+        await setDoc(doc(db, 'bookings', b.id), cleanForFirestore(b));
+      }
+      await setDoc(doc(db, 'financial_settings', 'default'), cleanForFirestore(INITIAL_FINANCIAL_SETTINGS));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'reset');
+    }
   };
 
   // Referensi tanggal sistem sekarang (hari ini dan selanjutnya)
@@ -738,6 +880,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteExpense,
         updateFinancialSettings,
         resetToDefaults,
+        forceSyncCloud,
+        isCloudConnected,
+        isCloudSyncing,
+        lastCloudSyncTime,
         bikesOutToday,
         bikesOutThisWeek,
         bikesOutThisMonth,

@@ -22,7 +22,9 @@ import {
   ChevronRight,
   ChevronLeft,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  RefreshCw,
+  Cloud
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -35,13 +37,29 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
-  const { currentRole, setCurrentRole, resetToDefaults, bikesOutToday, activeBookingsCount } = useApp();
+  const {
+    currentRole,
+    setCurrentRole,
+    resetToDefaults,
+    bikesOutToday,
+    activeBookingsCount,
+    forceSyncCloud,
+    isCloudSyncing,
+    lastCloudSyncTime,
+  } = useApp();
   const [pinModalTarget, setPinModalTarget] = useState<'admin' | 'karyawan' | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTab, setShareTab] = useState<'qr' | 'links'>('qr');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
+  const handleSync = async () => {
+    const res = await forceSyncCloud();
+    setSyncNotice(res.message);
+    setTimeout(() => setSyncNotice(null), 3500);
+  };
 
   const applyRoleChange = (role: UserRole) => {
     setCurrentRole(role);
@@ -293,6 +311,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={handleSync}
+                disabled={isCloudSyncing}
+                className="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                title="Sinkronkan data online real-time"
+              >
+                <RefreshCw className={`w-3 h-3 text-emerald-400 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+                <span>{isCloudSyncing ? 'Sync...' : 'Sync'}</span>
+              </button>
               <button
                 onClick={() => setShowShareModal(true)}
                 className="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
@@ -753,6 +780,24 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 </button>
               </div>
             ) : null}
+
+            {!isSidebarCollapsed && (
+              <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold truncate">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <span className="truncate">Cloud DB: Online</span>
+                </div>
+                <button
+                  onClick={handleSync}
+                  disabled={isCloudSyncing}
+                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white flex items-center gap-1 cursor-pointer transition-colors shrink-0 text-[10px] font-bold"
+                  title="Sinkronkan database cloud sekarang"
+                >
+                  <RefreshCw className={`w-2.5 h-2.5 ${isCloudSyncing ? 'animate-spin text-emerald-400' : ''}`} />
+                  <span>{isCloudSyncing ? 'Sync...' : 'Sync'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Navigasi Vertikal Sidebar */}
@@ -1089,6 +1134,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           }}
           onClose={() => setPinModalTarget(null)}
         />
+      )}
+
+      {/* TOAST PEMBERITAHUAN SINKRONISASI CLOUD */}
+      {syncNotice && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-slate-900 text-white rounded-2xl shadow-2xl border border-emerald-500/60 flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{syncNotice}</span>
+        </div>
       )}
     </>
   );

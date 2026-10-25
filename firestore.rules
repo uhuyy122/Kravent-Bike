@@ -11,36 +11,32 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
     // Bikes collection
     match /bikes/{bikeId} {
-      allow read: if isValidId(bikeId);
+      allow get: if isValidId(bikeId);
+      allow list: if true;
       allow create, update, delete: if isValidId(bikeId);
     }
 
     // Bookings collection
     match /bookings/{bookingId} {
-      allow read: if isValidId(bookingId);
+      allow get: if isValidId(bookingId);
+      allow list: if true;
       allow create, update, delete: if isValidId(bookingId);
     }
 
     // Expenses collection
     match /expenses/{expenseId} {
-      allow read: if isValidId(expenseId);
+      allow get: if isValidId(expenseId);
+      allow list: if true;
       allow create, update, delete: if isValidId(expenseId);
     }
 
     // Financial settings collection
     match /financial_settings/{settingId} {
-      allow read: if isValidId(settingId);
-      allow create, update: if isValidId(settingId);
+      allow get: if isValidId(settingId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(settingId);
     }
   }
 }
