@@ -47,8 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     setCurrentRole(role);
     if (role === 'customer' && (activeTab === 'dashboard' || activeTab === 'bookings' || activeTab === 'fleet' || activeTab === 'finance')) {
       setActiveTab('catalog');
-    } else if (role === 'karyawan' && activeTab === 'finance') {
-      setActiveTab('dashboard');
     }
   };
 
@@ -255,20 +253,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           },
           {
             id: 'fleet',
-            label: currentRole === 'admin' ? 'Armada Sepeda' : 'Status Armada',
+            label: currentRole === 'admin' ? 'Armada Sepeda' : 'Status Armada (Beroperasi)',
             icon: Layers,
             badge: null,
           },
-        ]
-      : []),
-    ...(currentRole === 'admin'
-      ? [
           {
             id: 'finance',
-            label: 'Bagi Hasil & Finansial',
+            label: currentRole === 'admin' ? 'Bagi Hasil & Finansial' : 'Hasil Keuangan',
             icon: PieChart,
-            badge: '60/40',
-            badgeColor: 'bg-emerald-600',
+            badge: currentRole === 'admin' ? '60/40' : 'Lihat Saja',
+            badgeColor: currentRole === 'admin' ? 'bg-emerald-600' : 'bg-slate-700',
           },
         ]
       : []),

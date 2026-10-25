@@ -102,7 +102,7 @@ export const BookingList: React.FC = () => {
             <span>Ekstrak Laporan (PDF & Excel)</span>
           </button>
 
-          {bikes.length > 0 && (
+          {isAdmin && bikes.length > 0 && (
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -317,14 +317,16 @@ export const BookingList: React.FC = () => {
                           </button>
                         )}
 
-                        {/* Action: Edit Booking & Serah Terima (Ganti sepeda / jam / status) */}
-                        <button
-                          onClick={() => setEditingBooking(b)}
-                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Booking & Ganti Sepeda/Jam"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        {/* Action: Edit Booking (Khusus Admin) */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => setEditingBooking(b)}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Booking & Ganti Sepeda/Jam"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
 
                         {/* View Receipt */}
                         <button

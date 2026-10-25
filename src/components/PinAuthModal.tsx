@@ -187,8 +187,8 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
         </button>
       </header>
 
-      {/* Center Focus Area - Ditata agar pas di layar HP tanpa overflow dan dapat di-scroll penuh */}
-      <div className="flex-1 flex flex-col items-center justify-center py-4 px-3 sm:px-6 w-full max-w-xs sm:max-w-md mx-auto text-center space-y-2.5 sm:space-y-3.5">
+      {/* Center Focus Area - Ditata agar pas di layar HP tanpa overflow dan dapat di-scroll penuh sampai atas */}
+      <div className="flex-1 flex flex-col items-center justify-start sm:justify-center py-4 px-3 sm:px-6 w-full max-w-xs sm:max-w-md mx-auto text-center space-y-2.5 sm:space-y-3.5">
         {/* Glow Badge */}
         <div className="relative">
           <div

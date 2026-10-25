@@ -182,7 +182,7 @@ export const FleetManager: React.FC = () => {
           </p>
         </div>
 
-        {isStaffOrAdmin && (
+        {isAdmin ? (
           <button
             onClick={handleOpenAdd}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -190,6 +190,10 @@ export const FleetManager: React.FC = () => {
             <Plus className="w-4 h-4" />
             <span>Tambah Sepeda Baru</span>
           </button>
+        ) : (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold">
+            <span>Mode Staf: Khusus Melihat Status Armada & Jumlah Beroperasi</span>
+          </div>
         )}
       </div>
 
@@ -293,43 +297,50 @@ export const FleetManager: React.FC = () => {
               {/* Status Toggle & Actions */}
               <div className="p-4 pt-0 space-y-2 border-t border-slate-100 mt-2">
                 <div className="pt-3 flex items-center justify-between">
-                  <span className="text-xs text-slate-500 font-medium">Ubah Status:</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => updateBikeStatus(b.id, 'tersedia')}
-                      className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
-                        b.status === 'tersedia'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      Tersedia
-                    </button>
-                    <button
-                      onClick={() => updateBikeStatus(b.id, 'disewa')}
-                      className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
-                        b.status === 'disewa'
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      Disewa
-                    </button>
-                    <button
-                      onClick={() => updateBikeStatus(b.id, 'maintenance')}
-                      className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
-                        b.status === 'maintenance'
-                          ? 'bg-rose-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                      title="Kirim ke Bengkel/Mentenest"
-                    >
-                      Mentenest
-                    </button>
-                  </div>
+                  <span className="text-xs text-slate-500 font-medium">Status Unit:</span>
+                  {isAdmin ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => updateBikeStatus(b.id, 'tersedia')}
+                        className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                          b.status === 'tersedia'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Tersedia
+                      </button>
+                      <button
+                        onClick={() => updateBikeStatus(b.id, 'disewa')}
+                        className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                          b.status === 'disewa'
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Disewa
+                      </button>
+                      <button
+                        onClick={() => updateBikeStatus(b.id, 'maintenance')}
+                        className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                          b.status === 'maintenance'
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                        title="Kirim ke Bengkel/Mentenest"
+                      >
+                        Mentenest
+                      </button>
+                    </div>
+                  ) : (
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1 ${badge.bg}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                      {badge.label}
+                    </span>
+                  )}
                 </div>
 
-                {isStaffOrAdmin && (
+                {isAdmin && (
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       onClick={() => handleOpenEdit(b)}
@@ -339,20 +350,18 @@ export const FleetManager: React.FC = () => {
                       <Edit className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Edit Unit</span>
                     </button>
-                    {isAdmin && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Hapus sepeda ${b.name} (${b.licenseNumber}) dari armada?`)) {
-                            deleteBike(b.id);
-                          }
-                        }}
-                        className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                        title="Hapus Unit dari Sistem"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Hapus sepeda ${b.name} (${b.licenseNumber}) dari armada?`)) {
+                          deleteBike(b.id);
+                        }
+                      }}
+                      className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Hapus Unit dari Sistem"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus</span>
+                    </button>
                   </div>
                 )}
               </div>

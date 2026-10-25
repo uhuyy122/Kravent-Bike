@@ -1,0 +1,106 @@
+{
+  "entities": {
+    "Bike": {
+      "title": "Bike",
+      "description": "Armada sepeda rental Kravent Bike",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "brand": { "type": "string" },
+        "category": { "type": "string" },
+        "frameSize": { "type": "string" },
+        "color": { "type": "string" },
+        "pricePerHour": { "type": "number" },
+        "pricePerDay": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "description": { "type": "string" },
+        "gearSystem": { "type": "string" },
+        "totalRentedCount": { "type": "number" },
+        "licenseNumber": { "type": "string" },
+        "depositRequired": { "type": "number" }
+      },
+      "required": ["id", "name", "brand", "category", "pricePerHour", "pricePerDay", "status", "licenseNumber"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Data pemesanan sewa sepeda dan serah terima pelanggan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bookingCode": { "type": "string" },
+        "bikeId": { "type": "string" },
+        "bikeName": { "type": "string" },
+        "bikeLicenseNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerKtp": { "type": "string" },
+        "startDate": { "type": "string" },
+        "startTime": { "type": "string" },
+        "durationHours": { "type": "number" },
+        "expectedEndTime": { "type": "string" },
+        "totalPrice": { "type": "number" },
+        "status": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "notes": { "type": "string" },
+        "handoverBy": { "type": "string" },
+        "actualReturnDate": { "type": "string" },
+        "actualReturnTime": { "type": "string" },
+        "lateFee": { "type": "number" },
+        "finalTotalPrice": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "bookingCode", "bikeId", "customerName", "customerPhone", "startDate", "startTime", "durationHours", "totalPrice", "status", "paymentStatus"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Log pengeluaran operasional, mentenest, dan konten",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "bikeId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "amount", "date"]
+    },
+    "FinancialSettings": {
+      "title": "FinancialSettings",
+      "description": "Pengaturan bagi hasil 60/40 dan alokasi pos anggaran",
+      "type": "object",
+      "properties": {
+        "partner1Percentage": { "type": "number" },
+        "partner2Percentage": { "type": "number" },
+        "partner1Name": { "type": "string" },
+        "partner2Name": { "type": "string" },
+        "maintenanceBudgetPercentage": { "type": "number" },
+        "contentBudgetPercentage": { "type": "number" },
+        "operationalBudgetPercentage": { "type": "number" }
+      },
+      "required": ["partner1Percentage", "partner2Percentage", "partner1Name", "partner2Name"]
+    }
+  },
+  "firestore": {
+    "/bikes/{bikeId}": {
+      "schema": "Bike",
+      "description": "Daftar unit sepeda rental Kravent Bike"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Daftar pemesanan rental sepeda"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Log pengeluaran operasional toko"
+    },
+    "/financial_settings/{settingId}": {
+      "schema": "FinancialSettings",
+      "description": "Pengaturan bagi hasil dan alokasi"
+    }
+  }
+}

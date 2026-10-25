@@ -198,7 +198,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       customerPhone ? `• No HP/WA: ${customerPhone}` : '',
       notes ? `• Catatan: ${notes}` : '',
       ``,
-      `Mohon info ketersediaan unit sepeda ini untuk diinput ke sistem. Terima kasih!`
+      `⚠️ *Penting:* Pesanan yang telah dikirim ke WhatsApp ini WAJIB tetap dikonfirmasi oleh staf toko terlebih dahulu sebelum unit dapat diambil / digunakan.`,
+      `Mohon info konfirmasi ketersediaan unit sepeda ini untuk diinput ke sistem. Terima kasih!`
     ].filter(Boolean).join('\n');
 
     const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(textLines)}`;

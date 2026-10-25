@@ -37,7 +37,7 @@ export const Catalog: React.FC = () => {
   const { bikes, bookings, currentRole, updateBike } = useApp();
 
   const isCustomer = currentRole === 'customer';
-  const isAdminOrStaff = currentRole === 'admin' || currentRole === 'karyawan';
+  const isAdmin = currentRole === 'admin';
   const todayStr = getTodayDateStr();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -414,8 +414,8 @@ export const Catalog: React.FC = () => {
                     {bike.licenseNumber}
                   </span>
 
-                  {/* Tombol Upload / Ganti Foto dari Perangkat untuk Admin/Staff */}
-                  {isAdminOrStaff && (
+                  {/* Tombol Upload / Ganti Foto dari Perangkat untuk Admin */}
+                  {isAdmin && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -614,7 +614,7 @@ export const Catalog: React.FC = () => {
               </span>
 
               {/* Upload Foto Langsung dari Device di Detail Modal */}
-              {isAdminOrStaff && (
+              {isAdmin && (
                 <button
                   type="button"
                   onClick={() => handleTriggerUpload(detailBike.id)}
@@ -642,7 +642,7 @@ export const Catalog: React.FC = () => {
                   <span className="text-xs uppercase font-bold text-emerald-600">
                     {getCategoryLabel(detailBike.category)} • {detailBike.brand}
                   </span>
-                  {isAdminOrStaff && (
+                  {isAdmin && (
                     <button
                       type="button"
                       onClick={() => handleOpenEditBike(detailBike)}

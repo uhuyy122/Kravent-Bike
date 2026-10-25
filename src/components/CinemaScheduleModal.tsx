@@ -127,7 +127,8 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
       `• Nama Pemesan: ${customerName}`,
       customerPhone ? `• No WhatsApp: ${customerPhone}` : '',
       ``,
-      `Saya sudah cek jam tersebut berstatus KOSONG di katalog. Mohon dikonfirmasi & diinput ke sistem. Terima kasih!`
+      `⚠️ *Penting:* Pesanan yang telah dikirim ke WhatsApp ini WAJIB tetap dikonfirmasi oleh staf toko terlebih dahulu sebelum unit dapat diambil / digunakan.`,
+      `Saya sudah cek jam tersebut berstatus KOSONG di katalog. Mohon konfirmasi & input ke sistem. Terima kasih!`
     ].filter(Boolean).join('\n');
 
     const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(message)}`;
