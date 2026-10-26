@@ -16,7 +16,9 @@ import {
   Camera,
   ImageIcon,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Save,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Bike as BikeType, BikeCategory, BikeStatus } from '../types';
@@ -372,21 +374,38 @@ export const FleetManager: React.FC = () => {
 
       {/* ADD/EDIT MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-extrabold text-slate-900 text-base">
-                {editingBike ? 'Edit Informasi Sepeda' : 'Tambah Sepeda ke Armada'}
-              </h3>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 md:p-6 overscroll-contain animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+            {/* STICKY HEADER */}
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold border border-emerald-500/20 shrink-0">
+                  <Bike className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight truncate">
+                    {editingBike ? 'Edit Informasi Sepeda' : 'Tambah Sepeda ke Armada'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {editingBike
+                      ? `Kelola spesifikasi & tarif unit [${editingBike.licenseNumber}]`
+                      : 'Lengkapi spesifikasi unit baru, tarif sewa, dan foto'}
+                  </p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors text-xs font-bold shrink-0 ml-2 cursor-pointer"
+                title="Tutup dialog"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveBike} className="space-y-4">
+            {/* FORM CONTAINER WITH INTERNAL SCROLL BODY & STICKY FOOTER */}
+            <form onSubmit={handleSaveBike} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 overscroll-contain">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">
@@ -548,16 +567,16 @@ export const FleetManager: React.FC = () => {
 
               {/* FOTO SEPEDA: UPLOAD DARI DEVICE DENGAN KOMPRESI OTOMATIS */}
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
-                    <Camera className="w-4 h-4 text-emerald-600" />
+                    <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span className="text-xs font-bold text-slate-900">
                       Foto Unit Sepeda (Bisa Upload Langsung Dari HP / Perangkat)
                     </span>
                   </div>
 
                   {/* Switch Tab: Upload vs URL */}
-                  <div className="flex rounded-lg bg-slate-200/80 p-0.5 text-[11px] font-semibold">
+                  <div className="flex rounded-lg bg-slate-200/80 p-0.5 text-[11px] font-semibold self-start sm:self-auto">
                     <button
                       type="button"
                       onClick={() => setPhotoSourceMode('upload')}
@@ -692,20 +711,24 @@ export const FleetManager: React.FC = () => {
                   className="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
                 ></textarea>
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t">
+            {/* STICKY FOOTER */}
+              <div className="px-4 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs flex items-center justify-end gap-2.5 shrink-0 sticky bottom-0 z-10">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-xl font-semibold"
+                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-200/70 rounded-xl font-semibold transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                  disabled={isCompressing}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  Simpan ke Armada
+                  <Save className="w-4 h-4" />
+                  <span>Simpan ke Armada</span>
                 </button>
               </div>
             </form>

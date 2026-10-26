@@ -102,14 +102,20 @@ export const BookingList: React.FC = () => {
             <span>Ekstrak Laporan (PDF & Excel)</span>
           </button>
 
-          {bikes.length > 0 && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Input Booking Baru</span>
-            </button>
+          {isAdmin ? (
+            bikes.length > 0 && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Input Booking (Bisa Banyak Sepeda)</span>
+              </button>
+            )
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold border border-slate-200">
+              <span>Mode Staf: Hanya Melihat Data (Input & Edit oleh Admin)</span>
+            </div>
           )}
         </div>
       </div>
@@ -171,7 +177,7 @@ export const BookingList: React.FC = () => {
                 Kasir & Admin dapat langsung menginput pesanan masuk dari WhatsApp atau pelanggan yang datang.
               </p>
             </div>
-            {bikes.length > 0 && (
+            {isAdmin && bikes.length > 0 && (
               <button
                 onClick={() => setShowAddModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -310,54 +316,66 @@ export const BookingList: React.FC = () => {
 
                     <td className="py-3.5 text-right pr-4">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Action: Serahkan unit jika pending */}
-                        {b.status === 'pending' && (
-                          <div className="flex items-center gap-1">
+                        {/* Aksi Khusus Admin: Serahkan, Terima Kembali, Edit, Hapus */}
+                        {isAdmin && (
+                          <>
+                            {/* Action: Serahkan unit jika pending */}
+                            {b.status === 'pending' && (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleHandover(b)}
+                                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
+                                  title="Konfirmasi serahkan sepeda ke pelanggan"
+                                >
+                                  Serahkan Unit
+                                </button>
+                                <button
+                                  onClick={() => handleCancel(b)}
+                                  className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-semibold rounded-lg text-[11px] transition-colors cursor-pointer"
+                                  title="Batalkan pesanan ini"
+                                >
+                                  Batalkan
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Action: Terima kembali jika aktif (Buka Modal Kepulangan, Denda, & Pelunasan) */}
+                            {b.status === 'aktif' && (
+                              <button
+                                onClick={() => handleReturn(b)}
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
+                                title="Terima Pengembalian Sepeda & Terima Pelunasan"
+                              >
+                                Terima Kembali & Pelunasan
+                              </button>
+                            )}
+
+                            {/* Action: Edit Booking & Serah Terima (Ganti sepeda / jam / kontak) */}
                             <button
-                              onClick={() => handleHandover(b)}
-                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
-                              title="Konfirmasi serahkan sepeda ke pelanggan"
+                              onClick={() => setEditingBooking(b)}
+                              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Booking & Ganti Sepeda/Jam"
                             >
-                              Serahkan Unit
+                              <Pencil className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => handleCancel(b)}
-                              className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-semibold rounded-lg text-[11px] transition-colors cursor-pointer"
-                              title="Batalkan pesanan ini"
-                            >
-                              Batalkan
-                            </button>
-                          </div>
+                          </>
                         )}
 
-                        {/* Action: Terima kembali jika aktif (Buka Modal Kepulangan, Denda, & Pelunasan) */}
-                        {b.status === 'aktif' && (
-                          <button
-                            onClick={() => handleReturn(b)}
-                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
-                            title="Terima Pengembalian Sepeda & Terima Pelunasan"
-                          >
-                            Terima Kembali & Pelunasan
-                          </button>
-                        )}
-
-                        {/* Action: Edit Booking & Serah Terima (Ganti sepeda / jam / kontak) */}
-                        <button
-                          onClick={() => setEditingBooking(b)}
-                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Booking & Ganti Sepeda/Jam"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-
-                        {/* View Receipt */}
+                        {/* View Receipt: Dapat diakses Staf & Admin */}
                         <button
                           onClick={() => setSelectedReceipt(b)}
                           className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                          title="Cetak Resi"
+                          title="Cetak / Lihat Resi"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
+
+                        {/* Staf Read-Only Badge */}
+                        {!isAdmin && (
+                          <span className="text-[10px] text-slate-500 font-medium px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                            Hanya Lihat
+                          </span>
+                        )}
 
                         {/* Admin Delete */}
                         {isAdmin && (
@@ -490,10 +508,9 @@ export const BookingList: React.FC = () => {
         />
       )}
 
-      {/* MANUAL INPUT BOOKING MODAL */}
-      {showAddModal && bikes.length > 0 && (
+      {/* MANUAL INPUT BOOKING MODAL (MULTI-BIKE WIZARD) */}
+      {showAddModal && (
         <BookingModal
-          bike={bikes[0]}
           onClose={() => setShowAddModal(false)}
         />
       )}

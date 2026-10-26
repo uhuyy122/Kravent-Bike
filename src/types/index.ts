@@ -58,6 +58,9 @@ export interface Booking {
   lateFee?: number; // nominal denda keterlambatan (Rp)
   finalTotalPrice?: number; // totalPrice + lateFee
   returnNotes?: string; // catatan kondisi sepeda saat dikembalikan
+  groupBookingCode?: string; // e.g. "GRP-2610-123" for group rentals
+  groupItemIndex?: number; // 1, 2, 3...
+  groupItemTotal?: number; // total units in this group booking
 }
 
 export type ExpenseCategory = 'mentenest' | 'konten' | 'pengeluaran';

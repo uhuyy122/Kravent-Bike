@@ -658,6 +658,19 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                   <span>Isi Form Booking</span>
                 </button>
               </div>
+            ) : currentRole === 'karyawan' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold px-3 py-2 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">
+                  Mode Staf: Khusus Memantau Jadwal (Hanya Lihat)
+                </span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
             ) : (
               <button
                 type="button"

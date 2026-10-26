@@ -651,13 +651,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                       )}
                     </td>
                     <td className="py-3 text-right pr-2">
-                      {book.status === 'aktif' && (
+                      {book.status === 'aktif' && currentRole === 'admin' && (
                         <button
                           onClick={() => updateBookingStatus(book.id, 'selesai')}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px] transition-colors"
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px] transition-colors cursor-pointer"
                         >
                           Terima Kembali
                         </button>
+                      )}
+                      {book.status === 'aktif' && currentRole !== 'admin' && (
+                        <span className="text-[11px] text-amber-600 font-semibold">Sedang Jalan</span>
                       )}
                       {book.status === 'selesai' && (
                         <span className="text-[11px] text-slate-400">Selesai ✓</span>

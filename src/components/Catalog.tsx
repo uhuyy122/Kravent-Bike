@@ -49,7 +49,6 @@ export const Catalog: React.FC = () => {
   const quickDates = getUpcomingDates(todayStr, 7);
   const catalogRateInfo = getDateRateInfo(selectedCatalogDate);
 
-  // Modals
   const [bookingPrefill, setBookingPrefill] = useState<{
     bike: BikeType;
     date?: string;
@@ -58,6 +57,7 @@ export const Catalog: React.FC = () => {
     customerName?: string;
     customerPhone?: string;
   } | null>(null);
+  const [showMultiBookingModal, setShowMultiBookingModal] = useState(false);
   const [detailBike, setDetailBike] = useState<BikeType | null>(null);
   const [scheduleBike, setScheduleBike] = useState<BikeType | null>(null);
 
@@ -178,40 +178,65 @@ export const Catalog: React.FC = () => {
             <span>Katalog Resmi Kravent Bike</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-            Pilih Sepeda Favorit Anda, <br className="hidden sm:inline" />
-            Lalu Tentukan Tanggal & Jamnya
+            {currentRole === 'karyawan'
+              ? 'Katalog Armada Sepeda Kravent Bike'
+              : 'Sewa Sepeda Kravent Bike, Bisa Langsung 2, 3, atau Lebih!'}
           </h1>
           <p className="text-sm text-slate-300 leading-relaxed">
-            {isCustomer
-              ? 'Silakan pilih sepeda yang Anda inginkan di bawah ini. Setelah itu, pilih tanggal dan jam sewa Anda untuk mengecek ketersediaan jam kosong.'
-              : 'Daftar armada sepeda rental. Klik "Pilih Sepeda Ini" untuk mencatat jadwal pesanan customer ke sistem.'}
+            {currentRole === 'karyawan'
+              ? 'Mode Staf: Pantau daftar sepeda, ketersediaan unit, jam kosong, dan tarif sewa resmi toko (Hanya Lihat / Read-Only).'
+              : isCustomer
+              ? 'Proses sewa cepat & transparan: Isi nama dulu, pilih sepeda yang diinginkan (bisa lebih dari 2 unit), atur waktu sewa, dan bayar di akhir saat sepeda dikembalikan!'
+              : 'Pencatatan rental rombongan / multi-unit. Input nama pemesan, pilih banyak sepeda sekaligus, dan simpan ke sistem.'}
           </p>
 
-          {/* 3 Step Instruction Pills */}
-          <div className="pt-2">
-            <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/15 flex flex-wrap items-center gap-2 sm:gap-4 text-xs">
-              <span className="flex items-center gap-1.5 font-bold text-white">
-                <span className="w-5 h-5 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center text-[11px]">
-                  1
+          {/* 3 Step Instruction Pills (Hanya untuk Pelanggan / Admin) */}
+          {currentRole !== 'karyawan' ? (
+            <div className="pt-2">
+              <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/15 flex flex-wrap items-center gap-2 sm:gap-4 text-xs">
+                <span className="flex items-center gap-1.5 font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center text-[11px] font-black">
+                    1
+                  </span>
+                  Isi Atas Nama Dulu
                 </span>
-                Pilih Sepeda
-              </span>
-              <span className="text-slate-400 hidden sm:inline">➔</span>
-              <span className="flex items-center gap-1.5 font-bold text-emerald-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[11px]">
-                  2
+                <span className="text-slate-400 hidden sm:inline">➔</span>
+                <span className="flex items-center gap-1.5 font-bold text-emerald-200">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[11px] font-black">
+                    2
+                  </span>
+                  Pilih Sepeda (Bisa &gt; 2 Unit)
                 </span>
-                Pilih Tanggal
-              </span>
-              <span className="text-slate-400 hidden sm:inline">➔</span>
-              <span className="flex items-center gap-1.5 font-bold text-emerald-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[11px]">
-                  3
+                <span className="text-slate-400 hidden sm:inline">➔</span>
+                <span className="flex items-center gap-1.5 font-bold text-emerald-200">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[11px] font-black">
+                    3
+                  </span>
+                  Waktu &amp; Bayar di Akhir
                 </span>
-                Pilih Jamnya
+              </div>
+            </div>
+          ) : (
+            <div className="pt-2">
+              <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 text-zinc-300 text-xs font-semibold border border-white/15">
+                <span>🔒 Mode Staf: Khusus Melihat Status Ketersediaan & Stok Unit (Input & Booking Dilakukan oleh Admin)</span>
               </span>
             </div>
-          </div>
+          )}
+
+          {/* Direct CTA Button (Khusus Pelanggan / Admin) */}
+          {currentRole !== 'karyawan' && (
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowMultiBookingModal(true)}
+                className="flex items-center gap-2 px-5 py-3 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-2xl text-xs sm:text-sm font-black transition-all shadow-lg shadow-emerald-500/30 cursor-pointer"
+              >
+                <Bike className="w-4 h-4 stroke-[2.5]" />
+                <span>+ Sewa Sepeda (Bisa Banyak Sepeda Sekaligus)</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Ambient decorative circle */}
@@ -542,29 +567,52 @@ export const Catalog: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setDetailBike(bike)}
-                        className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Info className="w-3.5 h-3.5" />
-                        <span>Detail</span>
-                      </button>
+                    {currentRole === 'karyawan' ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setDetailBike(bike)}
+                          className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Lihat spesifikasi lengkap unit"
+                        >
+                          <Info className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Detail Unit</span>
+                        </button>
 
-                      {/* UTAMA: PILIH SEPEDA INI */}
-                      <button
-                        onClick={() => setScheduleBike(bike)}
-                        disabled={bike.status === 'maintenance'}
-                        className={`w-full py-2.5 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                          bike.status === 'maintenance'
-                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
-                        }`}
-                      >
-                        <span>Pilih Sepeda Ini</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
+                        <button
+                          onClick={() => setScheduleBike(bike)}
+                          className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Lihat ketersediaan jam"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Cek Jam</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setScheduleBike(bike)}
+                          className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Lihat ketersediaan jam"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Cek Jam</span>
+                        </button>
+
+                        {/* UTAMA: SEWA SEPEDA (ALUR 3 LANGKAH MULTI-UNIT) */}
+                        <button
+                          onClick={() => setBookingPrefill({ bike })}
+                          disabled={bike.status === 'maintenance'}
+                          className={`w-full py-2.5 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            bike.status === 'maintenance'
+                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
+                          }`}
+                        >
+                          <span>Sewa Sepeda</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -715,16 +763,25 @@ export const Catalog: React.FC = () => {
                   <span className="text-xs text-slate-400"> /jam ({catalogRateInfo.category === 'weekday' ? 'Hari Biasa' : 'Weekend/Libur'})</span>
                 </div>
 
-                <button
-                  onClick={() => {
-                    const b = detailBike;
-                    setDetailBike(null);
-                    setScheduleBike(b);
-                  }}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
-                >
-                  <span>Pilih Sepeda Ini ➔</span>
-                </button>
+                {currentRole === 'karyawan' ? (
+                  <button
+                    onClick={() => setDetailBike(null)}
+                    className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Tutup (Mode Lihat)
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      const b = detailBike;
+                      setDetailBike(null);
+                      setBookingPrefill({ bike: b });
+                    }}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Sewa Sepeda Ini (Bisa Tambah Unit) ➔</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -740,7 +797,7 @@ export const Catalog: React.FC = () => {
         className="hidden"
       />
 
-      {/* ADMIN MANUAL BOOKING MODAL & FORM BOOKING BARU */}
+      {/* BOOKING MODAL (PREFILLED FROM CINEMA SCHEDULE) */}
       {bookingPrefill && (
         <BookingModal
           key={`${bookingPrefill.bike.id}-${bookingPrefill.date || ''}-${bookingPrefill.startTime || ''}-${bookingPrefill.duration || ''}`}
@@ -755,6 +812,13 @@ export const Catalog: React.FC = () => {
           onBookingSuccess={() => {
             // Keep open so confirmation is shown
           }}
+        />
+      )}
+
+      {/* MULTI-BIKE DIRECT BOOKING MODAL */}
+      {showMultiBookingModal && (
+        <BookingModal
+          onClose={() => setShowMultiBookingModal(false)}
         />
       )}
 
