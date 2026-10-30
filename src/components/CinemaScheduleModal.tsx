@@ -48,7 +48,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
   onClose,
   onAdminInputDirect,
 }) => {
-  const { bookings, currentRole } = useApp();
+  const { bookings, currentRole, addBooking } = useApp();
   const isCustomer = currentRole === 'customer';
 
   const todayStr = getTodayDateStr();
@@ -58,12 +58,12 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
     return initialDate && initialDate >= todayStr ? initialDate : todayStr;
   });
 
-  // Tentukan jam mulai awal yang belum lewat untuk hari ini (06:00 s/d 23:00)
+  // Tentukan jam mulai awal yang belum lewat untuk hari ini (Order 06:00 s/d 21:00 WIB, Tutup 23:00)
   const getInitialStartTime = () => {
     const now = new Date();
     const curH = now.getHours();
     if (selectedDate === todayStr) {
-      const nextH = Math.min(Math.max(curH + 1, 6), 23);
+      const nextH = Math.min(Math.max(curH + 1, 6), 21);
       return `${String(nextH).padStart(2, '0')}:00`;
     }
     return '06:00';
@@ -105,8 +105,8 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
   const rateInfo = getDateRateInfo(selectedDate);
   const totalCost = rateInfo.ratePerHour * durationHours;
 
-  // Handle WhatsApp Submission
-  const handleSendToWhatsApp = (e: React.FormEvent) => {
+  // Handle WhatsApp Submission & Automatic Pending Booking Creation
+  const handleSendToWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAvailable) {
       alert(`Transaksi dilarang: ${conflictReason || 'Jam yang Anda pilih bentrok atau unit sepeda masih di jalan. Silakan pilih jam kosong lain.'}`);
@@ -117,23 +117,51 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
       return;
     }
 
-    const adminWhatsAppNumber = '6289647123671';
-    const message = [
-      `Halo Admin Kravent Bike! Saya ingin booking sewa sepeda:`,
-      `• Unit Sepeda: *${bike.name}* (${bike.licenseNumber})`,
-      `• Tanggal Sewa: *${formatDateIndo(selectedDate)}* (${rateInfo.label})`,
-      `• Jam Sewa: *${startTime} - ${endTime} WIB* (${durationHours} Jam @ ${formatRupiah(rateInfo.ratePerHour)}/jam)`,
-      `• Estimasi Biaya: *${formatRupiah(totalCost)}*`,
-      `• Nama Pemesan: ${customerName}`,
-      customerPhone ? `• No WhatsApp: ${customerPhone}` : '',
-      ``,
-      `⚠️ *Penting:* Pesanan yang telah dikirim ke WhatsApp ini WAJIB tetap dikonfirmasi oleh staf toko terlebih dahulu sebelum unit dapat diambil / digunakan.`,
-      `Saya sudah cek jam tersebut berstatus KOSONG di katalog. Mohon konfirmasi & input ke sistem. Terima kasih!`
-    ].filter(Boolean).join('\n');
+    try {
+      // Otomatis simpan pesanan customer ke Firestore dengan status 'pending' (Menunggu ACC Admin)
+      const newBook = await addBooking({
+        bikeId: bike.id,
+        bikeName: bike.name,
+        bikeImage: bike.imageUrl,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim() || '-',
+        startDate: selectedDate,
+        startTime,
+        endDate: selectedDate,
+        endTime,
+        durationType: 'jam',
+        durationValue: durationHours,
+        totalPrice: totalCost,
+        depositAmount: bike.depositRequired || 0,
+        status: 'pending', // Menunggu ACC Admin (Admin tinggal klik ACC, tidak perlu input manual!)
+        paymentMethod: 'bayar_nanti',
+        paymentStatus: 'belum_lunas',
+        notes: 'Pemesanan cepat via Cek Jam (Menunggu ACC Admin)',
+        handoverBy: 'Menunggu ACC Admin',
+      });
 
-    const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-    onClose();
+      const adminWhatsAppNumber = '6289647123671';
+      const message = [
+        `Halo Admin Kravent Bike! Saya ingin booking sewa sepeda:`,
+        `• Kode Booking: *${newBook.bookingCode}*`,
+        `• Unit Sepeda: *${bike.name}* (${bike.licenseNumber})`,
+        `• Tanggal Sewa: *${formatDateIndo(selectedDate)}*`,
+        `• Jam Sewa: *${startTime} - ${endTime} WIB* (${durationHours} Jam)`,
+        `• Nama Pemesan: ${customerName}`,
+        customerPhone ? `• No WhatsApp: ${customerPhone}` : '',
+        `• Pembayaran: *Bayar di Akhir (Saat Pengembalian Sepeda)*`,
+        ``,
+        `⚠️ Pesanan sudah otomatis masuk ke sistem Kravent Bike dengan kode *${newBook.bookingCode}*. Mohon untuk di-ACC oleh Admin. Terima kasih!`
+      ].filter(Boolean).join('\n');
+
+      const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+      alert(`✅ Pesanan Anda berhasil disimpan ke sistem dengan kode ${newBook.bookingCode} & diteruskan ke WhatsApp Admin! Mohon tunggu konfirmasi (ACC) dari Admin.`);
+      onClose();
+    } catch (err) {
+      console.error('Error saving pending booking:', err);
+      alert('Gagal mengirim pesanan: ' + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   // Timeline jam operasional harian (06:00 s/d 23:00)
@@ -193,9 +221,15 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                   <span className="text-[10px] font-mono font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
                     {bike.licenseNumber}
                   </span>
-                  <span className="text-xs font-extrabold text-emerald-700">
-                    {formatRupiah(bike.pricePerHour)}/jam
-                  </span>
+                  {!isCustomer ? (
+                    <span className="text-xs font-extrabold text-emerald-700">
+                      {formatRupiah(bike.pricePerHour)}/jam
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                      Unit Siap Gowes
+                    </span>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-slate-900 text-sm mt-0.5">{bike.name}</h4>
                 <p className="text-[11px] text-slate-500">{bike.gearSystem} • {bike.frameSize}</p>
@@ -327,7 +361,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                     if (val && val > '23:00') val = '23:00';
                     setStartTime(val);
                   }}
-                  className="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-mono"
+                  className="w-full text-base sm:text-xs font-bold px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-mono"
                   required
                 />
               </div>
@@ -366,11 +400,11 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
               </div>
             </div>
 
-            {/* Quick Hour Selection Buttons (06:00 - 23:00) */}
+            {/* Quick Hour Selection Buttons (Order 06:00 - 21:00 WIB, Tutup 23:00) */}
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-[10px] text-slate-500 font-bold shrink-0">
-                  Pilihan Jam Operasional (06:00 - 23:00 WIB):
+                  Jam Order (06:00 - 21:00 WIB, Tutup 23:00):
                 </span>
                 <span className="text-[10px] text-emerald-700 font-extrabold font-mono">
                   Terpilih: {startTime} WIB
@@ -380,22 +414,34 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                 {[
                   '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
                   '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-                  '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
-                ].map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setStartTime(t)}
-                    className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold font-mono transition-all shrink-0 cursor-pointer ${
-                      startTime === t
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-105'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+                  '18:00', '19:00', '20:00', '21:00'
+                ].map(t => {
+                  const isPast = isPastHourToday(selectedDate, t);
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      disabled={isPast}
+                      onClick={() => setStartTime(t)}
+                      title={isPast ? 'Jam ini sudah lewat untuk hari ini' : `Pilih jam ${t} WIB`}
+                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold font-mono transition-all shrink-0 ${
+                        isPast
+                          ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed line-through opacity-50'
+                          : startTime === t
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-105 cursor-pointer'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 cursor-pointer'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
               </div>
+              {selectedDate === todayStr && (
+                <p className="text-[10px] text-slate-500 italic">
+                  * Jam yang telah lewat pada hari ini otomatis dinonaktifkan (coret).
+                </p>
+              )}
             </div>
 
             {/* STATUS JADWAL TERISI / KOSONG PADA TANGGAL INI */}
@@ -571,7 +617,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                     placeholder="Contoh: Budi Santoso"
                     value={customerName}
                     onChange={e => setCustomerName(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-medium"
+                    className="w-full text-base sm:text-xs px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-medium"
                     required
                   />
                 </div>
@@ -585,7 +631,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                     placeholder="0812xxxxxxxx"
                     value={customerPhone}
                     onChange={e => setCustomerPhone(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-medium"
+                    className="w-full text-base sm:text-xs px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-medium"
                   />
                 </div>
               </div>
@@ -603,14 +649,25 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
               </span>
             </div>
 
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-xl font-extrabold text-emerald-400">
-                {formatRupiah(totalCost)}
-              </span>
-              <span className="text-[11px] text-slate-400">
-                ({durationHours} Jam @ {formatRupiah(rateInfo.ratePerHour)}/jam • {rateInfo.label})
-              </span>
-            </div>
+            {!isCustomer ? (
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-xl font-extrabold text-emerald-400">
+                  {formatRupiah(totalCost)}
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  ({durationHours} Jam @ {formatRupiah(rateInfo.ratePerHour)}/jam • {rateInfo.label})
+                </span>
+              </div>
+            ) : (
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-sm font-extrabold text-emerald-400">
+                  Unit Bebas Bentrok &amp; Siap Di-ACC
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  ({durationHours} Jam • SOP Bayar di Akhir)
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

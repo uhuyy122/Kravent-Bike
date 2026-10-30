@@ -10,7 +10,7 @@ import {
   RotateCcw,
   ArrowLeft
 } from 'lucide-react';
-import ukswLogo from '../assets/logo-uksw.svg';
+import kraventLogo from '../assets/kravent-logo.svg';
 
 interface PinAuthModalProps {
   targetRole: 'admin' | 'karyawan';
@@ -126,14 +126,14 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white p-0.5 flex items-center justify-center shadow-xs shrink-0">
-            <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-950 p-1 flex items-center justify-center shadow-xs shrink-0 border border-slate-700">
+            <img src={kraventLogo} alt="Logo Kravent Bike" className="w-full h-full object-contain" />
           </div>
           <div className="truncate">
             <span className="font-extrabold text-xs sm:text-sm text-white tracking-tight flex items-center gap-1">
               Kravent Bike
-              <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">
-                UKSW
+              <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                Salatiga
               </span>
             </span>
             <p className="text-[10px] text-slate-400 hidden sm:block">Akses Staf & Admin</p>

@@ -97,9 +97,9 @@ export const exportBookingsToExcel = (
           <td>${settings.maintenanceBudgetPercentage}% dari Omzet</td>
         </tr>
         <tr>
-          <td>Alokasi Pos Konten (Marketing & Ads)</td>
+          <td>Alokasi Pos Konten (Gaji Konten Kreator & Ads)</td>
           <td style="text-align: right; color: #0369a1;">${financialData.contentAllocation}</td>
-          <td>${settings.contentBudgetPercentage}% dari Omzet</td>
+          <td>Nominal Uang Gaji Kreator</td>
         </tr>
         <tr>
           <td>Alokasi Pos Pengeluaran (Operasional Toko)</td>

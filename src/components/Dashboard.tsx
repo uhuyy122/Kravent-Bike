@@ -53,7 +53,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
   const dailyFinancial = React.useMemo(() => {
     const gross = todayRevenue;
     const maint = Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
-    const content = Math.round((gross * financialSettings.contentBudgetPercentage) / 100);
+    const content =
+      financialSettings.contentBudgetAmount !== undefined
+        ? Number(financialSettings.contentBudgetAmount)
+        : Math.round((gross * (financialSettings.contentBudgetPercentage || 0)) / 100);
     const ops = Math.round((gross * financialSettings.operationalBudgetPercentage) / 100);
     const totalAlloc = maint + content + ops;
     const net = Math.max(0, gross - totalAlloc);
@@ -200,6 +203,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
         </div>
       </div>
 
+      {/* 🔔 NOTIFIKASI PESANAN MASUK PERLU ACC ADMIN */}
+      {(() => {
+        const pendingBookings = bookings.filter(b => b.status === 'pending');
+        if (pendingBookings.length === 0) return null;
+
+        return (
+          <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 p-4 sm:p-5 rounded-3xl shadow-lg border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-slate-950 text-amber-400 flex items-center justify-center font-black text-lg shrink-0 shadow-md">
+                {pendingBookings.length}
+              </div>
+              <div>
+                <h3 className="font-black text-base sm:text-lg tracking-tight">
+                  Ada {pendingBookings.length} Pesanan Masuk Menunggu ACC!
+                </h3>
+                <p className="text-xs text-slate-900 font-medium">
+                  Pesanan customer telah masuk dari website &amp; WhatsApp. Tugas admin tinggal klik tombol <strong>ACC Pesanan</strong>, tanpa perlu input manual.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => onNavigateTab('bookings')}
+                className="px-5 py-2.5 bg-slate-950 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Lihat &amp; ACC Sekarang ➔</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 4 PRIMARY METRIC CARDS (User requirement: Sepeda Keluar Hari Ini, Minggu Ini, Bulan Ini & Omzet) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Sepeda Keluar Hari Ini */}
@@ -293,19 +329,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
             <div className="flex items-center justify-between mt-2 text-xs">
               <span className="text-emerald-700 font-semibold">Laba Bersih Est. Hari Ini:</span>
               <span className="font-bold text-slate-800">
-                {formatRupiah(
-                  Math.max(
-                    0,
-                    Math.round(
-                      todayRevenue *
-                        (1 -
-                          (financialSettings.maintenanceBudgetPercentage +
-                            financialSettings.contentBudgetPercentage +
-                            financialSettings.operationalBudgetPercentage) /
-                            100)
-                    )
-                  )
-                )}
+                {formatRupiah(dailyFinancial.netProfit)}
               </span>
             </div>
             <span className="text-[10px] text-slate-400 block mt-1">

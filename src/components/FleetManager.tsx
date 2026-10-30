@@ -41,15 +41,15 @@ export const FleetManager: React.FC = () => {
 
   // Form states
   const [name, setName] = useState('');
-  const [brand, setBrand] = useState('Polygon');
-  const [category, setCategory] = useState<BikeCategory>('road');
-  const [frameSize, setFrameSize] = useState('Size M (165-175cm)');
-  const [color, setColor] = useState('Black / Cyan');
+  const [brand, setBrand] = useState('Kravent Bike');
+  const [category, setCategory] = useState<BikeCategory>('city');
+  const [frameSize, setFrameSize] = useState('All Size Standar Dewasa');
+  const [color, setColor] = useState('Sky Blue');
   const [pricePerHour, setPricePerHour] = useState('8000');
   const [pricePerDay, setPricePerDay] = useState('50000');
-  const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80');
+  const [imageUrl, setImageUrl] = useState('/bikes/sky.jpg');
   const [description, setDescription] = useState('');
-  const [gearSystem, setGearSystem] = useState('Shimano 2x9 Speed');
+  const [gearSystem, setGearSystem] = useState('Single Speed / 7 Speed');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [depositRequired, setDepositRequired] = useState('50000');
   const [status, setStatus] = useState<BikeStatus>('tersedia');
@@ -62,15 +62,15 @@ export const FleetManager: React.FC = () => {
   const handleOpenAdd = () => {
     setEditingBike(null);
     setName('');
-    setBrand('Polygon');
-    setCategory('road');
-    setFrameSize('Size M (165-175cm)');
-    setColor('Black Metallic');
+    setBrand('Kravent Bike');
+    setCategory('city');
+    setFrameSize('All Size Standar Dewasa');
+    setColor('Biru Sky');
     setPricePerHour('8000');
     setPricePerDay('50000');
-    setImageUrl('https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80');
-    setDescription('Sepeda balap performa tinggi siap sewa santai maupun olahraga.');
-    setGearSystem('Shimano Sora 2x9 Speed');
+    setImageUrl('/bikes/sky.jpg');
+    setDescription('Sepeda santai Kravent Bike siap sewa gowes keliling kota Salatiga.');
+    setGearSystem('Single Speed / 7 Speed');
     setLicenseNumber(`KB-${String(bikes.length + 1).padStart(2, '0')}`);
     setDepositRequired('50000');
     setStatus('tersedia');

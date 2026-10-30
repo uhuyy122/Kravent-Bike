@@ -22,7 +22,8 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       allow get: if isValidId(bookingId);
       allow list: if true;
-      allow create, update, delete: if isValidId(bookingId);
+      allow create, update: if isValidId(bookingId) && bookingId != 'book-1793009088589';
+      allow delete: if isValidId(bookingId);
     }
 
     // Expenses collection

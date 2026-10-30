@@ -41,14 +41,18 @@ export const isPastHourToday = (date: string, hourOrTime: number | string): bool
   // Tanggal hari ini: cek jam sekarang
   const now = new Date();
   const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
   if (typeof hourOrTime === 'number') {
-    return hourOrTime < currentHour;
+    return hourOrTime <= currentHour;
   }
-  const [h] = hourOrTime.split(':').map(Number);
-  return h < currentHour;
+  const [h, m = 0] = hourOrTime.split(':').map(Number);
+  if (h < currentHour) return true;
+  if (h === currentHour && m <= currentMinute) return true;
+  return false;
 };
 
-// Paket Sesi Sewa Sepeda 2 Jam Kravent Bike (Operasional 06:00 s/d 23:00)
+// Paket Sesi Sewa Sepeda 2 Jam Kravent Bike (Order 06:00 - 21:00 WIB, Tutup Maksimal 23:00 WIB)
 export const CINEMA_2HR_SLOTS: TimeSlot[] = [
   { id: 'slot-2h-1', startTime: '06:00', endTime: '08:00', label: '06:00 - 08:00', durationHours: 2, session: 'pagi' },
   { id: 'slot-2h-2', startTime: '08:00', endTime: '10:00', label: '08:00 - 10:00', durationHours: 2, session: 'pagi' },
@@ -60,7 +64,7 @@ export const CINEMA_2HR_SLOTS: TimeSlot[] = [
   { id: 'slot-2h-8', startTime: '21:00', endTime: '23:00', label: '21:00 - 23:00', durationHours: 2, session: 'sore_malam' },
 ];
 
-// Slot Per 1 Jam Fleksibel (06:00 s/d 23:00)
+// Slot Per 1 Jam Fleksibel (Order 06:00 - 21:00 WIB, Tutup Maksimal 23:00 WIB)
 export const CINEMA_1HR_SLOTS: TimeSlot[] = [
   { id: 'slot-1h-06', startTime: '06:00', endTime: '07:00', label: '06:00 - 07:00', durationHours: 1, session: 'pagi' },
   { id: 'slot-1h-07', startTime: '07:00', endTime: '08:00', label: '07:00 - 08:00', durationHours: 1, session: 'pagi' },
@@ -78,6 +82,12 @@ export const CINEMA_1HR_SLOTS: TimeSlot[] = [
   { id: 'slot-1h-20', startTime: '20:00', endTime: '21:00', label: '20:00 - 21:00', durationHours: 1, session: 'sore_malam' },
   { id: 'slot-1h-21', startTime: '21:00', endTime: '22:00', label: '21:00 - 22:00', durationHours: 1, session: 'sore_malam' },
   { id: 'slot-1h-22', startTime: '22:00', endTime: '23:00', label: '22:00 - 23:00', durationHours: 1, session: 'sore_malam' },
+];
+
+export const VALID_OPERATING_START_HOURS = [
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
+  '18:00', '19:00', '20:00', '21:00'
 ];
 
 export const timeStringToMinutes = (t: string): number => {

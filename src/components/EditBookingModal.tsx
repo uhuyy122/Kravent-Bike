@@ -120,6 +120,13 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
   const calculateEndDate = () => {
     if (durationType === 'jam') {
+      const [h] = startTime.split(':').map(Number);
+      if (h + durationValue >= 24) {
+        const d = new Date(startDate);
+        const daysToAdd = Math.floor((h + durationValue) / 24);
+        d.setDate(d.getDate() + daysToAdd);
+        return d.toISOString().split('T')[0];
+      }
       return startDate;
     }
     const d = new Date(startDate);
@@ -364,7 +371,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
+                  className="w-full px-3.5 py-2.5 sm:py-2 text-base sm:text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
                   required
                 />
               </div>
@@ -388,7 +395,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                     if (val && val > '23:00') val = '23:00';
                     setStartTime(val);
                   }}
-                  className="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs font-mono font-bold"
+                  className="w-full px-3.5 py-2.5 sm:py-2 text-base sm:text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs font-mono font-bold"
                   required
                 />
               </div>

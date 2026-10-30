@@ -25,6 +25,13 @@ export interface Bike {
 export type BookingStatus = 'pending' | 'aktif' | 'selesai' | 'dibatalkan';
 export type PaymentMethod = 'bayar_nanti' | 'cash' | 'qris' | 'transfer';
 
+export interface BookingAddonItem {
+  id: string; // 'helm' | 'tripod' | 'holder_hp' | 'gembok' | 'mineral_water' | 'boncengan_bayi'
+  name: string;
+  price: number; // Sekali sewa (flat per transaksi peminjaman)
+  quantity: number;
+}
+
 export interface Booking {
   id: string;
   bookingCode: string; // e.g. "BOK-2610-001"
@@ -61,6 +68,12 @@ export interface Booking {
   groupBookingCode?: string; // e.g. "GRP-2610-123" for group rentals
   groupItemIndex?: number; // 1, 2, 3...
   groupItemTotal?: number; // total units in this group booking
+  // Revisi Owner: Addons opsional (harga sekali sewa) & Alur ACC
+  addons?: BookingAddonItem[];
+  addonTotalCost?: number;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectionReason?: string;
 }
 
 export type ExpenseCategory = 'mentenest' | 'konten' | 'pengeluaran';
@@ -82,7 +95,8 @@ export interface FinancialSettings {
   partner2Name: string;
   partner2Percentage: number; // e.g. 40
   maintenanceBudgetPercentage: number; // e.g. 15% dari omset dialokasikan ke pos maintenance
-  contentBudgetPercentage: number; // e.g. 10% dari omset dialokasikan ke pos konten/marketing
+  contentBudgetAmount: number; // Nominal uang (Rp) untuk Gaji Konten Kreator & Budget Ads
+  contentBudgetPercentage?: number; // Opsional kompatibilitas jika dibutuhkan
   operationalBudgetPercentage: number; // e.g. 15% dari omset dialokasikan ke operasional
   calculationMode: 'percentage_from_gross' | 'actual_expense_deduction'; // apakah bagi hasil dihitung dari omset bersih setelah pengeluaran riil atau potongan pos persentase
 }

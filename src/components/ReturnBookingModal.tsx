@@ -52,16 +52,32 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
     return dateRate.ratePerHour;
   }, [returnDate, booking.startDate]);
 
+  // Koreksi cerdas jika booking melewati tengah malam tetapi endDate belum bergeser ke hari berikutnya
+  const effectiveScheduledEndDate = useMemo(() => {
+    let targetEndDate = booking.endDate || booking.startDate;
+    if (
+      booking.startTime &&
+      booking.endTime &&
+      booking.endTime < booking.startTime &&
+      targetEndDate === booking.startDate
+    ) {
+      const d = new Date(booking.startDate);
+      d.setDate(d.getDate() + 1);
+      targetEndDate = d.toISOString().split('T')[0];
+    }
+    return targetEndDate;
+  }, [booking.endDate, booking.startDate, booking.startTime, booking.endTime]);
+
   // Kalkulasi denda keterlambatan secara dinamis berdasarkan input waktu kepulangan
   const lateCalculation = useMemo(() => {
     return calculateLateFee(
-      booking.endDate || booking.startDate,
+      effectiveScheduledEndDate,
       booking.endTime,
       returnDate,
       returnTime,
       ratePerHour
     );
-  }, [booking.endDate, booking.startDate, booking.endTime, returnDate, returnTime, ratePerHour]);
+  }, [effectiveScheduledEndDate, booking.endTime, returnDate, returnTime, ratePerHour]);
 
   // Total akhir tagihan = Harga sewa awal + Denda keterlambatan
   const finalTotal = booking.totalPrice + lateCalculation.lateFee;
@@ -237,7 +253,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                <label className="block text-xs sm:text-[11px] font-semibold text-slate-700 mb-1">
                   Tanggal Pengembalian (Real-Time):
                 </label>
                 <div className="relative">
@@ -246,13 +262,13 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                     type="date"
                     value={returnDate}
                     onChange={e => setReturnDate(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
+                    className="w-full pl-9 pr-3 py-2.5 sm:py-2 text-base sm:text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                <label className="block text-xs sm:text-[11px] font-semibold text-slate-700 mb-1">
                   Jam Kepulangan (Real-Time):
                 </label>
                 <div className="relative">
@@ -261,7 +277,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                     type="time"
                     value={returnTime}
                     onChange={e => setReturnTime(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs font-mono font-bold"
+                    className="w-full pl-9 pr-3 py-2.5 sm:py-2 text-base sm:text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs font-mono font-bold"
                   />
                 </div>
               </div>

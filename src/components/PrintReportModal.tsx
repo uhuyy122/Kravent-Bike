@@ -20,7 +20,7 @@ import {
   getLastMonthStr
 } from '../utils/scheduleUtils';
 import { exportBookingsToExcel } from '../utils/exportUtils';
-import ukswLogo from '../assets/logo-uksw.svg';
+import kraventLogo from '../assets/kravent-logo.svg';
 
 interface PrintReportModalProps {
   bookings: Booking[];
@@ -97,7 +97,11 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   const dynamicBreakdown = useMemo(() => {
     const gross = activeGrossRevenue;
     const maint = Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
-    const content = Math.round((gross * financialSettings.contentBudgetPercentage) / 100);
+    // Gaji Konten Kreator & Ads berupa input nominal uang tetap
+    const content =
+      financialSettings.contentBudgetAmount !== undefined
+        ? Number(financialSettings.contentBudgetAmount)
+        : Math.round((gross * (financialSettings.contentBudgetPercentage || 0)) / 100);
     const ops = Math.round((gross * financialSettings.operationalBudgetPercentage) / 100);
     const totalAlloc = maint + content + ops;
     const net = Math.max(0, gross - totalAlloc);
@@ -330,18 +334,18 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           {/* KOP SURAT */}
           <div className="border-b-2 border-slate-900 pb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-300 p-1 flex items-center justify-center shadow-xs shrink-0">
-                <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-900 p-1 flex items-center justify-center shadow-xs shrink-0">
+                <img src={kraventLogo} alt="Logo Kravent Bike" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
-                  KRAVENT BIKE • UKSW SALATIGA
+                  KRAVENT BIKE • SALATIGA
                 </h1>
                 <p className="text-xs text-slate-600 font-medium">
                   Sistem Informasi Rental Sepeda & Laporan Finansial Bisnis Bagi Hasil
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  Kampus UKSW Salatiga • Hubungi CS: 0896-4712-3671
+                  Outlet Rental Sepeda Kravent Bike Salatiga • Hubungi CS: 0896-4712-3671
                 </p>
               </div>
             </div>

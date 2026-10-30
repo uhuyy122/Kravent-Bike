@@ -72,7 +72,9 @@ export const FinanceManager: React.FC = () => {
   const [partner2Name, setPartner2Name] = useState(financialSettings.partner2Name);
 
   const [maintPct, setMaintPct] = useState(financialSettings.maintenanceBudgetPercentage);
-  const [contentPct, setContentPct] = useState(financialSettings.contentBudgetPercentage);
+  const [contentBudgetNominal, setContentBudgetNominal] = useState<number>(
+    financialSettings.contentBudgetAmount ?? 500000
+  );
   const [opsPct, setOpsPct] = useState(financialSettings.operationalBudgetPercentage);
 
   const [isSavedNotice, setIsSavedNotice] = useState(false);
@@ -186,7 +188,8 @@ export const FinanceManager: React.FC = () => {
       partner2Name,
       partner2Percentage: 100 - partner1Pct,
       maintenanceBudgetPercentage: maintPct,
-      contentBudgetPercentage: contentPct,
+      contentBudgetAmount: contentBudgetNominal,
+      contentBudgetPercentage: gross > 0 ? Math.round((contentBudgetNominal / gross) * 100) : 0,
       operationalBudgetPercentage: opsPct,
     });
     setIsSavedNotice(true);
@@ -229,7 +232,8 @@ export const FinanceManager: React.FC = () => {
   };
 
   const maintAmount = Math.round((gross * maintPct) / 100);
-  const contentAmount = Math.round((gross * contentPct) / 100);
+  // Konten & Ads: Nominal uang langsung (Gaji Konten Kreator & Ads)
+  const contentAmount = Number(contentBudgetNominal || 0);
   const opsAmount = Math.round((gross * opsPct) / 100);
   const totalAlloc = maintAmount + contentAmount + opsAmount;
   const netProfitPreview = Math.max(0, gross - totalAlloc);
@@ -586,7 +590,7 @@ export const FinanceManager: React.FC = () => {
               <span className="text-lg font-bold text-rose-300">
                 - {formatRupiah(totalAlloc)}
               </span>
-              <span className="text-[10px] text-slate-400 block">({maintPct + contentPct + opsPct}% dari Omzet)</span>
+              <span className="text-[10px] text-slate-400 block">Mentenest + Gaji Konten + Toko</span>
             </div>
             <div className="h-10 w-px bg-slate-700"></div>
             <div>
@@ -630,10 +634,10 @@ export const FinanceManager: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
                   <span className="font-semibold flex items-center gap-1.5 text-sky-300">
-                    <Video className="w-4 h-4" /> Konten (Marketing)
+                    <Video className="w-4 h-4" /> Gaji Konten Kreator & Ads
                   </span>
                   <span className="bg-sky-400/20 text-sky-300 px-2 py-0.5 rounded-full font-bold text-[11px]">
-                    {contentPct}%
+                    Nominal Uang
                   </span>
                 </div>
                 <div className="text-xl font-bold text-white mt-1">
@@ -641,7 +645,7 @@ export const FinanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="mt-3 text-[11px] text-slate-400 pt-2 border-t border-slate-700/50">
-                Shooting TikTok/Reels, iklan IG Ads & promosi sewa
+                Gaji kreator TikTok/Reels, produksi konten & iklan IG Ads
               </div>
             </div>
 
@@ -974,10 +978,10 @@ export const FinanceManager: React.FC = () => {
         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-              2. Persentase Alokasi 3 Pos Wajib dari Omzet
+              2. Alokasi 3 Pos Wajib (Mentenest, Gaji Konten Kreator & Operasional)
             </span>
             <span className="text-xs text-slate-500">
-              Total disisihkan: {maintPct + contentPct + opsPct}% dari pendapatan kotor
+              Total disisihkan: {formatRupiah(totalAlloc)} (Mentenest: {maintPct}%, Gaji Konten: {formatRupiah(contentAmount)}, Toko: {opsPct}%)
             </span>
           </div>
 
@@ -1007,28 +1011,37 @@ export const FinanceManager: React.FC = () => {
               </span>
             </div>
 
-            {/* Konten */}
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="flex justify-between items-center text-xs mb-1">
-                <span className="font-bold text-slate-800 flex items-center gap-1">
-                  <Video className="w-3.5 h-3.5 text-sky-500" /> Konten & Ads
-                </span>
-                <span className="font-extrabold text-sky-600">{contentPct}%</span>
+            {/* Konten & Ads - INPUTAN DALAM BENTUK UANG / NOMINAL */}
+            <div className="bg-white p-3.5 rounded-xl border border-sky-200 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1">
+                  <span className="font-bold text-slate-800 flex items-center gap-1">
+                    <Video className="w-3.5 h-3.5 text-sky-500" /> Gaji Konten &amp; Ads
+                  </span>
+                  <span className="font-extrabold text-[10px] px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 uppercase tracking-wide">
+                    Input Uang (Rp)
+                  </span>
+                </div>
+                <div className="relative mt-1">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    Rp
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50000"
+                    value={contentBudgetNominal}
+                    disabled={!isAdmin}
+                    onChange={e => setContentBudgetNominal(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    placeholder="Contoh: 500000"
+                    className={`w-full pl-8 pr-2.5 py-1.5 text-xs sm:text-sm font-bold border border-slate-300 rounded-xl bg-white focus:outline-sky-500 font-mono ${
+                      isAdmin ? 'cursor-text' : 'cursor-not-allowed opacity-75'
+                    }`}
+                  />
+                </div>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="30"
-                step="1"
-                value={contentPct}
-                disabled={!isAdmin}
-                onChange={e => setContentPct(parseInt(e.target.value, 10))}
-                className={`w-full accent-sky-500 h-1.5 bg-slate-200 rounded-lg ${
-                  isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'
-                }`}
-              />
-              <span className="text-[11px] text-slate-400 block mt-1">
-                Nominal ({periodLabel}): {formatRupiah(contentAmount)}
+              <span className="text-[10px] text-sky-700 block mt-1.5 leading-tight">
+                💡 Bukan persen, input nominal uang ini khusus untuk gaji bulanan konten kreator &amp; ads.
               </span>
             </div>
 

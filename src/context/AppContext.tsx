@@ -68,6 +68,7 @@ interface AppContextType {
   deleteExpense: (id: string) => Promise<void>;
   updateFinancialSettings: (settings: Partial<FinancialSettings>) => Promise<void>;
   resetToDefaults: () => Promise<void>;
+  clearAllProductionData: () => Promise<void>;
   forceSyncCloud: () => Promise<{ success: boolean; message: string }>;
   isCloudConnected: boolean;
   isCloudSyncing: boolean;
@@ -91,12 +92,29 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  ROLE: 'kravent_role_v3',
-  BIKES: 'kravent_bikes_v25_rate8k',
-  BOOKINGS: 'kravent_bookings_zero_v2',
-  EXPENSES: 'kravent_expenses_zero_v2',
-  FINANCE: 'kravent_finance_v3',
+  ROLE: 'kravent_role_prod',
+  BIKES: 'kravent_bikes_prod',
+  BOOKINGS: 'kravent_bookings_prod',
+  EXPENSES: 'kravent_expenses_prod',
+  FINANCE: 'kravent_finance_prod',
 };
+
+// Bersihkan data lama masa pengujian dari browser penyimpanan lokal
+if (typeof window !== 'undefined') {
+  try {
+    const legacyKeys = [
+      'kravent_bookings_zero_v2',
+      'kravent_expenses_zero_v2',
+      'kravent_bookings',
+      'kravent_expenses',
+      'kravent_bookings_v25',
+      'kravent_bookings_v3',
+    ];
+    legacyKeys.forEach(k => localStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentRole, setCurrentRoleState] = useState<UserRole>(() => {
@@ -193,8 +211,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       collection(db, 'bikes'),
       snapshot => {
         setIsCloudConnected(true);
-        if (snapshot.empty) {
-          // Inisialisasi awal armada ke cloud Firestore
+        const list: Bike[] = [];
+        snapshot.forEach(docSnap => {
+          list.push(docSnap.data() as Bike);
+        });
+
+        // Jika kosong, berisi sepeda placeholder lama, atau berisi unit dobel (Unit 01/02), sinkronkan 25 sepeda asli sesuai 4 lembar brosur
+        const hasOldPlaceholder = list.some(b => b.name.includes('Polygon') || b.imageUrl?.includes('unsplash') || b.imageUrl?.includes('images.unsplash.com'));
+        const hasDoubleUnits = list.some(b => b.name.includes('(Unit') || b.name.includes('Unit 0'));
+        const isNot25 = list.length !== 25;
+
+        if (snapshot.empty || hasOldPlaceholder || hasDoubleUnits || isNot25) {
+          snapshot.forEach(docSnap => {
+            if (!INITIAL_BIKES.some(ib => ib.id === docSnap.id)) {
+              deleteDoc(doc(db, 'bikes', docSnap.id)).catch(() => {});
+            }
+          });
           INITIAL_BIKES.forEach(b => {
             setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b)).catch(err =>
               handleFirestoreError(err, OperationType.WRITE, `bikes/${b.id}`)
@@ -202,11 +234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
           setBikes(INITIAL_BIKES);
         } else {
-          const list: Bike[] = [];
-          snapshot.forEach(docSnap => {
-            list.push(docSnap.data() as Bike);
-          });
-          list.sort((a, b) => a.licenseNumber.localeCompare(b.licenseNumber));
+          list.sort((a, b) => a.licenseNumber.localeCompare(b.licenseNumber, undefined, { numeric: true }));
           setBikes(list);
         }
         setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
@@ -223,32 +251,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       snapshot => {
         setIsCloudConnected(true);
         if (snapshot.empty) {
-          // Jika di Firestore masih kosong, cek apakah perangkat ini punya data booking lokal untuk dimigrasikan
-          let localBookings = INITIAL_BOOKINGS;
-          try {
-            const saved = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                localBookings = parsed;
-              }
-            }
-          } catch {
-            // ignore
-          }
-
-          if (localBookings.length > 0) {
-            localBookings.forEach(b => {
-              setDoc(doc(db, 'bookings', b.id), cleanForFirestore(b)).catch(err =>
-                handleFirestoreError(err, OperationType.WRITE, `bookings/${b.id}`)
-              );
-            });
-            setBookings(localBookings);
-          }
+          setBookings([]);
         } else {
           const list: Booking[] = [];
           snapshot.forEach(docSnap => {
-            list.push(docSnap.data() as Booking);
+            const data = docSnap.data() as Booking;
+            if (docSnap.id === 'book-1793009088589' || data.customerName === 'Tata' || data.bookingCode === 'BOK-1026-599') {
+              deleteDoc(doc(db, 'bookings', docSnap.id)).catch(() => {});
+              return;
+            }
+            list.push(data);
           });
           list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
           setBookings(list);
@@ -339,14 +351,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const bookingsSnap = await getDocs(collection(db, 'bookings'));
       if (!bookingsSnap.empty) {
         const list: Booking[] = [];
-        bookingsSnap.forEach(d => list.push(d.data() as Booking));
+        bookingsSnap.forEach(d => {
+          const data = d.data() as Booking;
+          if (d.id === 'book-1793009088589' || data.customerName === 'Tata' || data.bookingCode === 'BOK-1026-599') {
+            deleteDoc(doc(db, 'bookings', d.id)).catch(() => {});
+            return;
+          }
+          list.push(data);
+        });
         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         setBookings(list);
-      } else if (bookings.length > 0) {
-        // Upload data lokal jika cloud masih kosong
-        for (const b of bookings) {
-          await setDoc(doc(db, 'bookings', b.id), cleanForFirestore(b));
-        }
+      } else {
+        setBookings([]);
       }
 
       // 3. Ambil Expenses
@@ -356,6 +372,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         expSnap.forEach(d => list.push(d.data() as Expense));
         list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         setExpenses(list);
+      } else {
+        setExpenses([]);
       }
 
       // 4. Ambil Settings
@@ -707,6 +725,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const clearAllProductionData = async () => {
+    try {
+      // 1. Hapus semua data booking di Firestore
+      const snapB = await getDocs(collection(db, 'bookings'));
+      for (const d of snapB.docs) {
+        await deleteDoc(doc(db, 'bookings', d.id));
+      }
+      setBookings([]);
+
+      // 2. Hapus semua data pengeluaran di Firestore
+      const snapE = await getDocs(collection(db, 'expenses'));
+      for (const d of snapE.docs) {
+        await deleteDoc(doc(db, 'expenses', d.id));
+      }
+      setExpenses([]);
+
+      // 3. Reset status seluruh sepeda ke 'tersedia' dan total disewa 0
+      const snapBikes = await getDocs(collection(db, 'bikes'));
+      for (const d of snapBikes.docs) {
+        await updateDoc(doc(db, 'bikes', d.id), {
+          status: 'tersedia',
+          totalRentedCount: 0
+        });
+      }
+      setBikes(prev => prev.map(b => ({ ...b, status: 'tersedia', totalRentedCount: 0 })));
+
+      // 4. Bersihkan cache storage lokal
+      if (typeof window !== 'undefined') {
+        try {
+          const keys = [
+            'kravent_bookings_zero_v2',
+            'kravent_expenses_zero_v2',
+            'kravent_bookings',
+            'kravent_expenses',
+            STORAGE_KEYS.BOOKINGS,
+            STORAGE_KEYS.EXPENSES
+          ];
+          keys.forEach(k => localStorage.removeItem(k));
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, 'clearAllProductionData');
+      throw err;
+    }
+  };
+
   // Referensi tanggal sistem sekarang (hari ini dan selanjutnya)
   const todayStr = getTodayDateStr();
 
@@ -805,9 +871,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const maintenanceAllocation = Math.round(
       (grossRevenue * financialSettings.maintenanceBudgetPercentage) / 100
     );
-    const contentAllocation = Math.round(
-      (grossRevenue * financialSettings.contentBudgetPercentage) / 100
-    );
+    // Pos Konten & Ads: Bukan persen, melainkan nominal uang untuk gaji konten kreator
+    const contentAllocation =
+      financialSettings.contentBudgetAmount !== undefined
+        ? Number(financialSettings.contentBudgetAmount)
+        : Math.round((grossRevenue * (financialSettings.contentBudgetPercentage || 0)) / 100);
     const operationalAllocation = Math.round(
       (grossRevenue * financialSettings.operationalBudgetPercentage) / 100
     );
@@ -880,6 +948,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteExpense,
         updateFinancialSettings,
         resetToDefaults,
+        clearAllProductionData,
         forceSyncCloud,
         isCloudConnected,
         isCloudSyncing,

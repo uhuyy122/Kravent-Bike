@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
-import ukswLogo from '../assets/logo-uksw.svg';
+import kraventLogo from '../assets/kravent-logo.svg';
 import { PinAuthModal } from './PinAuthModal';
 
 interface NavbarProps {
@@ -43,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     currentRole,
     setCurrentRole,
     resetToDefaults,
+    clearAllProductionData,
     bikesOutToday,
     activeBookingsCount,
     forceSyncCloud,
@@ -57,6 +58,22 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showRoleSwitcherPopup, setShowRoleSwitcherPopup] = useState(false);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [isClearingData, setIsClearingData] = useState(false);
+
+  const handleClearAllData = async () => {
+    setIsClearingData(true);
+    try {
+      await clearAllProductionData();
+      setShowClearConfirmModal(false);
+      setSyncNotice('✅ Database dibersihkan total! Web siap dipakai untuk rental riil.');
+      setTimeout(() => setSyncNotice(null), 4500);
+    } catch (err) {
+      alert(`Gagal membersihkan database: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsClearingData(false);
+    }
+  };
 
   const handleSync = async () => {
     const res = await forceSyncCloud();
@@ -145,7 +162,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Stand Meja Kasir - Kravent Bike UKSW</title>
+          <title>Stand Meja Kasir - Kravent Bike Salatiga</title>
           <style>
             @page { size: A5 portrait; margin: 10mm; }
             body {
@@ -228,7 +245,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             <div class="logo-wrap">
               <h1>KRAVENT BIKE</h1>
             </div>
-            <div class="subtitle">Pos Rental Sepeda Resmi • UKSW Salatiga</div>
+            <div class="subtitle">Pos Rental Sepeda Resmi • Salatiga</div>
 
             <div class="qr-box">
               <img src="${qrStandImageUrl}" class="qr-img" alt="QR Code Katalog" />
@@ -317,7 +334,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const profileData = {
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     name: currentRole === 'admin' ? 'Admin Kravent' : currentRole === 'karyawan' ? 'Staff Toko' : 'Pelanggan Tamu',
-    subtitle: currentRole === 'admin' ? 'Owner • Salatiga' : currentRole === 'karyawan' ? 'Mode Lihat Saja' : 'Tamu UKSW',
+    subtitle: currentRole === 'admin' ? 'Owner • Salatiga' : currentRole === 'karyawan' ? 'Mode Lihat Saja' : 'Pelanggan Tamu',
     roleTag: currentRole === 'admin' ? 'Owner' : currentRole === 'karyawan' ? 'Lihat Saja' : 'Publik',
   };
 
@@ -386,14 +403,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             className="flex items-center gap-2 cursor-pointer flex-1 justify-center truncate"
             onClick={() => handleNavClick(currentRole === 'customer' ? 'catalog' : 'dashboard')}
           >
-            <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-white shrink-0">
-              <Aperture className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 p-0.5 overflow-hidden">
+              <img src={kraventLogo} alt="Kravent Bike" className="w-full h-full object-contain" />
             </div>
             <div className="truncate text-left">
               <span className="font-extrabold text-sm text-white tracking-tight flex items-center gap-1.5">
                 Kravent Bike
-                <span className="text-[9px] font-bold px-1 rounded bg-[#2f80ed] text-white uppercase">
-                  UKSW
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                  Salatiga
                 </span>
               </span>
             </div>
@@ -440,14 +457,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               {/* Drawer Header */}
               <div className="p-3 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-white shrink-0">
-                    <Aperture className="w-4 h-4 text-white" />
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 p-1 overflow-hidden">
+                    <img src={kraventLogo} alt="Kravent Bike" className="w-full h-full object-contain" />
                   </div>
                   <div>
                     <span className="font-extrabold text-sm text-white tracking-tight flex items-center gap-1.5">
                       Kravent Bike
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#2f80ed] text-white uppercase">
-                        UKSW
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                        Salatiga
                       </span>
                     </span>
                     <p className="text-[10px] text-zinc-400">Pos Rental & Finansial</p>
@@ -591,6 +608,22 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                     </div>
                   </button>
                 )}
+
+                {currentRole === 'admin' && (
+                  <button
+                    onClick={() => {
+                      setIsMobileDrawerOpen(false);
+                      setShowClearConfirmModal(true);
+                    }}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer border border-amber-500/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <RotateCcw className="w-4 h-4 text-amber-400" />
+                      <span>Hapus Data (Siap Pakai)</span>
+                    </div>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold">Admin</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -716,8 +749,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               onClick={() => handleNavClick(currentRole === 'customer' ? 'catalog' : 'dashboard')}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                  <Aperture className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs p-1 overflow-hidden">
+                  <img src={kraventLogo} alt="Kravent Bike" className="w-full h-full object-contain" />
                 </div>
                 {!isSidebarCollapsed && (
                   <div className="truncate">
@@ -725,7 +758,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                       Kravent Bike
                     </span>
                     <span className="text-[10px] text-zinc-400 font-medium block -mt-0.5">
-                      UKSW Salatiga
+                      Salatiga Rental
                     </span>
                   </div>
                 )}
@@ -893,6 +926,30 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   {isSidebarCollapsed && (
                     <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#18191c] text-white text-xs font-semibold rounded-lg shadow-2xl border border-white/15 whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
                       Kunci Sesi Staf
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tombol Bersihkan Data Transaksi (Khusus Admin) */}
+              {currentRole === 'admin' && (
+                <div className="relative group">
+                  <button
+                    onClick={() => setShowClearConfirmModal(true)}
+                    className={`w-full flex items-center ${
+                      isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
+                    } rounded-xl text-xs font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer`}
+                    title="Hapus data transaksi & siap pakai"
+                  >
+                    <div className="flex items-center gap-3 truncate">
+                      <RotateCcw className="w-4 h-4 shrink-0 text-amber-400" />
+                      {!isSidebarCollapsed && <span>Hapus Data (Siap Pakai)</span>}
+                    </div>
+                  </button>
+
+                  {isSidebarCollapsed && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#18191c] text-white text-xs font-semibold rounded-lg shadow-2xl border border-white/15 whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                      Hapus Data Transaksi (Siap Pakai)
                     </div>
                   )}
                 </div>
@@ -1102,11 +1159,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   {/* QR Stand Preview Card */}
                   <div className="p-6 rounded-2xl border-2 border-slate-200 bg-gradient-to-b from-slate-50 to-white flex flex-col items-center justify-center shadow-xs">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-md bg-white border border-slate-200 p-0.5 shadow-2xs">
-                        <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+                      <div className="w-7 h-7 rounded-md bg-slate-900 p-1 shadow-2xs">
+                        <img src={kraventLogo} alt="Logo Kravent Bike" className="w-full h-full object-contain" />
                       </div>
                       <span className="font-extrabold text-sm text-slate-900">
-                        Kravent Bike UKSW
+                        Kravent Bike Salatiga
                       </span>
                     </div>
 
@@ -1271,6 +1328,97 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           }}
           onClose={() => setPinModalTarget(null)}
         />
+      )}
+      {/* ============================================================== */}
+      {/* 7. MODAL KONFIRMASI KOSONGKAN SEMUA DATA (SIAP PAKAI)          */}
+      {/* ============================================================== */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overscroll-contain animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+                    Kosongkan Data (Siap Pakai)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Mode Persiapan Operasional Produksi Riil
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isClearingData && setShowClearConfirmModal(false)}
+                disabled={isClearingData}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors text-xs font-bold shrink-0 cursor-pointer"
+                title="Tutup dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 sm:p-6 space-y-4 text-xs text-slate-600 overflow-y-auto overscroll-contain">
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 space-y-1.5">
+                <span className="font-extrabold flex items-center gap-1.5 text-xs text-amber-950">
+                  ⚠️ Perhatian Tindakan Reset:
+                </span>
+                <p className="text-[11px] leading-relaxed">
+                  Tindakan ini akan <strong>menghapus permanen seluruh riwayat transaksi rental/booking dan catatan pengeluaran</strong> dari database cloud Firestore dan penyimpanan lokal perangkat.
+                </p>
+              </div>
+
+              <div className="space-y-2 text-slate-700">
+                <div className="flex items-start gap-2">
+                  <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                  <span><strong>Armada Sepeda Aman:</strong> Seluruh 25 unit sepeda tetap tersimpan, statusnya dikembalikan menjadi <em>Tersedia</em> (0 kali disewa).</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                  <span><strong>Tarif & Sistem Keuangan Aman:</strong> Tarif sewa per jam/hari dan persentase bagi hasil tetap tersimpan rapi.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-rose-600 font-bold shrink-0">✗</span>
+                  <span><strong>Dihapus Total:</strong> Seluruh pesanan tes, simulasi booking, denda, dan pencatatan kas keluar akan di-reset ke 0.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs flex items-center justify-end gap-2.5 shrink-0 sticky bottom-0 z-10">
+              <button
+                type="button"
+                disabled={isClearingData}
+                onClick={() => setShowClearConfirmModal(false)}
+                className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-200/70 rounded-xl font-semibold transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isClearingData}
+                onClick={handleClearAllData}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                {isClearingData ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Membersihkan...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Ya, Kosongkan Sekarang</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* TOAST PEMBERITAHUAN SINKRONISASI CLOUD */}

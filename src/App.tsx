@@ -12,7 +12,7 @@ import { BookingList } from './components/BookingList';
 import { FleetManager } from './components/FleetManager';
 import { FinanceManager } from './components/FinanceManager';
 import { Bike, Shield, User, HeartHandshake } from 'lucide-react';
-import ukswLogo from './assets/logo-uksw.svg';
+import kraventLogo from './assets/kravent-logo.svg';
 
 function MainApp() {
   const { currentRole } = useApp();
@@ -51,11 +51,11 @@ function MainApp() {
         <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 mb-14 md:mb-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-2xs shrink-0">
-                <img src={ukswLogo} alt="Logo UKSW" className="w-full h-full object-contain" />
+              <div className="w-6 h-6 rounded-lg bg-slate-900 flex items-center justify-center p-0.5 shadow-2xs shrink-0">
+                <img src={kraventLogo} alt="Logo Kravent Bike" className="w-full h-full object-contain" />
               </div>
-              <span className="font-bold text-slate-800">Kravent Bike • UKSW Salatiga</span>
-              <span className="hidden sm:inline text-slate-400">• Rental Sepeda & Finansial Bisnis</span>
+              <span className="font-bold text-slate-800">Kravent Bike • Salatiga</span>
+              <span className="hidden sm:inline text-slate-400">• Rental Sepeda & Manajemen Toko</span>
             </div>
 
             <div className="flex items-center gap-3 text-slate-400">
