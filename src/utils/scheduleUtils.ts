@@ -118,6 +118,47 @@ export const isTimeRangeOverlap = (
   return Math.max(startAMin, startBMin) < Math.min(endAMin, endBMin);
 };
 
+export interface BookingSessionDef {
+  id: 'pagi' | 'siang';
+  name: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  durationHours: number;
+  timeRange: string;
+  icon: string;
+  badge: string;
+  description: string;
+}
+
+// 2 Sesi Resmi Sewa Sepeda Kravent Bike: Pagi (06:00 - 12:00) & Siang (13:00 - 21:00)
+export const BOOKING_SESSIONS: BookingSessionDef[] = [
+  {
+    id: 'pagi',
+    name: 'Sesi Pagi',
+    label: 'Sesi Pagi (06:00 - 12:00 WIB)',
+    startTime: '06:00',
+    endTime: '12:00',
+    durationHours: 6,
+    timeRange: '06:00 - 12:00',
+    icon: '🌅',
+    badge: 'bg-amber-100 text-amber-900 border-amber-300',
+    description: 'Udara sejuk pagi Salatiga, rute persawahan & car-free day',
+  },
+  {
+    id: 'siang',
+    name: 'Sesi Siang',
+    label: 'Sesi Siang (13:00 - 21:00 WIB)',
+    startTime: '13:00',
+    endTime: '21:00',
+    durationHours: 8,
+    timeRange: '13:00 - 21:00',
+    icon: '☀️',
+    badge: 'bg-sky-100 text-sky-900 border-sky-300',
+    description: 'Santai sore golden hour, sunset hingga jalanan malam kota',
+  },
+];
+
 /**
  * Cek bentrok unit sepeda & jam secara menyeluruh:
  * 1. Tidak bisa double transaksi jika jam tersebut sudah dibooking.
@@ -167,20 +208,17 @@ export const checkBikeBookingConflict = (
     };
   }
 
-  // 4. Cek apakah unit sepeda MASIH DI JALAN (sedang disewa keluar saat ini)
+  // 4. Cek apakah unit sepeda SEDANG DI LUAR / SUDAH DI-ACC (booking aktif)
   const activeRoadBooking = bookings.find(
-    b => b.id !== excludeBookingId && b.bikeId === bikeId && b.status === 'aktif'
+    b => b.id !== excludeBookingId && b.bikeId === bikeId && (b.status === 'sedang di luar' || b.status === 'aktif' || b.status === 'booking')
   );
   if (activeRoadBooking) {
-    // Jika sepeda masih aktif di jalan:
-    // Cek apakah tanggal sewa sama dengan hari ini / tanggal aktif
     if (date === activeRoadBooking.startDate || date === today) {
-      // Jika jam mulai booking baru bertabrakan atau mendahului jam selesai sepeda di jalan
       if (startTime < activeRoadBooking.endTime) {
         return {
           hasConflict: true,
           reason: 'on_road',
-          message: `Unit sepeda masih di jalan! Sedang disewa oleh ${activeRoadBooking.customerName} s/d pukul ${activeRoadBooking.endTime} WIB. Tidak bisa double transaksi!`,
+          message: `Unit sepeda ${activeRoadBooking.status === 'sedang di luar' ? 'masih di jalan' : 'sudah di-ACC'} oleh ${activeRoadBooking.customerName} s/d pukul ${activeRoadBooking.endTime} WIB.`,
           conflictingBooking: activeRoadBooking,
         };
       }

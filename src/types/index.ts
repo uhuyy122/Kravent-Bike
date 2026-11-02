@@ -1,6 +1,7 @@
 export type UserRole = 'admin' | 'karyawan' | 'customer';
 
-export type BikeCategory = 'road' | 'mtb' | 'folding' | 'ebike' | 'city';
+// Revisi: Kategori sepeda hanya ada 2 (MTB & Commuter Bike)
+export type BikeCategory = 'commuter' | 'mtb' | 'city' | 'road' | 'folding' | 'ebike';
 
 export type BikeStatus = 'tersedia' | 'disewa' | 'maintenance';
 
@@ -17,13 +18,15 @@ export interface Bike {
   description: string;
   gearSystem: string; // e.g. "Shimano Sora 2x9 Speed"
   status: BikeStatus;
-  licenseNumber: string; // Kode unit / nomor sepeda, e.g. "GWS-001"
+  licenseNumber: string; // Kode unit / nomor sepeda, e.g. "KB-01"
   totalRentedCount: number;
   depositRequired: number;
 }
 
-export type BookingStatus = 'pending' | 'aktif' | 'selesai' | 'dibatalkan';
-export type PaymentMethod = 'bayar_nanti' | 'cash' | 'qris' | 'transfer';
+// Revisi Alur Status & Tombol:
+// pending (menunggu ACC) -> booking (setelah tombol ACC) -> sedang di luar (setelah tombol Mulai) -> selesai (setelah tombol Terima Kembali)
+export type BookingStatus = 'pending' | 'booking' | 'sedang di luar' | 'aktif' | 'selesai' | 'dibatalkan';
+export type PaymentMethod = 'bayar_nanti' | 'cash' | 'qris' | 'transfer' | 'debit';
 
 export interface BookingAddonItem {
   id: string; // 'helm' | 'tripod' | 'holder_hp' | 'gembok' | 'mineral_water' | 'boncengan_bayi'
@@ -43,11 +46,12 @@ export interface Booking {
   customerEmail?: string;
   idCardNumber?: string; // NIK / KTP
   startDate: string; // YYYY-MM-DD
-  startTime: string; // HH:mm
+  startTime: string; // HH:mm (06:00 untuk Pagi, 13:00 untuk Siang)
   endDate: string; // YYYY-MM-DD
-  endTime: string; // HH:mm
-  durationType: 'jam' | 'hari';
-  durationValue: number;
+  endTime: string; // HH:mm (12:00 untuk Pagi, 21:00 untuk Siang)
+  durationType?: 'sesi' | 'jam' | 'hari';
+  durationValue?: number;
+  bookingSession?: 'pagi' | 'siang'; // Sesi Pagi (06:00 - 12:00) atau Sesi Siang (13:00 - 21:00)
   totalPrice: number;
   depositAmount: number;
   status: BookingStatus;
@@ -57,6 +61,13 @@ export interface Booking {
   createdAt: string; // ISO date string
   returnedAt?: string;
   handoverBy?: string; // nama staf/admin yang menyerahkan
+  // Catatan Pembayaran saat Terima Kembali (Revisi Poin 10)
+  paymentNotes?: string;
+  feePaymentMethod?: string;
+  // Riwayat Tukar Unit Persepeda (Revisi Poin 4)
+  swappedFromBikeId?: string;
+  swappedFromBikeName?: string;
+  swappedAt?: string;
   // Fitur Jam Kepulangan & Biaya Tambahan Keterlambatan
   actualReturnDate?: string; // YYYY-MM-DD
   actualReturnTime?: string; // HH:mm

@@ -61,8 +61,10 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
     if (booking.startTime > '23:00') return '23:00';
     return booking.startTime;
   });
-  const [durationType, setDurationType] = useState<'jam' | 'hari'>(booking.durationType);
-  const [durationValue, setDurationValue] = useState(booking.durationValue);
+  const [durationType, setDurationType] = useState<'jam' | 'hari' | 'sesi'>(
+    booking.durationType === 'hari' ? 'hari' : booking.durationType === 'sesi' ? 'sesi' : 'jam'
+  );
+  const [durationValue, setDurationValue] = useState<number>(booking.durationValue || 6);
   const [status, setStatus] = useState<BookingStatus>(booking.status);
 
   // Customer Data

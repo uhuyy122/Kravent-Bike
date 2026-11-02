@@ -29,22 +29,22 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [successRole, setSuccessRole] = useState<'admin' | 'karyawan'>(initialTargetRole);
 
-  const roleTitle = selectedRole === 'admin' ? 'Admin (Pemilik Usaha)' : 'Karyawan (Staff Kasir)';
+  const roleTitle = selectedRole === 'admin' ? 'Owner (Pemilik Usaha)' : 'Staff (Operasional Toko)';
   const roleDesc =
     selectedRole === 'admin'
-      ? 'Akses penuh ke data finansial bagi hasil 60/40, laba bersih, dan manajemen armada.'
-      : 'Akses operasional toko untuk mencatat booking keluar/masuk, serah terima unit, dan denda.';
+      ? 'Akses penuh Owner: Finansial bagi hasil, laba bersih, manajemen armada, dan transaksi.'
+      : 'Akses Staff: Kelola transaksi harian, ACC booking, mulai sewa, terima kembali, tukar & batal.';
 
   const handleVerify = (inputPin: string) => {
-    // Verifikasi PIN rahasia tanpa membocorkan kodenya di tampilan UI
-    if (inputPin === '8888') {
+    // PIN 3110 = Owner, PIN 3131 = Staff
+    if (inputPin === '3110') {
       setErrorMsg('');
       setIsSuccess(true);
       setSuccessRole('admin');
       setTimeout(() => {
         onSuccess('admin');
       }, 450);
-    } else if (inputPin === '1234') {
+    } else if (inputPin === '3131') {
       setErrorMsg('');
       setIsSuccess(true);
       setSuccessRole('karyawan');
@@ -52,7 +52,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
         onSuccess('karyawan');
       }, 450);
     } else {
-      setErrorMsg('PIN yang Anda masukkan salah. Silakan coba lagi.');
+      setErrorMsg('PIN salah. Masukkan 3110 (Owner) atau 3131 (Staff).');
       setPin('');
     }
   };
@@ -140,7 +140,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           </div>
         </div>
 
-        {/* Role Toggle Pill Bar (Tanpa Membocorkan Kode PIN) */}
+        {/* Role Toggle Pill Bar */}
         <div className="flex items-center bg-slate-800/90 p-0.5 sm:p-1 rounded-xl border border-slate-700 shrink-0">
           <button
             type="button"
@@ -156,7 +156,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Kasir</span>
+            <span>Staff</span>
           </button>
           <button
             type="button"
@@ -172,7 +172,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Admin</span>
+            <span>Owner</span>
           </button>
         </div>
 

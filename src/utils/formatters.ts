@@ -36,18 +36,15 @@ export const formatDateIndo = (dateStr: string): string => {
 
 export const getCategoryLabel = (category: string): string => {
   switch (category) {
-    case 'road':
-      return 'Vintage / Federal';
     case 'mtb':
-      return 'MTB Series';
-    case 'folding':
-      return 'Mini Cruiser';
-    case 'ebike':
-      return 'Electric Bike';
+      return 'MTB';
+    case 'commuter':
     case 'city':
-      return 'City & Commuter';
+    case 'road':
+    case 'folding':
+      return 'Commuter Bike';
     default:
-      return category;
+      return category === 'all' ? 'Semua Sepeda' : category;
   }
 };
 
@@ -67,7 +64,7 @@ export const getBikeStatusBadge = (status: string) => {
       };
     case 'maintenance':
       return {
-        label: 'Mentenest / Servis',
+        label: 'Maintenance / Servis',
         bg: 'bg-rose-50 text-rose-700 border-rose-200',
         dot: 'bg-rose-500',
       };

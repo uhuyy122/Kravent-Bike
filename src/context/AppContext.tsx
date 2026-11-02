@@ -63,6 +63,9 @@ interface AppContextType {
   addBooking: (booking: Omit<Booking, 'id' | 'bookingCode' | 'createdAt'>) => Promise<Booking>;
   updateBooking: (id: string, updated: Partial<Booking>) => Promise<void>;
   updateBookingStatus: (id: string, status: BookingStatus, returnDetails?: string | Partial<Booking>) => Promise<void>;
+  accGroupBookings: (groupBookingCode: string, staffName?: string) => Promise<void>;
+  startGroupBookings: (groupBookingCode: string, staffName?: string) => Promise<void>;
+  swapBookingBike: (bookingId: string, newBikeId: string, staffName?: string) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
@@ -121,10 +124,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (typeof window !== 'undefined') {
         const hash = window.location.hash.toLowerCase();
-        if (hash === '#katalog' || hash === '#customer') return 'customer';
+        if (hash === '#katalog' || hash === '#customer' || hash === '#sewa') return 'customer';
         const params = new URLSearchParams(window.location.search);
         const roleParam = params.get('role');
-        if (roleParam === 'customer') return 'customer';
+        const modeParam = params.get('mode');
+        if (roleParam === 'customer' || modeParam === 'customer' || modeParam === 'sewa') return 'customer';
       }
       const saved = localStorage.getItem(STORAGE_KEYS.ROLE);
       if (saved === 'admin' || saved === 'karyawan' || saved === 'customer') {
@@ -623,18 +627,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateDoc(doc(db, 'bikes', b.bikeId), { status: 'tersedia' }).catch(err =>
         handleFirestoreError(err, OperationType.UPDATE, `bikes/${b.bikeId}`)
       );
-    } else if (status === 'aktif') {
+    } else if (status === 'booking' || status === 'sedang di luar' || status === 'aktif') {
       const curBike = bikes.find(x => x.id === b.bikeId);
+      const wasPending = b.status === 'pending';
       setBikes(bikeList =>
         bikeList.map(bike =>
           bike.id === b.bikeId
-            ? { ...bike, status: 'disewa', totalRentedCount: b.status !== 'aktif' ? bike.totalRentedCount + 1 : bike.totalRentedCount }
+            ? { ...bike, status: 'disewa', totalRentedCount: wasPending ? bike.totalRentedCount + 1 : bike.totalRentedCount }
             : bike
         )
       );
       updateDoc(doc(db, 'bikes', b.bikeId), {
         status: 'disewa',
-        totalRentedCount: b.status !== 'aktif' ? (curBike?.totalRentedCount || 0) + 1 : (curBike?.totalRentedCount || 0),
+        totalRentedCount: wasPending ? (curBike?.totalRentedCount || 0) + 1 : (curBike?.totalRentedCount || 0),
       }).catch(err =>
         handleFirestoreError(err, OperationType.UPDATE, `bikes/${b.bikeId}`)
       );
@@ -660,6 +665,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateDoc(doc(db, 'bookings', id), payloadToUpdate);
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `bookings/${id}`);
+    }
+  };
+
+  // Revisi Poin 1: ACC Seluruh Rombongan Sekaligus
+  const accGroupBookings = async (groupBookingCode: string, staffName: string = 'Staff Kravent Bike') => {
+    const targetBookings = bookings.filter(b => b.groupBookingCode === groupBookingCode);
+    if (targetBookings.length === 0) return;
+
+    const nowIso = new Date().toISOString();
+    const bikeIds = targetBookings.map(b => b.bikeId);
+
+    // Update state bookings
+    setBookings(prev =>
+      prev.map(b =>
+        b.groupBookingCode === groupBookingCode
+          ? { ...b, status: 'booking', approvedAt: nowIso, approvedBy: staffName, handoverBy: staffName }
+          : b
+      )
+    );
+
+    // Update state bikes to 'disewa'
+    setBikes(prev =>
+      prev.map(b =>
+        bikeIds.includes(b.id)
+          ? { ...b, status: 'disewa', totalRentedCount: b.status !== 'disewa' ? b.totalRentedCount + 1 : b.totalRentedCount }
+          : b
+      )
+    );
+
+    // Sync Firestore
+    for (const b of targetBookings) {
+      updateDoc(doc(db, 'bookings', b.id), {
+        status: 'booking',
+        approvedAt: nowIso,
+        approvedBy: staffName,
+        handoverBy: staffName,
+      }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `bookings/${b.id}`));
+
+      updateDoc(doc(db, 'bikes', b.bikeId), {
+        status: 'disewa',
+      }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `bikes/${b.bikeId}`));
+    }
+  };
+
+  // Mulai Rombongan (Status menjadi 'sedang di luar')
+  const startGroupBookings = async (groupBookingCode: string, staffName: string = 'Staff Kravent Bike') => {
+    const targetBookings = bookings.filter(b => b.groupBookingCode === groupBookingCode);
+    if (targetBookings.length === 0) return;
+
+    setBookings(prev =>
+      prev.map(b =>
+        b.groupBookingCode === groupBookingCode
+          ? { ...b, status: 'sedang di luar', handoverBy: staffName }
+          : b
+      )
+    );
+
+    for (const b of targetBookings) {
+      updateDoc(doc(db, 'bookings', b.id), {
+        status: 'sedang di luar',
+        handoverBy: staffName,
+      }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `bookings/${b.id}`));
+    }
+  };
+
+  // Revisi Poin 4: Tukar Sepeda Persepeda (Bukan Rombongan)
+  const swapBookingBike = async (bookingId: string, newBikeId: string, staffName: string = 'Staff Kravent Bike') => {
+    const targetBooking = bookings.find(b => b.id === bookingId);
+    if (!targetBooking) return;
+    const oldBike = bikes.find(b => b.id === targetBooking.bikeId);
+    const newBike = bikes.find(b => b.id === newBikeId);
+    if (!newBike) return;
+
+    const nowIso = new Date().toISOString();
+    const updatedBooking: Booking = {
+      ...targetBooking,
+      bikeId: newBike.id,
+      bikeName: newBike.name,
+      bikeImage: newBike.imageUrl,
+      swappedFromBikeId: oldBike?.id,
+      swappedFromBikeName: oldBike?.name,
+      swappedAt: nowIso,
+      handoverBy: staffName,
+    };
+
+    // Update state
+    setBookings(prev => prev.map(b => (b.id === bookingId ? updatedBooking : b)));
+    setBikes(prev =>
+      prev.map(b => {
+        if (oldBike && b.id === oldBike.id) return { ...b, status: 'tersedia' };
+        if (b.id === newBike.id) return { ...b, status: 'disewa' };
+        return b;
+      })
+    );
+
+    // Sync Firestore
+    try {
+      if (oldBike) {
+        await updateDoc(doc(db, 'bikes', oldBike.id), { status: 'tersedia' });
+      }
+      await updateDoc(doc(db, 'bikes', newBike.id), { status: 'disewa' });
+      await updateDoc(doc(db, 'bookings', bookingId), cleanForFirestore({
+        bikeId: newBike.id,
+        bikeName: newBike.name,
+        bikeImage: newBike.imageUrl,
+        swappedFromBikeId: oldBike?.id,
+        swappedFromBikeName: oldBike?.name,
+        swappedAt: nowIso,
+        handoverBy: staffName,
+      }));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `bookings/${bookingId}`);
     }
   };
 
@@ -848,12 +965,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Potensi omzet berjalan
   const pendingPotentialRevenue = useMemo(() => {
     return bookings
-      .filter(b => b.status === 'aktif')
+      .filter(b => b.status === 'booking' || b.status === 'sedang di luar' || b.status === 'aktif')
       .reduce((sum, b) => sum + b.totalPrice, 0);
   }, [bookings]);
 
   const activeBookingsCount = useMemo(() => {
-    return bookings.filter(b => b.status === 'aktif').length;
+    return bookings.filter(b => b.status === 'booking' || b.status === 'sedang di luar' || b.status === 'aktif').length;
   }, [bookings]);
 
   const availableBikesCount = useMemo(() => {
@@ -871,7 +988,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const maintenanceAllocation = Math.round(
       (grossRevenue * financialSettings.maintenanceBudgetPercentage) / 100
     );
-    // Pos Konten & Ads: Bukan persen, melainkan nominal uang untuk gaji konten kreator
+    // Pos Konten & Ads: Nominal uang untuk gaji konten kreator
     const contentAllocation =
       financialSettings.contentBudgetAmount !== undefined
         ? Number(financialSettings.contentBudgetAmount)
@@ -943,6 +1060,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addBooking,
         updateBooking,
         updateBookingStatus,
+        accGroupBookings,
+        startGroupBookings,
+        swapBookingBike,
         deleteBooking,
         addExpense,
         deleteExpense,

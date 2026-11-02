@@ -103,19 +103,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     }
   };
 
-  // Dengarkan hash URL seperti #admin, #karyawan, #katalog
+  // Dengarkan hash URL: #sewa (Pelanggan) dan #admin (Admin & Staf)
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.toLowerCase();
-      if (hash === '#admin') {
-        if (currentRole !== 'admin') {
-          setPinModalTarget('admin');
-        }
-      } else if (hash === '#karyawan') {
-        if (currentRole !== 'karyawan') {
+      if (hash === '#admin' || hash === '#karyawan' || hash === '#staff' || hash === '#transaksi') {
+        if (currentRole === 'customer') {
           setPinModalTarget('karyawan');
         }
-      } else if (hash === '#katalog' || hash === '#customer') {
+      } else if (hash === '#sewa' || hash === '#katalog' || hash === '#customer') {
         applyRoleChange('customer');
       }
     };
@@ -143,8 +139,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     return '';
   };
 
-  const customerCatalogUrl = `${getBaseUrl()}#katalog`;
-  const qrStandImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(customerCatalogUrl)}&color=0f172a&bgcolor=ffffff&qzone=2&format=png`;
+  // 2 Link Utama Sesuai Revisi:
+  // Link 1 untuk Customer (Sewa Sepeda)
+  // Link 2 untuk Admin & Staff (Kelola Transaksi)
+  const customerRentalUrl = `${getBaseUrl()}#sewa`;
+  const adminStaffUrl = `${getBaseUrl()}#admin`;
+  const qrStandImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(customerRentalUrl)}&color=0f172a&bgcolor=ffffff&qzone=2&format=png`;
 
   const handleCopy = (key: string, url: string) => {
     navigator.clipboard.writeText(url);
@@ -419,14 +419,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           {/* Aksi Kanan Mobile */}
           <div className="flex items-center gap-1 shrink-0">
             {currentRole === 'customer' ? (
-              <button
-                onClick={() => setPinModalTarget('karyawan')}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-white/15 text-xs font-semibold text-zinc-300 hover:bg-white/10 transition-colors cursor-pointer bg-white/5"
-                title="Akses Staf & Admin"
+              <a
+                href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/30 text-xs font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                title="Hubungi Admin Kravent Bike via WhatsApp"
               >
-                <Lock className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Staf</span>
-              </button>
+                <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Chat WA</span>
+              </a>
             ) : (
               <button
                 onClick={() => setShowShareModal(true)}
@@ -480,55 +482,55 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 </button>
               </div>
 
-              {/* Status & Switcher Role di Drawer */}
-              <div className="p-3 bg-[#1e1f23] text-white my-3 rounded-2xl border border-white/10 shadow-xs">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-bold text-zinc-400">Mode Akses:</span>
-                  <span
-                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full capitalize ${
-                      currentRole === 'admin'
-                        ? 'bg-amber-400 text-slate-950'
-                        : currentRole === 'karyawan'
-                        ? 'bg-sky-400 text-slate-950'
-                        : 'bg-emerald-400 text-slate-950'
-                    }`}
-                  >
-                    {currentRole}
-                  </span>
-                </div>
+              {/* Status & Switcher Role di Drawer (Hanya Tampil di Mode Staf/Admin) */}
+              {isStaffMode && (
+                <div className="p-3 bg-[#1e1f23] text-white my-3 rounded-2xl border border-white/10 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-zinc-400">Mode Akses:</span>
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full capitalize ${
+                        currentRole === 'admin'
+                          ? 'bg-amber-400 text-slate-950'
+                          : 'bg-sky-400 text-slate-950'
+                      }`}
+                    >
+                      {currentRole === 'admin' ? 'Admin Owner' : 'Staff Toko'}
+                    </span>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-white/10">
-                  <button
-                    onClick={() => {
-                      handleRoleButtonClick('karyawan');
-                      setIsMobileDrawerOpen(false);
-                    }}
-                    className={`py-1.5 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                      currentRole === 'karyawan'
-                        ? 'bg-[#2f80ed] text-white'
-                        : 'bg-white/5 text-zinc-300 hover:bg-white/10'
-                    }`}
-                  >
-                    <UserCheck className="w-3 h-3" />
-                    <span>Staff Kasir</span>
-                  </button>
+                  <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        handleRoleButtonClick('karyawan');
+                        setIsMobileDrawerOpen(false);
+                      }}
+                      className={`py-1.5 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                        currentRole === 'karyawan'
+                          ? 'bg-[#2f80ed] text-white'
+                          : 'bg-white/5 text-zinc-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <UserCheck className="w-3 h-3" />
+                      <span>Staff Kasir</span>
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      handleRoleButtonClick('admin');
-                      setIsMobileDrawerOpen(false);
-                    }}
-                    className={`py-1.5 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                      currentRole === 'admin'
-                        ? 'bg-amber-500 text-slate-950'
-                        : 'bg-white/5 text-zinc-300 hover:bg-white/10'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>Admin Owner</span>
-                  </button>
+                    <button
+                      onClick={() => {
+                        handleRoleButtonClick('admin');
+                        setIsMobileDrawerOpen(false);
+                      }}
+                      className={`py-1.5 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all ${
+                        currentRole === 'admin'
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-white/5 text-zinc-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>Admin Owner</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Navigasi Utama Mobile Drawer */}
               <nav className="space-y-1.5">
@@ -990,10 +992,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowRoleSwitcherPopup(prev => !prev)}
+                onClick={() => {
+                  if (isStaffMode) {
+                    setShowRoleSwitcherPopup(prev => !prev);
+                  }
+                }}
                 className={`w-full flex items-center ${
                   isSidebarCollapsed ? 'justify-center' : 'justify-between'
-                } p-1.5 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group`}
+                } p-1.5 rounded-2xl ${isStaffMode ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'} transition-all group`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="relative">
@@ -1039,8 +1045,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 </div>
               )}
 
-              {/* Role Switcher Popover */}
-              {showRoleSwitcherPopup && (
+              {/* Role Switcher Popover (Hanya Staf & Admin yang bisa tukar akun) */}
+              {isStaffMode && showRoleSwitcherPopup && (
                 <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#1e1f23] text-white rounded-2xl shadow-2xl border border-white/15 p-2.5 z-50 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
                   <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block px-2 mb-1">
                     Ganti Mode Akses:
@@ -1181,7 +1187,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
                     <div className="mt-4 flex items-center gap-1.5 text-xs text-slate-600 font-medium">
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      <span>Link Terhubung: <strong>{customerCatalogUrl}</strong></span>
+                      <span>Link Terhubung: <strong>{customerRentalUrl}</strong></span>
                     </div>
                   </div>
 
@@ -1195,7 +1201,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                     </button>
 
                     <button
-                      onClick={() => handleCopy('customer-qr', customerCatalogUrl)}
+                      onClick={() => handleCopy('customer-qr', customerRentalUrl)}
                       className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                     >
                       {copiedKey === 'customer-qr' ? (
@@ -1213,90 +1219,73 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   </div>
                 </div>
               ) : (
-                /* TAB 2: LINK LENGKAP */
-                <div className="space-y-3.5">
-                  <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
-                    💡 <strong>1 Link Utama:</strong> Cukup sebarkan link utama ke publik (Bio IG/WA). Pelanggan otomatis melihat katalog bersih, dan akses staf terkunci aman di balik PIN.
+                /* TAB 2: 2 LINK UTAMA (CUSTOMER & ADMIN/STAFF) */
+                <div className="space-y-4">
+                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed">
+                    💡 <strong>2 Link Khusus:</strong> 1 Link untuk disebar ke Customer (Sewa Sepeda), dan 1 Link untuk Admin &amp; Staff (Kelola Transaksi &amp; Operasional Toko).
                   </div>
 
-                  {/* Link 1: Pelanggan (Publik) */}
-                  <div className="p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/40 space-y-1.5">
+                  {/* Link 1: Customer (Sewa Sepeda) */}
+                  <div className="p-4 rounded-2xl border-2 border-emerald-300 bg-emerald-50/50 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-black">
                           1
                         </span>
-                        <span className="font-bold text-xs sm:text-sm text-slate-900">
-                          Link Pelanggan (Katalog Publik)
-                        </span>
+                        <div>
+                          <span className="font-extrabold text-xs sm:text-sm text-slate-900 block">
+                            Link Sewa Customer (Publik)
+                          </span>
+                          <span className="text-[10px] text-emerald-700 font-bold">
+                            Fungsi: Sewa Sepeda, Pilih Sesi, Kirim Order WhatsApp
+                          </span>
+                        </div>
                       </div>
                       <button
-                        onClick={() => handleCopy('customer', customerCatalogUrl)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                        onClick={() => handleCopy('customer', customerRentalUrl)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer shadow-xs"
                       >
                         {copiedKey === 'customer' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedKey === 'customer' ? 'Tersalin' : 'Salin'}</span>
+                        <span>{copiedKey === 'customer' ? 'Tersalin' : 'Salin Link'}</span>
                       </button>
                     </div>
-                    <p className="text-[11px] text-slate-500">
-                      Bagikan ke pelanggan. Hanya menampilkan katalog tanpa menu kasir/finansial.
+                    <p className="text-[11px] text-slate-600">
+                      Bagikan link ini ke bio Instagram atau kirim ke pelanggan WhatsApp.
                     </p>
-                    <div className="p-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-mono text-slate-600 truncate select-all">
-                      {customerCatalogUrl}
+                    <div className="p-2 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-700 truncate select-all font-semibold">
+                      {customerRentalUrl}
                     </div>
                   </div>
 
-                  {/* Link 2: Karyawan (Staff Kasir) */}
-                  <div className="p-3.5 rounded-2xl border border-sky-200 bg-sky-50/40 space-y-1.5">
+                  {/* Link 2: Admin & Staff (Kelola Transaksi) */}
+                  <div className="p-4 rounded-2xl border-2 border-slate-800 bg-slate-900 text-white space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-md bg-sky-600 text-white flex items-center justify-center text-xs font-bold">
+                        <span className="w-6 h-6 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center text-xs font-black">
                           2
                         </span>
-                        <span className="font-bold text-xs sm:text-sm text-slate-900">
-                          Link Kasir (Operasional Serah Terima)
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">
-                          Akses Staf
-                        </span>
+                        <div>
+                          <span className="font-extrabold text-xs sm:text-sm text-white block">
+                            Link Admin &amp; Staff (Kelola Transaksi)
+                          </span>
+                          <span className="text-[10px] text-amber-300 font-bold">
+                            Fungsi: ACC Rombongan, Mulai, Terima Kembali, Tukar &amp; Batal
+                          </span>
+                        </div>
                       </div>
                       <button
-                        onClick={() => handleCopy('karyawan', `${getBaseUrl()}#karyawan`)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold cursor-pointer"
-                      >
-                        {copiedKey === 'karyawan' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedKey === 'karyawan' ? 'Tersalin' : 'Salin'}</span>
-                      </button>
-                    </div>
-                    <div className="p-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-mono text-slate-600 truncate select-all">
-                      {getBaseUrl()}#karyawan
-                    </div>
-                  </div>
-
-                  {/* Link 3: Admin (Pemilik Usaha) */}
-                  <div className="p-3.5 rounded-2xl border border-amber-200 bg-amber-50/40 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-md bg-amber-500 text-slate-950 flex items-center justify-center text-xs font-bold">
-                          3
-                        </span>
-                        <span className="font-bold text-xs sm:text-sm text-slate-900">
-                          Link Admin (Owner Finansial & Bagi Hasil)
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900">
-                          Akses Owner
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleCopy('admin', `${getBaseUrl()}#admin`)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold cursor-pointer"
+                        onClick={() => handleCopy('admin', adminStaffUrl)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black cursor-pointer shadow-xs"
                       >
                         {copiedKey === 'admin' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedKey === 'admin' ? 'Tersalin' : 'Salin'}</span>
+                        <span>{copiedKey === 'admin' ? 'Tersalin' : 'Salin Link'}</span>
                       </button>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-mono text-slate-600 truncate select-all">
-                      {getBaseUrl()}#admin
+                    <p className="text-[11px] text-slate-400">
+                      Khusus internal toko. Dilindungi PIN <strong>3110</strong> (Owner) &amp; <strong>3131</strong> (Staff).
+                    </p>
+                    <div className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-mono text-emerald-300 truncate select-all">
+                      {adminStaffUrl}
                     </div>
                   </div>
                 </div>

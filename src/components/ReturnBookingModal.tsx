@@ -44,7 +44,10 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
   const [returnNotes, setReturnNotes] = useState(
     booking.returnNotes || 'Unit sepeda kembali dalam kondisi baik dan lengkap (helm & kunci gembok).'
   );
-  const [feePaymentMethod, setFeePaymentMethod] = useState<'cash' | 'qris' | 'transfer'>('cash');
+  const [feePaymentMethod, setFeePaymentMethod] = useState<'cash' | 'qris' | 'transfer' | 'debit'>('cash');
+  const [paymentNotes, setPaymentNotes] = useState(
+    booking.paymentNotes || ''
+  );
 
   // Menentukan tarif per jam untuk denda (mengikuti tarif tanggal kepulangan: hari biasa 8rb, weekend/libur 10rb)
   const ratePerHour = useMemo(() => {
@@ -88,6 +91,10 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
 
   const handleConfirmReturn = () => {
     const returnIso = `${returnDate}T${returnTime}:00`;
+    const finalPaymentNote = paymentNotes.trim()
+      ? paymentNotes.trim()
+      : `Lunas via ${feePaymentMethod.toUpperCase()} (${formatRupiah(amountToCollectNow)})`;
+
     updateBookingStatus(booking.id, 'selesai', {
       returnedAt: returnIso,
       actualReturnDate: returnDate,
@@ -97,7 +104,8 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
       lateFee: lateCalculation.lateFee,
       finalTotalPrice: finalTotal,
       returnNotes: returnNotes,
-      handoverBy: currentRole === 'admin' ? 'Admin Kravent Bike' : 'Karyawan Shift',
+      paymentNotes: finalPaymentNote,
+      handoverBy: currentRole === 'admin' ? 'Owner Kravent Bike' : 'Staff Toko',
       paymentMethod: feePaymentMethod, // Pelunasan dengan metode ini
       paymentStatus: 'lunas', // Status pembayaran menjadi LUNAS
     });
@@ -134,6 +142,9 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
     msg += `Biaya Sewa Pokok: *${formatRupiah(booking.totalPrice)}*%0A`;
     msg += `*TOTAL AKHIR: ${formatRupiah(finalTotal)}*%0A`;
     msg += `Metode Pembayaran: *${feePaymentMethod.toUpperCase()}*%0A`;
+    if (paymentNotes.trim()) {
+      msg += `Info Pembayaran: *${paymentNotes.trim()}*%0A`;
+    }
     msg += `Catatan Kondisi: ${returnNotes}%0A`;
     msg += `-----------------------------------%0A`;
     msg += `Terima kasih telah menyewa di Kravent Bike! CS: 0896-4712-3671`;
@@ -442,6 +453,26 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
               <span className="text-[10px] text-slate-500 mt-1 block">
                 Pelanggan membayar {formatRupiah(amountToCollectNow)} via <strong>{feePaymentMethod.toUpperCase()}</strong>.
               </span>
+
+              {/* REVISI POIN 10: NOTE INFORMASI SUDAH BAYAR MENGGUNAKAN APA */}
+              <div className="mt-3">
+                <label className="block text-[11px] font-extrabold text-slate-800 mb-1 flex items-center justify-between">
+                  <span>Catatan Informasi Pembayaran (Note):</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                    Wajib Ada Informasi Pembayaran
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={paymentNotes}
+                  onChange={e => setPaymentNotes(e.target.value)}
+                  placeholder="Contoh: Lunas QRIS Kasir Budi / Transfer BCA an Rian / Cash Pas"
+                  className="w-full p-2.5 text-xs border border-emerald-300 rounded-xl bg-emerald-50/30 focus:bg-white focus:outline-emerald-500 font-semibold"
+                />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Informasi ini akan dicatat di database dan nota pengembalian.
+                </span>
+              </div>
             </div>
 
             <div>
@@ -451,7 +482,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
               <textarea
                 value={returnNotes}
                 onChange={e => setReturnNotes(e.target.value)}
-                rows={2}
+                rows={4}
                 placeholder="Catat kondisi sepeda, kelengkapan helm/gembok, lecet jika ada..."
                 className="w-full p-2.5 text-xs border border-slate-300 rounded-xl focus:outline-emerald-500 font-medium"
               />

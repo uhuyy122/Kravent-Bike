@@ -180,7 +180,7 @@ export const FleetManager: React.FC = () => {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Kelola inventaris sepeda rental, atur tarif sewa per jam/hari, dan pantau status servis (mentenest).
+            Kelola inventaris sepeda rental, atur tarif sewa per jam/hari, dan pantau status servis (maintenance).
           </p>
         </div>
 
@@ -218,12 +218,9 @@ export const FleetManager: React.FC = () => {
             onChange={e => setFilterCategory(e.target.value)}
             className="text-xs font-semibold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
           >
-            <option value="all">Semua Kategori</option>
-            <option value="road">Road Bike</option>
-            <option value="mtb">MTB</option>
-            <option value="folding">Sepeda Lipat</option>
-            <option value="ebike">E-Bike</option>
-            <option value="city">City Cruiser</option>
+            <option value="all">Semua Kategori (25 Unit)</option>
+            <option value="commuter">Commuter Bike (19 Unit)</option>
+            <option value="mtb">MTB (6 Unit)</option>
           </select>
 
           <select
@@ -234,7 +231,7 @@ export const FleetManager: React.FC = () => {
             <option value="all">Semua Status</option>
             <option value="tersedia">Tersedia</option>
             <option value="disewa">Sedang Disewa</option>
-            <option value="maintenance">Mentenest</option>
+            <option value="maintenance">Maintenance</option>
           </select>
         </div>
       </div>
@@ -329,9 +326,9 @@ export const FleetManager: React.FC = () => {
                             ? 'bg-rose-600 text-white'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
-                        title="Kirim ke Bengkel/Mentenest"
+                        title="Kirim ke Bengkel / Maintenance"
                       >
-                        Mentenest
+                        Maintenance
                       </button>
                     </div>
                   ) : (
