@@ -32,8 +32,10 @@ import { getDateRateInfo } from '../utils/pricingUtils';
 import {
   getTodayDateStr,
   checkBikeBookingConflict,
-  VALID_OPERATING_START_HOURS,
-  isPastHourToday
+  getSessionForTime,
+  getOperatingHoursForSession,
+  isPastHourToday,
+  BookingTimeSession
 } from '../utils/scheduleUtils';
 import { OFFICIAL_ADDONS } from '../data/addons';
 
@@ -79,6 +81,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const isCustomer = currentRole === 'customer';
   const todayStr = getTodayDateStr();
 
+  const getDefaultStartTime = (preferredTime?: string) => {
+    if (preferredTime) {
+      const [hour] = preferredTime.split(':').map(Number);
+      const clampedHour = Math.min(Math.max(hour, 6), 21);
+      return `${String(clampedHour).padStart(2, '0')}:00`;
+    }
+    const curH = new Date().getHours();
+    const nextH = Math.min(Math.max(curH + 1, 6), 21);
+    return `${String(nextH).padStart(2, '0')}:00`;
+  };
+
   // ALUR PROSES BISNIS RESMI OWNER:
   // LANGKAH 1: INPUT DULU DATA DIRI & FASILITAS PENITIPAN
   // LANGKAH 2: PILIH JAM (ORDER 06:00 - 21:00, TUTUP MAKSIMAL 23:00)
@@ -92,15 +105,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Catatan penitipan default KOSONG sesuai instruksi owner
   const [notes, setNotes] = useState('');
 
-  // LANGKAH 2: WAKTU & JADWAL SEWA (2 SESI: PAGI 06:00-12:00 & SIANG 13:00-21:00)
+  // LANGKAH 2: WAKTU & JADWAL SEWA
   const [startDate, setStartDate] = useState(() => {
     return initialDate && initialDate >= todayStr ? initialDate : todayStr;
   });
 
-  const [bookingSession, setBookingSession] = useState<'pagi' | 'siang'>('pagi');
-  const [startTime, setStartTime] = useState<string>('06:00');
-  const [durationType, setDurationType] = useState<'sesi' | 'jam' | 'hari'>('sesi');
-  const durationValue = bookingSession === 'pagi' ? 6 : 8;
+  const [selectedTimeSession, setSelectedTimeSession] = useState<BookingTimeSession>(() => {
+    const fallbackStartTime = getDefaultStartTime(initialStartTime);
+    return getSessionForTime(fallbackStartTime);
+  });
+
+  const [startTime, setStartTime] = useState(() => getDefaultStartTime(initialStartTime));
+
+  const [durationType, setDurationType] = useState<'jam' | 'hari'>(initialDurationType || 'jam');
+  const [durationValue, setDurationValue] = useState(initialDurationValue || 2);
 
   // LANGKAH 3: PILIH SEPEDA
   const [selectedBikeIds, setSelectedBikeIds] = useState<string[]>(() => {
@@ -155,38 +173,68 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return bikes.filter(b => selectedBikeIds.includes(b.id));
   }, [bikes, selectedBikeIds]);
 
-  // Jam Selesai Berdasarkan Sesi (Pagi: 12:00 WIB, Siang: 21:00 WIB)
-  const calculatedEndTime = bookingSession === 'pagi' ? '12:00' : '21:00';
-  const calculatedEndDate = startDate;
+  const sessionHours = getOperatingHoursForSession(selectedTimeSession);
 
-  // Evaluasi ketersediaan sepeda real-time pada sesi yang dipilih
+  // Hitung jam selesai otomatis (Maksimal tutup 23:00)
+  const calculateEndTime = () => {
+    if (durationType === 'jam') {
+      const [hour, minute] = startTime.split(':').map(Number);
+      const endHour = (hour + durationValue) % 24;
+      const formattedHour = endHour.toString().padStart(2, '0');
+      return `${formattedHour}:${minute.toString().padStart(2, '0')}`;
+    } else {
+      return startTime;
+    }
+  };
+
+  const calculateEndDate = () => {
+    if (durationType === 'jam') {
+      const [hour] = startTime.split(':').map(Number);
+      if (hour + durationValue >= 24) {
+        const d = new Date(startDate);
+        const daysToAdd = Math.floor((hour + durationValue) / 24);
+        d.setDate(d.getDate() + daysToAdd);
+        return d.toISOString().split('T')[0];
+      }
+      return startDate;
+    } else {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + durationValue);
+      return d.toISOString().split('T')[0];
+    }
+  };
+
+  const calculatedEndTime = calculateEndTime();
+  const calculatedEndDate = calculateEndDate();
+
+  // Auto-switch startTime ke jam aktif pertama jika jam terpilih sudah lewat untuk hari ini
+  useEffect(() => {
+    const sessionHours = getOperatingHoursForSession(selectedTimeSession);
+    const currentSessionValid = sessionHours.includes(startTime);
+
+    if (!currentSessionValid) {
+      const fallbackHour = sessionHours.find(t => !isPastHourToday(startDate, t)) || sessionHours[0];
+      setStartTime(fallbackHour);
+      return;
+    }
+
+    if (startDate === todayStr && isPastHourToday(startDate, startTime)) {
+      const firstValidHour = sessionHours.find(t => !isPastHourToday(startDate, t));
+      if (firstValidHour) {
+        setStartTime(firstValidHour);
+      }
+    }
+  }, [startDate, startTime, selectedTimeSession, todayStr]);
+
+  // Evaluasi ketersediaan sepeda real-time pada rentang jam yang dipilih
   const bikeAvailabilityMap = useMemo(() => {
     const map = new Map<string, { isAvailable: boolean; message?: string }>();
-    const sessionStart = bookingSession === 'pagi' ? '06:00' : '13:00';
-    const sessionEnd = bookingSession === 'pagi' ? '12:00' : '21:00';
-
     bikes.forEach(b => {
-      // Sepeda yang sudah berstatus 'disewa' atau sedang dalam booking yang sudah di-ACC otomatis disable
-      if (b.status === 'disewa') {
-        map.set(b.id, {
-          isAvailable: false,
-          message: 'Unit sepeda sedang disewa / sudah di-ACC penyewa lain.',
-        });
-        return;
-      }
-      if (b.status === 'maintenance') {
-        map.set(b.id, {
-          isAvailable: false,
-          message: 'Unit sepeda sedang perawatan / servis.',
-        });
-        return;
-      }
-
       const conflict = checkBikeBookingConflict(
         b.id,
         startDate,
-        sessionStart,
-        sessionEnd,
+        startTime,
+        calculatedEndTime,
         bookings,
         b
       );
@@ -196,7 +244,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       });
     });
     return map;
-  }, [bikes, startDate, bookingSession, bookings]);
+  }, [bikes, startDate, startTime, calculatedEndTime, bookings]);
 
   // Cek bentrok khusus untuk unit sepeda yang telah dicentang
   const selectedBikeConflicts = useMemo(() => {
@@ -218,21 +266,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const pricingPerBike = useMemo(() => {
     return selectedBikes.map(b => {
-      // Tarif Sesi: Pagi (6 jam) paket hemat, Siang (8 jam)
-      const sessionHours = bookingSession === 'pagi' ? 5 : 6;
-      const unitRentalCost = rateInfo.ratePerHour * sessionHours;
+      const ratePerHour = rateInfo.ratePerHour;
+      const unitRentalCost =
+        durationType === 'jam'
+          ? ratePerHour * durationValue
+          : b.pricePerDay * durationValue;
       return {
         bike: b,
         unitRentalCost,
         depositAmount: b.depositRequired || 0,
       };
     });
-  }, [selectedBikes, rateInfo, bookingSession]);
+  }, [selectedBikes, rateInfo, durationType, durationValue]);
 
   const grandTotalCost = pricingPerBike.reduce((sum, item) => sum + item.unitRentalCost, 0);
   const finalTotalWithAddons = grandTotalCost + grandTotalAddonCost;
 
-  // Filter sepeda: Kategori HANYA ADA 2 (MTB & Commuter Bike)
+  // Filter sepeda
   const filteredBikes = useMemo(() => {
     return bikes.filter(b => {
       const matchesSearch =
@@ -240,9 +290,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         b.brand.toLowerCase().includes(bikeSearchQuery.toLowerCase()) ||
         b.licenseNumber.toLowerCase().includes(bikeSearchQuery.toLowerCase());
       const matchesCategory =
-        bikeCategoryFilter === 'all' ||
-        (bikeCategoryFilter === 'mtb' && b.category === 'mtb') ||
-        (bikeCategoryFilter === 'commuter' && b.category !== 'mtb');
+        bikeCategoryFilter === 'all' || b.category === bikeCategoryFilter;
       return matchesSearch && matchesCategory;
     });
   }, [bikes, bikeSearchQuery, bikeCategoryFilter]);
@@ -383,28 +431,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           startDate,
-          startTime: bookingSession === 'pagi' ? '06:00' : '13:00',
+          startTime,
           endDate: calculatedEndDate,
           endTime: calculatedEndTime,
-          durationType: 'sesi',
-          durationValue: bookingSession === 'pagi' ? 6 : 8,
-          bookingSession,
+          durationType,
+          durationValue,
           totalPrice: item.unitRentalCost + addonShare,
           depositAmount: item.depositAmount,
-          status: 'booking', // Status langsung Booking (sudah di-ACC admin)
+          status: 'aktif',
           paymentMethod,
           paymentStatus: isPayLater ? 'belum_lunas' : 'lunas',
           notes: notes.trim()
             ? `${notes.trim()} (Rombongan ${i + 1}/${pricingPerBike.length} - ${generatedGroupCode})`
             : `Rombongan ${i + 1}/${pricingPerBike.length} - ${generatedGroupCode}`,
-          handoverBy: currentRole === 'admin' ? 'Owner Kravent' : 'Staff Toko',
+          handoverBy: currentRole === 'admin' ? 'Admin Pemilik' : 'Staff Toko Kasir',
           groupBookingCode: generatedGroupCode,
           groupItemIndex: i + 1,
           groupItemTotal: pricingPerBike.length,
           addons: i === 0 ? selectedAddonList : [],
           addonTotalCost: addonShare,
           approvedAt: new Date().toISOString(),
-          approvedBy: currentRole === 'admin' ? 'Owner Kravent' : 'Staff Toko',
+          approvedBy: currentRole === 'admin' ? 'Admin Pemilik' : 'Staff Toko Kasir',
         });
         createdList.push(newBooking);
       }
@@ -458,12 +505,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim() || '-',
           startDate,
-          startTime: bookingSession === 'pagi' ? '06:00' : '13:00',
+          startTime,
           endDate: calculatedEndDate,
           endTime: calculatedEndTime,
-          durationType: 'sesi',
-          durationValue: bookingSession === 'pagi' ? 6 : 8,
-          bookingSession,
+          durationType,
+          durationValue,
           totalPrice: item.unitRentalCost + addonShare,
           depositAmount: item.depositAmount,
           status: 'pending', // Menunggu ACC Admin
@@ -495,7 +541,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         : '  • Tidak ada perlengkapan tambahan';
 
       const bookingCodesList = createdList.map(b => b.bookingCode).join(', ');
-      const sessionLabel = bookingSession === 'pagi' ? 'Sesi Pagi (06:00 - 12:00 WIB)' : 'Sesi Siang (13:00 - 21:00 WIB)';
 
       const textLines = [
         `Halo Admin Kravent Bike! Ada pesanan sewa baru dari website:`,
@@ -503,8 +548,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         `* Kode Rombongan: *${generatedGroupCode}*`,
         `* Atas Nama: *${customerName}*`,
         customerPhone ? `* No WhatsApp: ${customerPhone}` : '',
-        `* Tanggal Sewa: ${formatDateIndo(startDate)}`,
-        `* Pilihan Sesi: *${sessionLabel}*`,
+        `* Jadwal Sewa: ${formatDateIndo(startDate)}`,
+        `* Jam Sewa: ${startTime} - ${calculatedEndTime} WIB (${durationValue} ${durationType})`,
         `* Unit Sepeda (${selectedBikes.length} Unit):`,
         bikeListText,
         `* Tambahan Lainnya (Addons):`,
@@ -936,179 +981,198 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 />
               </div>
 
-              {/* REVISI POIN 3 & 5: DUA KOLOM SESI BOOKING (PAGI 06:00-12:00 & SIANG 13:00-21:00) TANPA INPUT DURASI */}
-              <div className="space-y-3 pt-1">
+              {/* Tipe Sewa: Jam vs Hari */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs font-bold text-slate-700">Pilihan Tipe Sewa:</span>
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDurationType('jam');
+                      setDurationValue(2);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      durationType === 'jam'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Sewa per Jam
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDurationType('hari');
+                      setDurationValue(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      durationType === 'hari'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Sewa Seharian
+                  </button>
+                </div>
+              </div>
+
+              {/* Pagi vs Sore */}
+              <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <span className="font-bold text-slate-800 flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-emerald-600" />
-                    Pilih Sesi Jam Booking (2 Kolom Pilihan):
+                    Pilih Sesi Jam Sewa:
                   </span>
-                  <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                    Bebas Durasi • Jam Fleksibel Sesuai Sesi
+                  <span className="font-extrabold text-emerald-700 font-mono">
+                    Mulai: {startTime} WIB
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Kolom 1: Sesi Pagi */}
-                  <div
-                    onClick={() => {
-                      setBookingSession('pagi');
-                      setStartTime('06:00');
-                    }}
-                    className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 text-left ${
-                      bookingSession === 'pagi'
-                        ? 'border-amber-500 bg-amber-50/70 shadow-md ring-2 ring-amber-400/20'
-                        : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/20'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-xl shadow-2xs font-bold">
-                          🌅
-                        </div>
-                        <div>
-                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 uppercase">
-                            Kolom 1: Pagi
-                          </span>
-                          <h4 className="text-sm font-extrabold text-slate-900 mt-1">Sesi Pagi</h4>
-                        </div>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${
-                        bookingSession === 'pagi' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300 bg-white'
-                      }`}>
-                        {bookingSession === 'pagi' && <Check className="w-3 h-3 stroke-[3]" />}
-                      </div>
-                    </div>
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs gap-1">
+                  {(['pagi', 'sore'] as BookingTimeSession[]).map(session => {
+                    const isActive = selectedTimeSession === session;
+                    const label = session === 'pagi' ? 'Pagi (06:00 - 12:00)' : 'Sore (13:00 - 21:00)';
 
-                    <div className="space-y-1">
-                      <div className="text-xl font-black text-slate-900 tracking-tight flex items-baseline gap-1 font-mono">
-                        <span>06:00 - 12:00</span>
-                        <span className="text-xs font-semibold text-slate-500">WIB</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        Pilihan santai gowes sejuk Salatiga, rute persawahan, car-free day &amp; sarapan pagi.
-                      </p>
-                    </div>
-
-                    <div className="pt-2.5 border-t border-amber-200/60 flex items-center justify-between text-[11px] text-amber-900 font-bold">
-                      <span>⏰ Rentang: Jam 6 - 12</span>
-                      <span className="text-[10px] bg-white px-2 py-0.5 rounded border border-amber-300">
-                        Maksimal kembali 12:00 WIB
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Kolom 2: Sesi Siang */}
-                  <div
-                    onClick={() => {
-                      setBookingSession('siang');
-                      setStartTime('13:00');
-                    }}
-                    className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 text-left ${
-                      bookingSession === 'siang'
-                        ? 'border-sky-500 bg-sky-50/70 shadow-md ring-2 ring-sky-400/20'
-                        : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/20'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-900 flex items-center justify-center text-xl shadow-2xs font-bold">
-                          ☀️
-                        </div>
-                        <div>
-                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-200 text-sky-900 uppercase">
-                            Kolom 2: Siang
-                          </span>
-                          <h4 className="text-sm font-extrabold text-slate-900 mt-1">Sesi Siang</h4>
-                        </div>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${
-                        bookingSession === 'siang' ? 'border-sky-500 bg-sky-500 text-white' : 'border-slate-300 bg-white'
-                      }`}>
-                        {bookingSession === 'siang' && <Check className="w-3 h-3 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="text-xl font-black text-slate-900 tracking-tight flex items-baseline gap-1 font-mono">
-                        <span>13:00 - 21:00</span>
-                        <span className="text-xs font-semibold text-slate-500">WIB</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        Pilihan santai sore sunset golden hour, keliling cafe &amp; rute malam kota Salatiga.
-                      </p>
-                    </div>
-
-                    <div className="pt-2.5 border-t border-sky-200/60 flex items-center justify-between text-[11px] text-sky-900 font-bold">
-                      <span>⏰ Rentang: Jam 13 - 21</span>
-                      <span className="text-[10px] bg-white px-2 py-0.5 rounded border border-sky-300">
-                        Maksimal kembali 21:00 WIB
-                      </span>
-                    </div>
-                  </div>
+                    return (
+                      <button
+                        key={session}
+                        type="button"
+                        onClick={() => {
+                          const nextSession = session;
+                          const nextHours = getOperatingHoursForSession(nextSession);
+                          const nextValidHour = nextHours.find(t => !isPastHourToday(startDate, t)) || nextHours[0];
+                          setSelectedTimeSession(nextSession);
+                          setStartTime(nextValidHour);
+                        }}
+                        className={`flex-1 px-3 py-2 rounded-lg font-bold transition-all ${
+                          isActive
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {/* PILIHAN JAM MULAI PENGAMBILAN SEPEDA (SERTAKAN JAM-JAMNYA TANPA MEMILIH DURASI) */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none text-xs">
+                  {sessionHours.map(t => {
+                    const isPast = isPastHourToday(startDate, t);
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        disabled={isPast}
+                        onClick={() => {
+                          setSelectedTimeSession(getSessionForTime(t));
+                          setStartTime(t);
+                        }}
+                        title={isPast ? 'Jam ini sudah lewat untuk hari ini' : `Pilih jam mulai ${t} WIB`}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold font-mono transition-all shrink-0 ${
+                          isPast
+                            ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed line-through opacity-50'
+                            : startTime === t
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-105 cursor-pointer'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 cursor-pointer'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+                {startDate === todayStr && (
+                  <p className="text-[10px] text-slate-500 italic">
+                    * Jam yang telah lewat pada hari ini otomatis dinonaktifkan (coret).
+                  </p>
+                )}
+              </div>
+
+              {/* Pilihan Durasi */}
+              {durationType === 'jam' ? (
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <label className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-emerald-600" />
-                      Pilih Jam Mulai Pengambilan Sepeda:
-                    </label>
-                    <span className="text-[11px] font-extrabold text-emerald-700 font-mono">
-                      Ambil Jam: {startTime} WIB • Batas Kembali: {calculatedEndTime} WIB
+                    <span className="font-bold text-slate-800">Durasi Sewa:</span>
+                    <span className="font-extrabold text-emerald-700">
+                      Selesai: {calculatedEndTime} WIB ({durationValue} Jam)
                     </span>
                   </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    {[1, 2, 3, 4, 5, 6].map(hours => {
+                      const [sh] = startTime.split(':').map(Number);
+                      const isPastClosing = sh + hours > 23;
 
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                    {(bookingSession === 'pagi'
-                      ? ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00']
-                      : ['13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']
-                    ).map(t => {
-                      const isPast = isPastHourToday(startDate, t);
-                      const isSelected = startTime === t;
                       return (
                         <button
-                          key={t}
+                          key={hours}
                           type="button"
-                          disabled={isPast}
-                          onClick={() => setStartTime(t)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold font-mono transition-all shrink-0 cursor-pointer border ${
-                            isPast
-                              ? 'bg-slate-100 text-slate-300 border-slate-200 line-through cursor-not-allowed opacity-50'
-                              : isSelected
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-105'
-                              : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                          disabled={isPastClosing}
+                          onClick={() => setDurationValue(hours)}
+                          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                            durationValue === hours
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                              : isPastClosing
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          {t} WIB
+                          {hours} Jam
                         </button>
                       );
                     })}
                   </div>
-
-                  <p className="text-[11px] text-slate-500">
-                    💡 <em>Anda dapat menentukan jam mulai pengambilan sepeda di atas tanpa perlu memilih durasi sewa. Batas pengembalian unit berlaku penuh hingga batas akhir sesi (maksimal pukul {calculatedEndTime} WIB).</em>
-                  </p>
+                  {(() => {
+                    const [sh] = startTime.split(':').map(Number);
+                    if (sh + durationValue > 23) {
+                      return (
+                        <p className="text-[11px] text-rose-600 font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          <span>Melebihi jam tutup maksimal toko 23:00 WIB. Silakan kurangi durasi sewa.</span>
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-slate-800 block">Berapa Hari Sewa:</span>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 5, 7].map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDurationValue(d)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          durationValue === d
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {d} Hari
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Schedule Summary Box */}
               <div className="p-3.5 rounded-2xl bg-slate-900 text-white text-xs flex items-center justify-between">
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
-                    Jadwal Sesi &amp; Jam Terpilih:
+                    Jadwal Gowes Terpilih:
                   </span>
                   <p className="font-extrabold text-sm text-emerald-400 mt-0.5">
-                    {formatDateIndo(startDate)} • {bookingSession === 'pagi' ? 'Sesi Pagi' : 'Sesi Siang'} ({startTime} - {calculatedEndTime} WIB)
+                    {formatDateIndo(startDate)} • {startTime} - {calculatedEndTime} WIB
                   </p>
                   <p className="text-slate-300 text-[11px]">
-                    Sewa per sesi tanpa hitung durasi jam manual.
+                    Durasi: {durationValue} {durationType}
                   </p>
                 </div>
                 <div className="text-right">
                   <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-[11px] border border-emerald-500/30">
-                    Batas Kembali: {calculatedEndTime} WIB
+                    Order 06:00 - 21:00 • Tutup 23:00
                   </span>
                 </div>
               </div>
@@ -1172,17 +1236,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none text-xs">
                   {[
-                    { id: 'all', label: 'Semua Sepeda (25 Unit)' },
-                    { id: 'commuter', label: 'Commuter Bike (19 Unit)' },
-                    { id: 'mtb', label: 'MTB (6 Unit)' },
+                    { id: 'all', label: 'Semua' },
+                    { id: 'road', label: 'Road' },
+                    { id: 'mtb', label: 'MTB' },
+                    { id: 'folding', label: 'Lipat' },
+                    { id: 'ebike', label: 'E-Bike' },
                   ].map(cat => (
                     <button
                       key={cat.id}
                       type="button"
                       onClick={() => setBikeCategoryFilter(cat.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                         bikeCategoryFilter === cat.id
-                          ? 'bg-slate-900 text-white shadow-xs'
+                          ? 'bg-slate-900 text-white font-bold'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >

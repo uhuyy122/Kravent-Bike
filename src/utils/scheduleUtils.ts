@@ -1,12 +1,14 @@
 import { Booking, Bike } from '../types';
 
+export type BookingTimeSession = 'pagi' | 'sore';
+
 export interface TimeSlot {
   id: string;
   startTime: string; // "HH:mm"
   endTime: string;   // "HH:mm"
   label: string;
   durationHours: number;
-  session: 'pagi' | 'siang' | 'sore_malam';
+  session: BookingTimeSession;
 }
 
 /**
@@ -52,16 +54,24 @@ export const isPastHourToday = (date: string, hourOrTime: number | string): bool
   return false;
 };
 
+export const MORNING_OPERATING_START_HOURS = [
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00'
+];
+
+export const AFTERNOON_OPERATING_START_HOURS = [
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
+];
+
 // Paket Sesi Sewa Sepeda 2 Jam Kravent Bike (Order 06:00 - 21:00 WIB, Tutup Maksimal 23:00 WIB)
 export const CINEMA_2HR_SLOTS: TimeSlot[] = [
   { id: 'slot-2h-1', startTime: '06:00', endTime: '08:00', label: '06:00 - 08:00', durationHours: 2, session: 'pagi' },
   { id: 'slot-2h-2', startTime: '08:00', endTime: '10:00', label: '08:00 - 10:00', durationHours: 2, session: 'pagi' },
   { id: 'slot-2h-3', startTime: '10:00', endTime: '12:00', label: '10:00 - 12:00', durationHours: 2, session: 'pagi' },
-  { id: 'slot-2h-4', startTime: '13:00', endTime: '15:00', label: '13:00 - 15:00', durationHours: 2, session: 'siang' },
-  { id: 'slot-2h-5', startTime: '15:00', endTime: '17:00', label: '15:00 - 17:00', durationHours: 2, session: 'siang' },
-  { id: 'slot-2h-6', startTime: '17:00', endTime: '19:00', label: '17:00 - 19:00', durationHours: 2, session: 'sore_malam' },
-  { id: 'slot-2h-7', startTime: '19:00', endTime: '21:00', label: '19:00 - 21:00', durationHours: 2, session: 'sore_malam' },
-  { id: 'slot-2h-8', startTime: '21:00', endTime: '23:00', label: '21:00 - 23:00', durationHours: 2, session: 'sore_malam' },
+  { id: 'slot-2h-4', startTime: '13:00', endTime: '15:00', label: '13:00 - 15:00', durationHours: 2, session: 'sore' },
+  { id: 'slot-2h-5', startTime: '15:00', endTime: '17:00', label: '15:00 - 17:00', durationHours: 2, session: 'sore' },
+  { id: 'slot-2h-6', startTime: '17:00', endTime: '19:00', label: '17:00 - 19:00', durationHours: 2, session: 'sore' },
+  { id: 'slot-2h-7', startTime: '19:00', endTime: '21:00', label: '19:00 - 21:00', durationHours: 2, session: 'sore' },
+  { id: 'slot-2h-8', startTime: '21:00', endTime: '23:00', label: '21:00 - 23:00', durationHours: 2, session: 'sore' },
 ];
 
 // Slot Per 1 Jam Fleksibel (Order 06:00 - 21:00 WIB, Tutup Maksimal 23:00 WIB)
@@ -72,23 +82,31 @@ export const CINEMA_1HR_SLOTS: TimeSlot[] = [
   { id: 'slot-1h-09', startTime: '09:00', endTime: '10:00', label: '09:00 - 10:00', durationHours: 1, session: 'pagi' },
   { id: 'slot-1h-10', startTime: '10:00', endTime: '11:00', label: '10:00 - 11:00', durationHours: 1, session: 'pagi' },
   { id: 'slot-1h-11', startTime: '11:00', endTime: '12:00', label: '11:00 - 12:00', durationHours: 1, session: 'pagi' },
-  { id: 'slot-1h-13', startTime: '13:00', endTime: '14:00', label: '13:00 - 14:00', durationHours: 1, session: 'siang' },
-  { id: 'slot-1h-14', startTime: '14:00', endTime: '15:00', label: '14:00 - 15:00', durationHours: 1, session: 'siang' },
-  { id: 'slot-1h-15', startTime: '15:00', endTime: '16:00', label: '15:00 - 16:00', durationHours: 1, session: 'siang' },
-  { id: 'slot-1h-16', startTime: '16:00', endTime: '17:00', label: '16:00 - 17:00', durationHours: 1, session: 'sore_malam' },
-  { id: 'slot-1h-17', startTime: '17:00', endTime: '18:00', label: '17:00 - 18:00', durationHours: 1, session: 'sore_malam' },
-  { id: 'slot-1h-18', startTime: '18:00', endTime: '19:00', label: '18:00 - 19:00', durationHours: 1, session: 'sore_malam' },
-  { id: 'slot-1h-19', startTime: '19:00', endTime: '20:00', label: '19:00 - 20:00', durationHours: 1, session: 'sore_malam' },
-  { id: 'slot-1h-20', startTime: '20:00', endTime: '21:00', label: '20:00 - 21:00', durationHours: 1, session: 'sore_malam' },
-  { id: 'slot-1h-21', startTime: '21:00', endTime: '22:00', label: '21:00 - 22:00', durationHours: 1, session: 'sore_malam' },
-  { id: 'slot-1h-22', startTime: '22:00', endTime: '23:00', label: '22:00 - 23:00', durationHours: 1, session: 'sore_malam' },
+  { id: 'slot-1h-13', startTime: '13:00', endTime: '14:00', label: '13:00 - 14:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-14', startTime: '14:00', endTime: '15:00', label: '14:00 - 15:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-15', startTime: '15:00', endTime: '16:00', label: '15:00 - 16:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-16', startTime: '16:00', endTime: '17:00', label: '16:00 - 17:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-17', startTime: '17:00', endTime: '18:00', label: '17:00 - 18:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-18', startTime: '18:00', endTime: '19:00', label: '18:00 - 19:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-19', startTime: '19:00', endTime: '20:00', label: '19:00 - 20:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-20', startTime: '20:00', endTime: '21:00', label: '20:00 - 21:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-21', startTime: '21:00', endTime: '22:00', label: '21:00 - 22:00', durationHours: 1, session: 'sore' },
+  { id: 'slot-1h-22', startTime: '22:00', endTime: '23:00', label: '22:00 - 23:00', durationHours: 1, session: 'sore' },
 ];
 
 export const VALID_OPERATING_START_HOURS = [
-  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00', '20:00', '21:00'
+  ...MORNING_OPERATING_START_HOURS,
+  ...AFTERNOON_OPERATING_START_HOURS,
 ];
+
+export const getSessionForTime = (time: string): BookingTimeSession => {
+  const [hour] = time.split(':').map(Number);
+  return hour >= 13 ? 'sore' : 'pagi';
+};
+
+export const getOperatingHoursForSession = (session: BookingTimeSession): string[] => {
+  return session === 'pagi' ? MORNING_OPERATING_START_HOURS : AFTERNOON_OPERATING_START_HOURS;
+};
 
 export const timeStringToMinutes = (t: string): number => {
   if (!t) return 0;
@@ -204,7 +222,7 @@ export const checkBikeBookingConflict = (
     return {
       hasConflict: true,
       reason: 'maintenance',
-      message: 'Unit sepeda ini sedang dalam perawatan/servis (Mentenest) dan belum bisa disewa.',
+      message: 'Unit sepeda ini sedang dalam perawatan/servis (Maintenance) dan belum bisa disewa.',
     };
   }
 

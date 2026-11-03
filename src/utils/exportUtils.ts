@@ -92,7 +92,7 @@ export const exportBookingsToExcel = (
           <td>100% dari transaksi berjalan</td>
         </tr>
         <tr>
-          <td>Alokasi Pos Mentenest (Servis & Armada)</td>
+          <td>Alokasi Pos Maintenance (Servis & Armada)</td>
           <td style="text-align: right; color: #b45309;">${financialData.maintenanceAllocation}</td>
           <td>${settings.maintenanceBudgetPercentage}% dari Omzet</td>
         </tr>

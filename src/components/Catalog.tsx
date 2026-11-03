@@ -53,14 +53,32 @@ export const Catalog: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCatalogDate, setSelectedCatalogDate] = useState<string>(todayStr);
-  const [selectedCatalogSession, setSelectedCatalogSession] = useState<'pagi' | 'siang'>('pagi');
+  const [selectedCatalogStartTime, setSelectedCatalogStartTime] = useState<string>(() => {
+    const curH = new Date().getHours();
+    const nextH = Math.min(Math.max(curH + 1, 6), 20);
+    return `${String(nextH).padStart(2, '0')}:00`;
+  });
+  const [selectedCatalogDuration, setSelectedCatalogDuration] = useState<number>(2);
   const [showPosterModal, setShowPosterModal] = useState<boolean>(false);
   const [activePosterTab, setActivePosterTab] = useState<'city1' | 'city2' | 'vintage' | 'mtb'>('city1');
 
-  // Waktu sesi: Pagi (06:00 - 12:00 WIB) & Siang (13:00 - 21:00 WIB)
-  const [selectedCatalogStartTime, setSelectedCatalogStartTime] = useState<string>('06:00');
-  const selectedCatalogEndTime = selectedCatalogSession === 'pagi' ? '12:00' : '21:00';
-  const selectedCatalogDuration = selectedCatalogSession === 'pagi' ? 6 : 8;
+  // Auto-advance jam jika tanggal hari ini dan jam awal terpilih sudah lewat
+  useEffect(() => {
+    if (selectedCatalogDate === todayStr && isPastHourToday(selectedCatalogDate, selectedCatalogStartTime)) {
+      const nextAvailable = VALID_OPERATING_START_HOURS.find(
+        h => !isPastHourToday(selectedCatalogDate, h)
+      );
+      if (nextAvailable) {
+        setSelectedCatalogStartTime(nextAvailable);
+      }
+    }
+  }, [selectedCatalogDate, selectedCatalogStartTime, todayStr]);
+
+  const selectedCatalogEndTime = useMemo(() => {
+    const [h, m] = selectedCatalogStartTime.split(':').map(Number);
+    const endH = (h + selectedCatalogDuration) % 24;
+    return `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }, [selectedCatalogStartTime, selectedCatalogDuration]);
 
   // Quick upcoming dates (mulai hari ini dan ke depan, tidak ada kemarin)
   const quickDates = getUpcomingDates(todayStr, 7);
@@ -157,7 +175,7 @@ export const Catalog: React.FC = () => {
     }
   };
 
-  // Filtered bikes (Kategori HANYA ADA 2: Commuter Bike & MTB)
+  // Filtered bikes
   const filteredBikes = bikes.filter(bike => {
     const matchesSearch =
       bike.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -166,9 +184,7 @@ export const Catalog: React.FC = () => {
       bike.licenseNumber.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory =
-      selectedCategory === 'all' ||
-      (selectedCategory === 'mtb' && bike.category === 'mtb') ||
-      (selectedCategory === 'commuter' && bike.category !== 'mtb');
+      selectedCategory === 'all' || bike.category === selectedCategory;
 
     const matchesStatus =
       selectedStatus === 'all' ||
@@ -179,9 +195,11 @@ export const Catalog: React.FC = () => {
   });
 
   const categories: { id: string; label: string }[] = [
-    { id: 'all', label: 'Semua Sepeda (25 Unit)' },
-    { id: 'commuter', label: 'Commuter Bike (19 Unit)' },
-    { id: 'mtb', label: 'MTB (6 Unit)' },
+    { id: 'all', label: 'Semua Sepeda (25 Unit Asli)' },
+    { id: 'city', label: 'Commuter Bike (12 Model)' },
+    { id: 'road', label: 'Vintage & Federal (6 Model)' },
+    { id: 'mtb', label: 'MTB (6 Model)' },
+    { id: 'folding', label: 'Mini Cruiser (Leoni)' },
   ];
 
   return (
@@ -341,137 +359,61 @@ export const Catalog: React.FC = () => {
           })}
         </div>
 
-        {/* ⏰ DUA KOLOM PILIHAN SESI SEWA (Pagi 06:00 - 12:00 & Siang 13:00 - 21:00) */}
-        <div className="space-y-2 pt-1">
+        {/* Start Hour Quick Pills (06:00 - 20:00 WIB) */}
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-emerald-600" />
-              Pilih Sesi Sewa Sepeda:
+              Pilih Jam Mulai (06:00 – 21:00 WIB):
             </span>
             <span className="text-[11px] font-extrabold text-emerald-700 font-mono">
-              {selectedCatalogSession === 'pagi' ? '🌅 Sesi Pagi: 06:00 – 12:00 WIB' : '☀️ Sesi Siang: 13:00 – 21:00 WIB'}
+              {selectedCatalogStartTime} s/d {selectedCatalogEndTime} WIB ({selectedCatalogDuration} Jam)
             </span>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Kolom 1: Sesi Pagi */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCatalogSession('pagi');
-                setSelectedCatalogStartTime('06:00');
-              }}
-              className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between ${
-                selectedCatalogSession === 'pagi'
-                  ? 'border-emerald-600 bg-emerald-50/80 shadow-xs'
-                  : 'border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300'
-              }`}
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-slate-900">🌅 Sesi Pagi</span>
-                  {selectedCatalogSession === 'pagi' && (
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
-                      Terpilih
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs font-mono font-bold text-slate-700 mt-0.5">
-                  Jam 06:00 – 12:00 WIB
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Paket pagi sejuk untuk gowes keliling kota Salatiga.
-                </p>
-              </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center font-bold text-xs ${
-                selectedCatalogSession === 'pagi'
-                  ? 'border-emerald-600 bg-emerald-600 text-white'
-                  : 'border-slate-300 text-transparent'
-              }`}>
-                ✓
-              </div>
-            </button>
-
-            {/* Kolom 2: Sesi Siang */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCatalogSession('siang');
-                setSelectedCatalogStartTime('13:00');
-              }}
-              className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between ${
-                selectedCatalogSession === 'siang'
-                  ? 'border-emerald-600 bg-emerald-50/80 shadow-xs'
-                  : 'border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300'
-              }`}
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-slate-900">☀️ Sesi Siang</span>
-                  {selectedCatalogSession === 'siang' && (
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
-                      Terpilih
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs font-mono font-bold text-slate-700 mt-0.5">
-                  Jam 13:00 – 21:00 WIB
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Paket santai siang hingga malam hari (order max 21:00 WIB).
-                </p>
-              </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center font-bold text-xs ${
-                selectedCatalogSession === 'siang'
-                  ? 'border-emerald-600 bg-emerald-600 text-white'
-                  : 'border-slate-300 text-transparent'
-              }`}>
-                ✓
-              </div>
-            </button>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+            {VALID_OPERATING_START_HOURS.map(t => {
+              const isPast = isPastHourToday(selectedCatalogDate, t);
+              const isSelected = selectedCatalogStartTime === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={isPast}
+                  onClick={() => setSelectedCatalogStartTime(t)}
+                  title={isPast ? `Jam ${t} sudah terlewat untuk hari ini` : `Pilih jam ${t}`}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold font-mono transition-all shrink-0 ${
+                    isPast
+                      ? 'bg-slate-100 text-slate-300 border-slate-200 line-through cursor-not-allowed opacity-50'
+                      : isSelected
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-105 cursor-pointer'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 cursor-pointer'
+                  }`}
+                >
+                  {t}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* PILIHAN JAM MULAI PENGAMBILAN SEPEDA (TANPA MEMILIH DURASI) */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                Pilih Jam Mulai Pengambilan Sepeda:
-              </span>
-              <span className="text-[11px] font-extrabold text-emerald-700 font-mono">
-                Ambil Jam: {selectedCatalogStartTime} WIB • Batas Kembali: {selectedCatalogEndTime} WIB
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-              {(selectedCatalogSession === 'pagi'
-                ? ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00']
-                : ['13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']
-              ).map(t => {
-                const isPast = isPastHourToday(selectedCatalogDate, t);
-                const isSelected = selectedCatalogStartTime === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    disabled={isPast}
-                    onClick={() => setSelectedCatalogStartTime(t)}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold font-mono transition-all shrink-0 cursor-pointer ${
-                      isPast
-                        ? 'bg-slate-100 text-slate-300 border-slate-200 line-through cursor-not-allowed opacity-50'
-                        : isSelected
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-105'
-                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    {t} WIB
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[11px] text-slate-500">
-              💡 <em>Tentukan jam pengambilan sepeda di atas tanpa perlu memilih durasi. Unit dapat digunakan sepuasnya hingga batas akhir sesi (maksimal {selectedCatalogEndTime} WIB).</em>
-            </p>
+        {/* Duration Pills */}
+        <div className="flex items-center justify-between gap-3 text-xs pt-1 border-t border-slate-100">
+          <span className="text-[11px] font-bold text-slate-700">Durasi Gowes:</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+            {[1, 2, 3, 4, 5].map(hrs => (
+              <button
+                key={hrs}
+                type="button"
+                onClick={() => setSelectedCatalogDuration(hrs)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                  selectedCatalogDuration === hrs
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {hrs} Jam
+              </button>
+            ))}
           </div>
         </div>
 
@@ -481,15 +423,15 @@ export const Catalog: React.FC = () => {
             <span className="text-xl">🚲</span>
             <div>
               <span className="font-extrabold text-xs text-emerald-950">
-                Jadwal: {formatDateIndo(selectedCatalogDate)} • {selectedCatalogSession === 'pagi' ? 'Sesi Pagi (06:00 - 12:00)' : 'Sesi Siang (13:00 - 21:00)'}
+                Jadwal Terpilih: {formatDateIndo(selectedCatalogDate)} ({selectedCatalogStartTime} - {selectedCatalogEndTime} WIB)
               </span>
               <span className="text-[11px] text-slate-600 block mt-0.5">
-                Katalog di bawah otomatis menyaring unit sepeda yang <strong>Ready</strong> pada sesi ini.
+                Katalog di bawah otomatis menandai unit sepeda yang <strong>Ready</strong> di jam ini.
               </span>
             </div>
           </div>
           <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg shrink-0">
-            Order 06:00 - 21:00 WIB
+            Order 06:00 - 21:00 • Tutup 23:00 WIB
           </span>
         </div>
       </div>
@@ -648,17 +590,16 @@ export const Catalog: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* STATUS JADWAL PADA TANGGAL & SESI DIPILIH (DISABLE JIKA SUDAH DI-ACC / SEDANG DI LUAR) */}
+                    {/* STATUS JADWAL PADA TANGGAL & JAM DIPILIH */}
                     {(() => {
-                      const isAccOrRented =
-                        bike.status === 'disewa' ||
-                        bookings.some(
-                          b =>
-                            b.bikeId === bike.id &&
-                            (b.status === 'booking' || b.status === 'sedang di luar' || b.status === 'aktif') &&
-                            b.startDate === selectedCatalogDate &&
-                            (!b.bookingSession || b.bookingSession === selectedCatalogSession)
-                        );
+                      const conflict = checkBikeBookingConflict(
+                        bike.id,
+                        selectedCatalogDate,
+                        selectedCatalogStartTime,
+                        selectedCatalogEndTime,
+                        bookings,
+                        bike
+                      );
 
                       if (bike.status === 'maintenance') {
                         return (
@@ -668,15 +609,15 @@ export const Catalog: React.FC = () => {
                         );
                       }
 
-                      if (isAccOrRented) {
+                      if (conflict.hasConflict) {
                         return (
                           <div className="mt-2.5 p-2 rounded-xl bg-rose-50 border border-rose-200 flex flex-col gap-0.5 text-[11px]">
                             <span className="text-rose-900 font-extrabold flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                              Sudah Di-ACC / Sedang di Luar
+                              Terpakai di Jam Ini ({selectedCatalogStartTime} - {selectedCatalogEndTime})
                             </span>
                             <span className="text-rose-700 text-[10px]">
-                              Unit sedang dipakai atau telah di-ACC untuk {selectedCatalogSession === 'pagi' ? 'Sesi Pagi (06:00 - 12:00)' : 'Sesi Siang (13:00 - 21:00)'}. Akan aktif kembali setelah unit selesai dikembalikan.
+                              {conflict.message || 'Sudah dibooking pada jam tersebut'}
                             </span>
                           </div>
                         );
@@ -686,10 +627,10 @@ export const Catalog: React.FC = () => {
                         <div className="mt-2.5 p-2 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-between text-[11px]">
                           <span className="text-emerald-800 font-bold flex items-center gap-1">
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            Unit Ready di Sesi Ini
+                            Siap Gowes di Jam Ini
                           </span>
                           <span className="text-emerald-700 font-extrabold text-[10px]">
-                            {selectedCatalogSession === 'pagi' ? 'Pagi (06-12)' : 'Siang (13-21)'}
+                            {selectedCatalogStartTime} - {selectedCatalogEndTime} WIB
                           </span>
                         </div>
                       );
@@ -702,23 +643,24 @@ export const Catalog: React.FC = () => {
                       <div className="flex items-baseline justify-between mb-3">
                         <div>
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-slate-400 font-medium">Tarif Sesi:</span>
+                            <span className="text-[10px] text-slate-400 font-medium">Tarif Sewa:</span>
                             <span className={`text-[9px] font-bold px-1 rounded ${
                               catalogRateInfo.category === 'weekday' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                             }`}>
-                              {selectedCatalogSession === 'pagi' ? 'Pagi (6 Jam)' : 'Siang (8 Jam)'}
+                              {catalogRateInfo.category === 'weekday' ? '8rb /jam' : '10rb /jam'}
                             </span>
                           </div>
                           <span className="text-base font-extrabold text-emerald-700">
-                            {formatRupiah(catalogRateInfo.ratePerHour * (selectedCatalogSession === 'pagi' ? 5 : 6))}
+                            {formatRupiah(catalogRateInfo.ratePerHour)}
                           </span>
-                          <span className="text-[11px] text-slate-400 font-normal"> /sesi</span>
+                          <span className="text-[11px] text-slate-400 font-normal"> /jam</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] text-slate-400 block font-medium">Kode Unit:</span>
-                          <span className="text-xs font-mono font-bold text-slate-700">
-                            {bike.licenseNumber}
+                          <span className="text-[10px] text-slate-400 block font-medium">Tarif Harian:</span>
+                          <span className="text-xs font-bold text-slate-700">
+                            {formatRupiah(bike.pricePerDay)}
                           </span>
+                          <span className="text-[10px] text-slate-400 font-normal"> /hari</span>
                         </div>
                       </div>
                     ) : (
@@ -735,50 +677,71 @@ export const Catalog: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setScheduleBike(bike)}
-                        className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                        title="Lihat ketersediaan jam"
-                      >
-                        <Clock className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Cek Jam</span>
-                      </button>
+                    {currentRole === 'karyawan' ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setDetailBike(bike)}
+                          className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Lihat spesifikasi lengkap unit"
+                        >
+                          <Info className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Detail Unit</span>
+                        </button>
 
-                      {/* UTAMA: SEWA SEPEDA (DISABLE JIKA SUDAH DI-ACC ATAU SEDANG DI LUAR) */}
-                      {(() => {
-                        const isAccOrRented =
-                          bike.status === 'disewa' ||
-                          bookings.some(
-                            b =>
-                              b.bikeId === bike.id &&
-                              (b.status === 'booking' || b.status === 'sedang di luar' || b.status === 'aktif') &&
-                              b.startDate === selectedCatalogDate &&
-                              (!b.bookingSession || b.bookingSession === selectedCatalogSession)
+                        <button
+                          onClick={() => setScheduleBike(bike)}
+                          className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Lihat ketersediaan jam"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Cek Jam</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setScheduleBike(bike)}
+                          className="w-full py-2.5 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Lihat ketersediaan jam"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Cek Jam</span>
+                        </button>
+
+                        {/* UTAMA: SEWA SEPEDA (ALUR 3 LANGKAH MULTI-UNIT) */}
+                        {(() => {
+                          const conflict = checkBikeBookingConflict(
+                            bike.id,
+                            selectedCatalogDate,
+                            selectedCatalogStartTime,
+                            selectedCatalogEndTime,
+                            bookings,
+                            bike
                           );
-                        const isDisabled = bike.status === 'maintenance' || isAccOrRented;
+                          const isDisabled = bike.status === 'maintenance' || conflict.hasConflict;
 
-                        return (
-                          <button
-                            onClick={() => setBookingPrefill({
-                              bike,
-                              date: selectedCatalogDate,
-                              startTime: selectedCatalogStartTime,
-                              duration: selectedCatalogDuration
-                            })}
-                            disabled={isDisabled}
-                            className={`w-full py-2.5 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1 ${
-                              isDisabled
-                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 cursor-pointer'
-                            }`}
-                          >
-                            <span>{isAccOrRented ? 'Sudah Di-ACC' : 'Sewa Unit Ini'}</span>
-                            {!isDisabled && <ChevronRight className="w-4 h-4" />}
-                          </button>
-                        );
-                      })()}
-                    </div>
+                          return (
+                            <button
+                              onClick={() => setBookingPrefill({
+                                bike,
+                                date: selectedCatalogDate,
+                                startTime: selectedCatalogStartTime,
+                                duration: selectedCatalogDuration
+                              })}
+                              disabled={isDisabled}
+                              className={`w-full py-2.5 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                isDisabled
+                                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
+                              }`}
+                            >
+                              <span>{conflict.hasConflict ? 'Terpakai di Jam Ini' : 'Sewa Unit Ini'}</span>
+                              {!isDisabled && <ChevronRight className="w-4 h-4" />}
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1182,7 +1145,7 @@ export const Catalog: React.FC = () => {
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                <span>⛰️ Katalog MTB Series (6 Model)</span>
+                <span>⛰️ Katalog MTB (6 Model)</span>
               </button>
             </div>
 

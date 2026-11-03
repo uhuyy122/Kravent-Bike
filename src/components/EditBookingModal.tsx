@@ -464,9 +464,9 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { id: 'pending', label: 'Menunggu Diambil', color: 'border-sky-300 text-sky-800 bg-sky-50' },
+                { id: 'pending', label: 'Masih Booking', color: 'border-sky-300 text-sky-800 bg-sky-50' },
                 { id: 'aktif', label: 'Sedang di Luar', color: 'border-amber-300 text-amber-800 bg-amber-50' },
-                { id: 'selesai', label: 'Sudah Kembali (Selesai)', color: 'border-emerald-300 text-emerald-800 bg-emerald-50' },
+                { id: 'selesai', label: 'Sudah Kembali', color: 'border-emerald-300 text-emerald-800 bg-emerald-50' },
                 { id: 'dibatalkan', label: 'Dibatalkan', color: 'border-slate-300 text-slate-700 bg-slate-50' },
               ].map(st => (
                 <button

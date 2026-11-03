@@ -368,7 +368,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
               </div>
               <div className="bg-rose-50/70 border border-rose-100 p-3 rounded-xl text-center">
                 <span className="text-xl font-bold text-rose-700 block">{maintenanceBikesCount}</span>
-                <span className="text-[11px] font-medium text-rose-600">Mentenest</span>
+                <span className="text-[11px] font-medium text-rose-600">Maintenance</span>
               </div>
             </div>
           </div>
@@ -405,7 +405,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
               <div className="bg-white/10 rounded-xl p-3 border border-white/10">
-                <span className="text-xs text-slate-300 block mb-1">🔧 Mentenest ({financialSettings.maintenanceBudgetPercentage}%)</span>
+                <span className="text-xs text-slate-300 block mb-1">🔧 Maintenance ({financialSettings.maintenanceBudgetPercentage}%)</span>
                 <span className="text-sm font-bold text-white">
                   {formatRupiah(dailyFinancial.maintenanceAllocation)}
                 </span>

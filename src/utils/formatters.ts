@@ -36,15 +36,18 @@ export const formatDateIndo = (dateStr: string): string => {
 
 export const getCategoryLabel = (category: string): string => {
   switch (category) {
+    case 'road':
+      return 'Vintage / Federal';
     case 'mtb':
       return 'MTB';
-    case 'commuter':
-    case 'city':
-    case 'road':
     case 'folding':
+      return 'Mini Cruiser';
+    case 'ebike':
+      return 'Electric Bike';
+    case 'city':
       return 'Commuter Bike';
     default:
-      return category === 'all' ? 'Semua Sepeda' : category;
+      return category;
   }
 };
 

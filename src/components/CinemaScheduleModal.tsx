@@ -21,8 +21,11 @@ import {
   checkCustomTimeCollision,
   getUpcomingDates,
   getTodayDateStr,
+  getSessionForTime,
+  getOperatingHoursForSession,
   isPastHourToday,
-  isTimeRangeOverlap
+  isTimeRangeOverlap,
+  BookingTimeSession
 } from '../utils/scheduleUtils';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo } from '../utils/pricingUtils';
@@ -69,8 +72,13 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
     return '06:00';
   };
 
+  const [selectedTimeSession, setSelectedTimeSession] = useState<BookingTimeSession>(() => {
+    return getSessionForTime(getInitialStartTime());
+  });
   const [startTime, setStartTime] = useState(getInitialStartTime);
   const [durationHours, setDurationHours] = useState(3);
+
+  const sessionHours = getOperatingHoursForSession(selectedTimeSession);
 
   // Customer info for quick WhatsApp booking
   const [customerName, setCustomerName] = useState('');
@@ -404,25 +412,46 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-[10px] text-slate-500 font-bold shrink-0">
-                  Jam Order (06:00 - 21:00 WIB, Tutup 23:00):
+                  Sesi Jam Order:
                 </span>
                 <span className="text-[10px] text-emerald-700 font-extrabold font-mono">
                   Terpilih: {startTime} WIB
                 </span>
               </div>
+
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl text-[11px] gap-1">
+                {(['pagi', 'sore'] as BookingTimeSession[]).map(session => (
+                  <button
+                    key={session}
+                    type="button"
+                    onClick={() => {
+                      const nextSession = session;
+                      const nextHours = getOperatingHoursForSession(nextSession);
+                      const nextTime = nextHours.find(t => !isPastHourToday(selectedDate, t)) || nextHours[0];
+                      setSelectedTimeSession(nextSession);
+                      setStartTime(nextTime);
+                    }}
+                    className={`flex-1 px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+                      selectedTimeSession === session ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {session === 'pagi' ? 'Pagi (06:00 - 12:00)' : 'Sore (13:00 - 21:00)'}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none text-[11px]">
-                {[
-                  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
-                  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-                  '18:00', '19:00', '20:00', '21:00'
-                ].map(t => {
+                {sessionHours.map(t => {
                   const isPast = isPastHourToday(selectedDate, t);
                   return (
                     <button
                       key={t}
                       type="button"
                       disabled={isPast}
-                      onClick={() => setStartTime(t)}
+                      onClick={() => {
+                        setSelectedTimeSession(getSessionForTime(t));
+                        setStartTime(t);
+                      }}
                       title={isPast ? 'Jam ini sudah lewat untuk hari ini' : `Pilih jam ${t} WIB`}
                       className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold font-mono transition-all shrink-0 ${
                         isPast

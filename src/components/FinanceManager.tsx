@@ -254,7 +254,7 @@ export const FinanceManager: React.FC = () => {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Setting pembagian penghasilan bulanan untuk Mentenest, Konten, Pengeluaran Operasional, serta bagi hasil 2 mitra yang fleksibel.
+            Setting pembagian penghasilan bulanan untuk Maintenance, Konten, Pengeluaran Operasional, serta bagi hasil 2 mitra yang fleksibel.
           </p>
         </div>
 
@@ -590,7 +590,7 @@ export const FinanceManager: React.FC = () => {
               <span className="text-lg font-bold text-rose-300">
                 - {formatRupiah(totalAlloc)}
               </span>
-              <span className="text-[10px] text-slate-400 block">Mentenest + Gaji Konten + Toko</span>
+              <span className="text-[10px] text-slate-400 block">Maintenance + Gaji Konten + Toko</span>
             </div>
             <div className="h-10 w-px bg-slate-700"></div>
             <div>
@@ -603,18 +603,18 @@ export const FinanceManager: React.FC = () => {
           </div>
         </div>
 
-        {/* 3 Wajib Pos Potongan: Mentenest, Konten, Pengeluaran */}
+        {/* 3 Wajib Pos Potongan: Maintenance, Konten, Pengeluaran */}
         <div className="py-6 border-b border-slate-700/80">
           <span className="text-xs uppercase tracking-wider text-slate-300 font-bold block mb-3">
             Rincian Alokasi Dana 3 Pos Operasional
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Mentenest */}
+            {/* Maintenance */}
             <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
                   <span className="font-semibold flex items-center gap-1.5 text-amber-300">
-                    <Wrench className="w-4 h-4" /> Mentenest (Servis)
+                    <Wrench className="w-4 h-4" /> Maintenance (Servis)
                   </span>
                   <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-bold text-[11px]">
                     {maintPct}%
@@ -978,19 +978,19 @@ export const FinanceManager: React.FC = () => {
         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-              2. Alokasi 3 Pos Wajib (Mentenest, Gaji Konten Kreator & Operasional)
+              2. Alokasi 3 Pos Wajib (Maintenance, Gaji Konten Kreator & Operasional)
             </span>
             <span className="text-xs text-slate-500">
-              Total disisihkan: {formatRupiah(totalAlloc)} (Mentenest: {maintPct}%, Gaji Konten: {formatRupiah(contentAmount)}, Toko: {opsPct}%)
+              Total disisihkan: {formatRupiah(totalAlloc)} (Maintenance: {maintPct}%, Gaji Konten: {formatRupiah(contentAmount)}, Toko: {opsPct}%)
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Mentenest */}
+            {/* Maintenance */}
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
               <div className="flex justify-between items-center text-xs mb-1">
                 <span className="font-bold text-slate-800 flex items-center gap-1">
-                  <Wrench className="w-3.5 h-3.5 text-amber-500" /> Mentenest
+                  <Wrench className="w-3.5 h-3.5 text-amber-500" /> Maintenance
                 </span>
                 <span className="font-extrabold text-amber-600">{maintPct}%</span>
               </div>
@@ -1082,7 +1082,7 @@ export const FinanceManager: React.FC = () => {
               Catatan Riwayat Pengeluaran Riil
             </h3>
             <p className="text-xs text-slate-500">
-              Log pengeluaran riil aktual toko (Mentenest sepeda, produksi Konten, dan Biaya Operasional)
+              Log pengeluaran riil aktual toko (Maintenance sepeda, produksi Konten, dan Biaya Operasional)
             </p>
           </div>
 
@@ -1126,7 +1126,7 @@ export const FinanceManager: React.FC = () => {
                   onChange={e => setNewCategory(e.target.value as ExpenseCategory)}
                   className="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-semibold"
                 >
-                  <option value="mentenest">🔧 Mentenest (Servis / Sparepart)</option>
+                  <option value="mentenest">🔧 Maintenance (Servis / Sparepart)</option>
                   <option value="konten">🎬 Konten (Foto, Video, Ads)</option>
                   <option value="pengeluaran">📦 Pengeluaran (Toko, Listrik, Operasional)</option>
                 </select>
@@ -1246,7 +1246,7 @@ export const FinanceManager: React.FC = () => {
                   <td className="py-3">
                     {exp.category === 'mentenest' && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                        🔧 Mentenest
+                        🔧 Maintenance
                       </span>
                     )}
                     {exp.category === 'konten' && (

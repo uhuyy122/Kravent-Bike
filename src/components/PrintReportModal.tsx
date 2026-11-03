@@ -17,7 +17,8 @@ import {
   getMondaySundayWeekRange,
   getYesterdayDateStr,
   getLastWeekRange,
-  getLastMonthStr
+  getLastMonthStr,
+  getSessionForTime
 } from '../utils/scheduleUtils';
 import { exportBookingsToExcel } from '../utils/exportUtils';
 import kraventLogo from '../assets/kravent-logo.svg';
@@ -56,6 +57,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   const todayStr = getTodayDateStr();
   const [selectedPeriodType, setSelectedPeriodType] = useState<'daily' | 'weekly' | 'monthly'>(initialPeriodType);
   const [dailyDate, setDailyDate] = useState<string>(initialDailyDate || todayStr);
+  const [dailyShiftFilter, setDailyShiftFilter] = useState<'all' | 'pagi' | 'sore'>('all');
   const [weeklyDate, setWeeklyDate] = useState<string>(initialWeeklyDate || todayStr);
   const [monthlyMonth, setMonthlyMonth] = useState<string>(initialMonthlyMonth || todayStr.slice(0, 7));
 
@@ -70,7 +72,10 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       if (b.status === 'dibatalkan') return false;
       const bDate = b.actualReturnDate || b.startDate;
       if (selectedPeriodType === 'daily') {
-        return bDate === dailyDate;
+        const matchDate = bDate === dailyDate;
+        if (!matchDate) return false;
+        if (dailyShiftFilter === 'all') return true;
+        return getSessionForTime(b.startTime) === dailyShiftFilter;
       }
       if (selectedPeriodType === 'weekly') {
         return bDate >= weekRange.mondayStr && bDate <= weekRange.sundayStr;
@@ -78,7 +83,57 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       // monthly default
       return bDate.startsWith(monthlyMonth);
     });
-  }, [bookings, selectedPeriodType, dailyDate, weekRange, monthlyMonth]);
+  }, [bookings, selectedPeriodType, dailyDate, dailyShiftFilter, weekRange, monthlyMonth]);
+
+  const groupedReportBookings = useMemo(() => {
+    const groups = new Map<string, {
+      customerName: string;
+      customerPhone: string;
+      bikes: string[];
+      totalUnits: number;
+      shifts: string[];
+      notes: string[];
+      totalPrice: number;
+    }>();
+
+    currentPeriodBookings.forEach(b => {
+      const key = (b.groupBookingCode || `${(b.customerName || '').trim().toLowerCase()}|${(b.customerPhone || '').trim()}`).toLowerCase();
+      const shift = getSessionForTime(b.startTime);
+      const existing = groups.get(key);
+      const bikeName = b.bikeName?.trim();
+      const notePool = [b.notes, b.paymentNotes, b.returnNotes].filter(Boolean) as string[];
+      const bookingTotal = b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0));
+
+      if (existing) {
+        if (bikeName) existing.bikes.push(bikeName);
+        existing.totalUnits = existing.bikes.length;
+        existing.shifts = [...new Set([...existing.shifts, shift])];
+        existing.totalPrice += bookingTotal;
+        if (notePool.length) {
+          existing.notes = [...new Set([...existing.notes, ...notePool])].filter(Boolean);
+        }
+      } else {
+        groups.set(key, {
+          customerName: b.customerName,
+          customerPhone: b.customerPhone,
+          bikes: bikeName ? [bikeName] : [],
+          totalUnits: bikeName ? 1 : 0,
+          shifts: [shift],
+          notes: notePool,
+          totalPrice: bookingTotal,
+        });
+      }
+    });
+
+    return Array.from(groups.values())
+      .map(group => ({
+        ...group,
+        bikes: [...new Set(group.bikes)],
+        totalUnits: [...new Set(group.bikes)].length,
+        totalPrice: Number(group.totalPrice || 0),
+      }))
+      .sort((a, b) => a.customerName.localeCompare(b.customerName));
+  }, [currentPeriodBookings]);
 
   // Transaksi yang benar-benar beres (selesai) atau lunas
   const completedBookings = useMemo(() => {
@@ -123,7 +178,8 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
     if (selectedPeriodType === 'daily') {
       const isToday = dailyDate === todayStr;
       const isYesterday = dailyDate === getYesterdayDateStr(todayStr);
-      return `Laporan Harian (${isToday ? 'Hari Ini, ' : isYesterday ? 'Kemarin, ' : ''}${formatDateIndo(dailyDate)})`;
+      const shiftLabel = dailyShiftFilter === 'all' ? '1 Hari Penuh' : dailyShiftFilter === 'pagi' ? 'Shift Pagi' : 'Shift Sore';
+      return `Laporan Harian (${shiftLabel} • ${isToday ? 'Hari Ini, ' : isYesterday ? 'Kemarin, ' : ''}${formatDateIndo(dailyDate)})`;
     }
     if (selectedPeriodType === 'weekly') {
       const thisW = getMondaySundayWeekRange(todayStr);
@@ -253,6 +309,26 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   onChange={e => setDailyDate(e.target.value)}
                   className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-600 text-white text-[11px] font-bold"
                 />
+                <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700 ml-1">
+                  {[
+                    { value: 'all', label: '1 Hari Penuh' },
+                    { value: 'pagi', label: 'Pagi' },
+                    { value: 'sore', label: 'Sore' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setDailyShiftFilter(option.value as 'all' | 'pagi' | 'sore')}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        dailyShiftFilter === option.value
+                          ? 'bg-emerald-500 text-slate-950'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -398,7 +474,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   )}
                 </span>
                 <span className="text-[10px] text-slate-400 block">
-                  Mentenest + Konten + Toko
+                  Maintenance + Konten + Toko
                 </span>
               </div>
 
@@ -428,7 +504,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           <div className="space-y-3">
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
               <span className="w-5 h-5 rounded-md bg-slate-900 text-white flex items-center justify-center text-xs">2</span>
-              Rincian Transaksi Sewa Unit Sepeda ({activePeriodTitle})
+              Rekap Per Group Nama ({activePeriodTitle})
             </h2>
 
             <div className="overflow-x-auto">
@@ -436,71 +512,43 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 text-[10px] uppercase font-bold">
                     <th className="p-2 border-r border-slate-300 text-center w-8">No</th>
-                    <th className="p-2 border-r border-slate-300">Kode</th>
-                    <th className="p-2 border-r border-slate-300">Tanggal & Jam</th>
-                    <th className="p-2 border-r border-slate-300">Penyewa & Kontak</th>
+                    <th className="p-2 border-r border-slate-300">Atas Nama</th>
+                    <th className="p-2 border-r border-slate-300 text-center">Jumlah Sepeda</th>
                     <th className="p-2 border-r border-slate-300">Unit Sepeda</th>
-                    <th className="p-2 border-r border-slate-300 text-right">Tarif (Rp)</th>
-                    <th className="p-2 border-r border-slate-300 text-center">Metode</th>
-                    <th className="p-2 text-center">Status</th>
+                    <th className="p-2 border-r border-slate-300 text-center">Shift</th>
+                    <th className="p-2 border-r border-slate-300 text-right">Total Harga</th>
+                    <th className="p-2 border-r border-slate-300">Catatan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {currentPeriodBookings.length === 0 ? (
+                  {groupedReportBookings.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-4 text-center text-slate-400">
-                        Belum ada transaksi pada periode {activePeriodTitle}.
+                      <td colSpan={7} className="p-4 text-center text-slate-400">
+                        Belum ada data pada periode {activePeriodTitle}.
                       </td>
                     </tr>
                   ) : (
-                    currentPeriodBookings.map((b, idx) => (
-                      <tr key={b.id} className="text-[11px]">
-                        <td className="p-2 text-center border-r border-slate-200 font-mono text-[10px]">
-                          {idx + 1}
-                        </td>
-                        <td className="p-2 border-r border-slate-200 font-mono font-bold">
-                          {b.bookingCode}
-                        </td>
+                    groupedReportBookings.map((group, idx) => (
+                      <tr key={`${group.customerName}-${group.customerPhone}-${idx}`} className="text-[11px] align-top">
+                        <td className="p-2 text-center border-r border-slate-200 font-mono text-[10px]">{idx + 1}</td>
                         <td className="p-2 border-r border-slate-200">
-                          <div>{formatDateIndo(b.startDate)} • {b.startTime}-{b.endTime}</div>
-                          {b.actualReturnTime && (
-                            <div className="text-[10px] text-slate-500 font-semibold">
-                              Kembali: {b.actualReturnTime} {b.lateMinutes ? `(Telat ${b.lateMinutes}m)` : ''}
-                            </div>
-                          )}
+                          <strong className="block text-slate-900">{group.customerName}</strong>
+                          <span className="text-slate-500 text-[10px]">{group.customerPhone || '-'}</span>
                         </td>
-                        <td className="p-2 border-r border-slate-200">
-                          <strong className="block text-slate-900">{b.customerName}</strong>
-                          <span className="text-slate-500 text-[10px]">{b.customerPhone}</span>
-                        </td>
-                        <td className="p-2 border-r border-slate-200">
-                          {b.bikeName}
-                        </td>
-                        <td className="p-2 border-r border-slate-200 text-right font-bold text-slate-900">
-                          <div>{formatRupiah(b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0)))}</div>
-                          {b.lateFee && b.lateFee > 0 ? (
-                            <span className="text-[9px] text-rose-600 block">+Denda {formatRupiah(b.lateFee)}</span>
-                          ) : null}
-                        </td>
-                        <td className="p-2 border-r border-slate-200 text-center text-[10px]">
+                        <td className="p-2 border-r border-slate-200 text-center font-bold text-slate-900">{group.totalUnits}</td>
+                        <td className="p-2 border-r border-slate-200">{group.bikes.join(', ') || '-'}</td>
+                        <td className="p-2 border-r border-slate-200 text-center">
                           <span className={`px-1.5 py-0.5 rounded font-semibold ${
-                            b.paymentStatus === 'belum_lunas' || b.paymentMethod === 'bayar_nanti'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-emerald-100 text-emerald-800'
+                            group.shifts.length > 1 ? 'bg-slate-100 text-slate-700' : group.shifts[0] === 'pagi' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {b.paymentMethod === 'bayar_nanti' ? 'Bayar Nanti' : b.paymentMethod.toUpperCase()} ({b.paymentStatus === 'lunas' ? 'Lunas' : 'Belum'})
+                            {group.shifts.length > 1 ? 'Pagi & Sore' : group.shifts[0] === 'pagi' ? 'Pagi' : 'Sore'}
                           </span>
                         </td>
-                        <td className="p-2 text-center">
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                            b.status === 'selesai'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : b.status === 'aktif'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-slate-100 text-slate-700'
-                          } uppercase`}>
-                            {b.status}
-                          </span>
+                        <td className="p-2 border-r border-slate-200 text-right font-extrabold text-emerald-700">
+                          {formatRupiah(group.totalPrice)}
+                        </td>
+                        <td className="p-2 text-slate-700">
+                          {group.notes.length ? group.notes.join(' • ') : 'Tidak ada catatan'}
                         </td>
                       </tr>
                     ))
@@ -509,12 +557,12 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 <tfoot>
                   <tr className="bg-slate-100 font-bold border-t-2 border-slate-300 text-xs">
                     <td colSpan={5} className="p-2 text-right">
-                      TOTAL OMZET TRANSAKSI:
+                      TOTAL OMZET KELOMPOK:
                     </td>
                     <td className="p-2 text-right text-emerald-800 font-extrabold">
-                      {formatRupiah(activeGrossRevenue)}
+                      {formatRupiah(groupedReportBookings.reduce((sum, group) => sum + group.totalPrice, 0))}
                     </td>
-                    <td colSpan={2}></td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
