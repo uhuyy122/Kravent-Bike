@@ -136,6 +136,9 @@ export const isTimeRangeOverlap = (
   return Math.max(startAMin, startBMin) < Math.min(endAMin, endBMin);
 };
 
+const isBookingBlockingAvailability = (booking: Booking): boolean =>
+  booking.status !== 'dibatalkan' && booking.status !== 'selesai';
+
 export interface BookingSessionDef {
   id: 'pagi' | 'siang';
   name: string;
@@ -245,7 +248,7 @@ export const checkBikeBookingConflict = (
 
   // 5. Cek bentrok jam dengan booking yang sudah ada pada tanggal tersebut (double transaksi)
   const dayBookings = bookings.filter(
-    b => b.id !== excludeBookingId && b.bikeId === bikeId && b.startDate === date && b.status !== 'dibatalkan'
+    b => b.id !== excludeBookingId && b.bikeId === bikeId && b.startDate === date && isBookingBlockingAvailability(b)
   );
 
   const conflictingBooking = dayBookings.find(b => {
@@ -278,7 +281,7 @@ export const checkSlotAvailability = (
 ): { isBooked: boolean; bookingCode?: string } => {
   const overlappingBooking = bookings.find(b => {
     if (b.bikeId !== bikeId) return false;
-    if (b.status === 'dibatalkan') return false;
+    if (!isBookingBlockingAvailability(b)) return false;
     if (b.startDate !== date) return false;
 
     return isTimeRangeOverlap(b.startTime, b.endTime, slotStart, slotEnd);
@@ -307,7 +310,7 @@ export const checkCustomTimeCollision = (
   bookedList: Array<{ startTime: string; endTime: string; customerName: string; bookingCode: string }>;
 } => {
   const dayBookings = bookings.filter(
-    b => b.bikeId === bikeId && b.startDate === date && b.status !== 'dibatalkan'
+    b => b.bikeId === bikeId && b.startDate === date && isBookingBlockingAvailability(b)
   );
 
   const bookedList = dayBookings.map(b => ({
@@ -450,4 +453,3 @@ export const getLastMonthStr = (monthStr?: string): string => {
   const mo = String(dt.getMonth() + 1).padStart(2, '0');
   return `${yr}-${mo}`;
 };
-
