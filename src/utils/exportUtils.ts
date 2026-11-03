@@ -27,8 +27,8 @@ export const exportBookingsToExcel = (
       <td style="text-align: center;">${idx + 1}</td>
       <td style="font-family: monospace; font-weight: bold;">${b.bookingCode}</td>
       <td>${formatDateIndo(b.startDate)}</td>
-      <td>${b.startTime} - ${b.endTime} WIB</td>
-      <td>${b.durationValue} ${b.durationType}</td>
+      <td>${b.startTime} - ${b.actualReturnTime || 'Belum kembali'} WIB</td>
+      <td>${b.durationValue !== undefined ? `${b.durationValue.toFixed(2)} jam` : 'Belum kembali'}</td>
       <td style="font-weight: bold;">${b.customerName}</td>
       <td>'${b.customerPhone}</td>
       <td>${b.bikeName}</td>
@@ -134,8 +134,8 @@ export const exportBookingsToExcel = (
             <th>No</th>
             <th>Kode Booking</th>
             <th>Tanggal</th>
-            <th>Jam Sewa</th>
-            <th>Durasi</th>
+            <th>Mulai - Kembali</th>
+            <th>Durasi Aktual</th>
             <th>Nama Penyewa</th>
             <th>No WhatsApp</th>
             <th>Unit Sepeda</th>

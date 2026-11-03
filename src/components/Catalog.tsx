@@ -58,7 +58,6 @@ export const Catalog: React.FC = () => {
     const nextH = Math.min(Math.max(curH + 1, 6), 20);
     return `${String(nextH).padStart(2, '0')}:00`;
   });
-  const [selectedCatalogDuration, setSelectedCatalogDuration] = useState<number>(2);
   const [showPosterModal, setShowPosterModal] = useState<boolean>(false);
   const [activePosterTab, setActivePosterTab] = useState<'city1' | 'city2' | 'vintage' | 'mtb'>('city1');
 
@@ -74,12 +73,6 @@ export const Catalog: React.FC = () => {
     }
   }, [selectedCatalogDate, selectedCatalogStartTime, todayStr]);
 
-  const selectedCatalogEndTime = useMemo(() => {
-    const [h, m] = selectedCatalogStartTime.split(':').map(Number);
-    const endH = (h + selectedCatalogDuration) % 24;
-    return `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  }, [selectedCatalogStartTime, selectedCatalogDuration]);
-
   // Quick upcoming dates (mulai hari ini dan ke depan, tidak ada kemarin)
   const quickDates = getUpcomingDates(todayStr, 7);
   const catalogRateInfo = getDateRateInfo(selectedCatalogDate);
@@ -88,7 +81,6 @@ export const Catalog: React.FC = () => {
     bike: BikeType;
     date?: string;
     startTime?: string;
-    duration?: number;
     customerName?: string;
     customerPhone?: string;
   } | null>(null);
@@ -302,7 +294,7 @@ export const Catalog: React.FC = () => {
               Tentukan Waktu Gowes (Katalog Otomatis Menyaring Unit Ready):
             </span>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Pilih tanggal, jam mulai (06:00 – 21:00 WIB), dan durasi sewa di bawah. Unit yang siap gowes langsung tampil di atas!
+              Pilih tanggal dan jam mulai (06:00 – 21:00 WIB). Unit yang siap gowes langsung tampil di atas!
             </p>
           </div>
 
@@ -367,7 +359,7 @@ export const Catalog: React.FC = () => {
               Pilih Jam Mulai (06:00 – 21:00 WIB):
             </span>
             <span className="text-[11px] font-extrabold text-emerald-700 font-mono">
-              {selectedCatalogStartTime} s/d {selectedCatalogEndTime} WIB ({selectedCatalogDuration} Jam)
+              Mulai {selectedCatalogStartTime} WIB
             </span>
           </div>
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
@@ -396,37 +388,16 @@ export const Catalog: React.FC = () => {
           </div>
         </div>
 
-        {/* Duration Pills */}
-        <div className="flex items-center justify-between gap-3 text-xs pt-1 border-t border-slate-100">
-          <span className="text-[11px] font-bold text-slate-700">Durasi Gowes:</span>
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-            {[1, 2, 3, 4, 5].map(hrs => (
-              <button
-                key={hrs}
-                type="button"
-                onClick={() => setSelectedCatalogDuration(hrs)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                  selectedCatalogDuration === hrs
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                {hrs} Jam
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Info Banner */}
         <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/70 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2.5">
             <span className="text-xl">🚲</span>
             <div>
               <span className="font-extrabold text-xs text-emerald-950">
-                Jadwal Terpilih: {formatDateIndo(selectedCatalogDate)} ({selectedCatalogStartTime} - {selectedCatalogEndTime} WIB)
+                Jadwal Terpilih: {formatDateIndo(selectedCatalogDate)} mulai {selectedCatalogStartTime} WIB
               </span>
               <span className="text-[11px] text-slate-600 block mt-0.5">
-                Katalog di bawah otomatis menandai unit sepeda yang <strong>Ready</strong> di jam ini.
+                Katalog menandai unit yang tersedia untuk mulai sewa. Durasi dan biaya dihitung saat sepeda dikembalikan.
               </span>
             </div>
           </div>
@@ -596,7 +567,7 @@ export const Catalog: React.FC = () => {
                         bike.id,
                         selectedCatalogDate,
                         selectedCatalogStartTime,
-                        selectedCatalogEndTime,
+                        selectedCatalogStartTime,
                         bookings,
                         bike
                       );
@@ -614,7 +585,7 @@ export const Catalog: React.FC = () => {
                           <div className="mt-2.5 p-2 rounded-xl bg-rose-50 border border-rose-200 flex flex-col gap-0.5 text-[11px]">
                             <span className="text-rose-900 font-extrabold flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                              Terpakai di Jam Ini ({selectedCatalogStartTime} - {selectedCatalogEndTime})
+                              Tidak tersedia untuk tanggal ini
                             </span>
                             <span className="text-rose-700 text-[10px]">
                               {conflict.message || 'Sudah dibooking pada jam tersebut'}
@@ -630,7 +601,7 @@ export const Catalog: React.FC = () => {
                             Siap Gowes di Jam Ini
                           </span>
                           <span className="text-emerald-700 font-extrabold text-[10px]">
-                            {selectedCatalogStartTime} - {selectedCatalogEndTime} WIB
+                            Mulai {selectedCatalogStartTime} WIB
                           </span>
                         </div>
                       );
@@ -714,7 +685,7 @@ export const Catalog: React.FC = () => {
                             bike.id,
                             selectedCatalogDate,
                             selectedCatalogStartTime,
-                            selectedCatalogEndTime,
+                            selectedCatalogStartTime,
                             bookings,
                             bike
                           );
@@ -722,11 +693,10 @@ export const Catalog: React.FC = () => {
 
                           return (
                             <button
-                              onClick={() => setBookingPrefill({
+                              onClick={() =>                               setBookingPrefill({
                                 bike,
                                 date: selectedCatalogDate,
-                                startTime: selectedCatalogStartTime,
-                                duration: selectedCatalogDuration
+                                startTime: selectedCatalogStartTime
                               })}
                               disabled={isDisabled}
                               className={`w-full py-2.5 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer ${
@@ -756,13 +726,12 @@ export const Catalog: React.FC = () => {
           bike={scheduleBike}
           initialDate={selectedCatalogDate}
           onClose={() => setScheduleBike(null)}
-          onAdminInputDirect={(b, date, startTime, duration, customerName, customerPhone) => {
+          onAdminInputDirect={(b, date, startTime, customerName, customerPhone) => {
             setScheduleBike(null);
             setBookingPrefill({
               bike: b,
               date,
               startTime,
-              duration,
               customerName,
               customerPhone,
             });
@@ -950,12 +919,10 @@ export const Catalog: React.FC = () => {
       {/* BOOKING MODAL (PREFILLED FROM CINEMA SCHEDULE) */}
       {bookingPrefill && (
         <BookingModal
-          key={`${bookingPrefill.bike.id}-${bookingPrefill.date || ''}-${bookingPrefill.startTime || ''}-${bookingPrefill.duration || ''}`}
+          key={`${bookingPrefill.bike.id}-${bookingPrefill.date || ''}-${bookingPrefill.startTime || ''}`}
           bike={bookingPrefill.bike}
           initialDate={bookingPrefill.date}
           initialStartTime={bookingPrefill.startTime}
-          initialDurationType="jam"
-          initialDurationValue={bookingPrefill.duration}
           initialCustomerName={bookingPrefill.customerName}
           initialCustomerPhone={bookingPrefill.customerPhone}
           onClose={() => setBookingPrefill(null)}

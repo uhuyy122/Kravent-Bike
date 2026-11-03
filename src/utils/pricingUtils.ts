@@ -141,6 +141,33 @@ export const calculateRentalPrice = (
   };
 };
 
+export const calculateRentalCharge = (
+  startDate: string,
+  startTime: string,
+  returnDate: string,
+  returnTime: string,
+  ratePerHour: number
+): {
+  isValid: boolean;
+  durationMinutes: number;
+  durationHours: number;
+  totalPrice: number;
+} => {
+  const start = new Date(`${startDate}T${startTime}:00`);
+  const returned = new Date(`${returnDate}T${returnTime}:00`);
+  const elapsedMinutes = Math.floor((returned.getTime() - start.getTime()) / 60000);
+  const isValid = Number.isFinite(elapsedMinutes) && elapsedMinutes >= 0;
+  const durationMinutes = isValid ? elapsedMinutes : 0;
+  const durationHours = durationMinutes / 60;
+
+  return {
+    isValid,
+    durationMinutes,
+    durationHours,
+    totalPrice: Math.round((ratePerHour * durationMinutes) / 60),
+  };
+};
+
 export interface LateFeeCalculation {
   scheduledDate: string;
   scheduledEndTime: string;

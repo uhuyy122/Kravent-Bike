@@ -47,10 +47,10 @@ export interface Booking {
   idCardNumber?: string; // NIK / KTP
   startDate: string; // YYYY-MM-DD
   startTime: string; // HH:mm (06:00 untuk Pagi, 13:00 untuk Siang)
-  endDate: string; // YYYY-MM-DD
-  endTime: string; // HH:mm (12:00 untuk Pagi, 21:00 untuk Siang)
+  endDate: string; // YYYY-MM-DD; initially startDate, updated on return
+  endTime: string; // HH:mm; empty until the bike is returned
   durationType?: 'sesi' | 'jam' | 'hari';
-  durationValue?: number;
+  durationValue?: number; // Actual rental hours, calculated at return; may be fractional
   bookingSession?: 'pagi' | 'siang'; // Sesi Pagi (06:00 - 12:00) atau Sesi Siang (13:00 - 21:00)
   totalPrice: number;
   depositAmount: number;

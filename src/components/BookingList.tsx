@@ -293,7 +293,7 @@ export const BookingList: React.FC = () => {
                           </a>
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          ⏰ {b.startTime} - {b.endTime} WIB ({b.durationValue} {b.durationType})
+                          ⏰ Mulai {b.startTime} WIB
                         </p>
                       </div>
                     </div>
@@ -512,10 +512,12 @@ export const BookingList: React.FC = () => {
 
                       <td className="py-3.5">
                         <div className="font-medium text-slate-800">
-                          {primary.startTime} - {primary.endTime} WIB
+                          Mulai {primary.startTime} WIB
                         </div>
                         <span className="text-[11px] text-slate-500 block">
-                          Durasi: {primary.durationValue} {primary.durationType}
+                          {primary.status === 'selesai' && primary.durationValue !== undefined
+                            ? `Durasi aktual: ${primary.durationValue.toFixed(2)} jam`
+                            : 'Durasi dihitung saat unit dikembalikan'}
                         </span>
                         {group.items.length > 1 && (
                           <span className="mt-1 inline-flex items-center text-[9px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded">
@@ -672,7 +674,10 @@ export const BookingList: React.FC = () => {
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">{item.bookingCode}</span>
                         </div>
                         <div className="text-[11px] text-slate-500 mt-1">
-                          {item.startTime} - {item.endTime} WIB • {item.durationValue} {item.durationType}
+                          Mulai {item.startTime} WIB
+                          {item.status === 'selesai' && item.actualReturnTime
+                            ? ` • Kembali ${item.actualReturnTime} WIB (${item.durationValue?.toFixed(2)} jam)`
+                            : ' • Biaya dihitung saat pengembalian'}
                         </div>
                       </div>
                     </div>
@@ -787,7 +792,10 @@ export const BookingList: React.FC = () => {
               <div className="flex justify-between py-1 border-b border-dashed border-slate-200">
                 <span className="text-slate-500">Waktu Sewa:</span>
                 <span className="font-semibold text-slate-800">
-                  {selectedReceipt.startTime} - {selectedReceipt.endTime} ({selectedReceipt.durationValue} {selectedReceipt.durationType})
+                  {selectedReceipt.startTime} WIB
+                  {selectedReceipt.actualReturnTime
+                    ? ` - ${selectedReceipt.actualReturnTime} WIB (${selectedReceipt.durationValue?.toFixed(2)} jam)`
+                    : ' • durasi hingga pengembalian'}
                 </span>
               </div>
               {selectedReceipt.actualReturnTime && (

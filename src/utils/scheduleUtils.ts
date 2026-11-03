@@ -229,37 +229,21 @@ export const checkBikeBookingConflict = (
     };
   }
 
-  // 4. Cek apakah unit sepeda SEDANG DI LUAR / SUDAH DI-ACC (booking aktif)
-  const activeRoadBooking = bookings.find(
-    b => b.id !== excludeBookingId && b.bikeId === bikeId && (b.status === 'sedang di luar' || b.status === 'aktif' || b.status === 'booking')
+  // Durasi tidak diketahui sebelum pengembalian, jadi booking aktif menahan unit sejak tanggal mulai.
+  const conflictingBooking = bookings.find(
+    b => b.id !== excludeBookingId &&
+      b.bikeId === bikeId &&
+      isBookingBlockingAvailability(b) &&
+      date >= b.startDate
   );
-  if (activeRoadBooking) {
-    if (date === activeRoadBooking.startDate || date === today) {
-      if (startTime < activeRoadBooking.endTime) {
-        return {
-          hasConflict: true,
-          reason: 'on_road',
-          message: `Unit sepeda ${activeRoadBooking.status === 'sedang di luar' ? 'masih di jalan' : 'sudah di-ACC'} oleh ${activeRoadBooking.customerName} s/d pukul ${activeRoadBooking.endTime} WIB.`,
-          conflictingBooking: activeRoadBooking,
-        };
-      }
-    }
-  }
-
-  // 5. Cek bentrok jam dengan booking yang sudah ada pada tanggal tersebut (double transaksi)
-  const dayBookings = bookings.filter(
-    b => b.id !== excludeBookingId && b.bikeId === bikeId && b.startDate === date && isBookingBlockingAvailability(b)
-  );
-
-  const conflictingBooking = dayBookings.find(b => {
-    return isTimeRangeOverlap(b.startTime, b.endTime, startTime, endTime);
-  });
 
   if (conflictingBooking) {
     return {
       hasConflict: true,
-      reason: 'already_booked',
-      message: `Unit sepeda sudah dibooking pada jam ${conflictingBooking.startTime} - ${conflictingBooking.endTime} WIB oleh ${conflictingBooking.customerName} (${conflictingBooking.bookingCode}). Double booking dilarang!`,
+      reason: conflictingBooking.status === 'pending' ? 'already_booked' : 'on_road',
+      message: conflictingBooking.status === 'pending'
+        ? `Unit sepeda sudah dipesan oleh ${conflictingBooking.customerName} mulai ${conflictingBooking.startDate} pukul ${conflictingBooking.startTime} WIB.`
+        : `Unit sepeda masih disewa oleh ${conflictingBooking.customerName} sejak ${conflictingBooking.startDate} pukul ${conflictingBooking.startTime} dan belum dicatat kembali.`,
       conflictingBooking,
     };
   }
@@ -282,9 +266,9 @@ export const checkSlotAvailability = (
   const overlappingBooking = bookings.find(b => {
     if (b.bikeId !== bikeId) return false;
     if (!isBookingBlockingAvailability(b)) return false;
-    if (b.startDate !== date) return false;
+    if (date < b.startDate) return false;
 
-    return isTimeRangeOverlap(b.startTime, b.endTime, slotStart, slotEnd);
+    return true;
   });
 
   return {
@@ -307,13 +291,14 @@ export const checkCustomTimeCollision = (
   isAvailable: boolean;
   conflictingBooking?: Booking;
   conflictReason?: string;
-  bookedList: Array<{ startTime: string; endTime: string; customerName: string; bookingCode: string }>;
+  bookedList: Array<{ startDate: string; startTime: string; endTime: string; customerName: string; bookingCode: string }>;
 } => {
   const dayBookings = bookings.filter(
-    b => b.bikeId === bikeId && b.startDate === date && isBookingBlockingAvailability(b)
+    b => b.bikeId === bikeId && b.startDate <= date && isBookingBlockingAvailability(b)
   );
 
   const bookedList = dayBookings.map(b => ({
+    startDate: b.startDate,
     startTime: b.startTime,
     endTime: b.endTime,
     customerName: b.customerName,

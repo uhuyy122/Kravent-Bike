@@ -19,7 +19,7 @@ import {
 import { Booking, BookingStatus, Bike, PaymentMethod } from '../types';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
-import { getDateRateInfo, calculateLateFee } from '../utils/pricingUtils';
+import { getDateRateInfo, calculateRentalCharge } from '../utils/pricingUtils';
 import { checkBikeBookingConflict, getTodayDateStr } from '../utils/scheduleUtils';
 
 interface EditBookingModalProps {
@@ -61,10 +61,6 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
     if (booking.startTime > '23:00') return '23:00';
     return booking.startTime;
   });
-  const [durationType, setDurationType] = useState<'jam' | 'hari' | 'sesi'>(
-    booking.durationType === 'hari' ? 'hari' : booking.durationType === 'sesi' ? 'sesi' : 'jam'
-  );
-  const [durationValue, setDurationValue] = useState<number>(booking.durationValue || 6);
   const [status, setStatus] = useState<BookingStatus>(booking.status);
 
   // Customer Data
@@ -110,59 +106,19 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
   const selectedBike = bikes.find(b => b.id === bikeId) || bikes[0];
 
-  // Hitung jam selesai otomatis
-  const calculateEndTime = () => {
-    if (durationType === 'jam') {
-      const [h, m] = startTime.split(':').map(Number);
-      const endH = (h + durationValue) % 24;
-      return `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    }
-    return startTime;
-  };
-
-  const calculateEndDate = () => {
-    if (durationType === 'jam') {
-      const [h] = startTime.split(':').map(Number);
-      if (h + durationValue >= 24) {
-        const d = new Date(startDate);
-        const daysToAdd = Math.floor((h + durationValue) / 24);
-        d.setDate(d.getDate() + daysToAdd);
-        return d.toISOString().split('T')[0];
-      }
-      return startDate;
-    }
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + durationValue);
-    return d.toISOString().split('T')[0];
-  };
-
-  const calculatedEndTime = calculateEndTime();
-  const calculatedEndDate = calculateEndDate();
-
-  // Hitung tarif sewa pokok berdasarkan tanggal & durasi
+  // Tarif sewa dihitung berdasarkan waktu mulai dan pengembalian aktual.
   const rateInfo = getDateRateInfo(startDate);
-  const baseRentalCost =
-    durationType === 'jam'
-      ? (rateInfo.ratePerHour || selectedBike.pricePerHour) * durationValue
-      : selectedBike.pricePerDay * durationValue;
-
-  // Hitung biaya tambahan keterlambatan jika status 'selesai'
-  const lateCalculation = useMemo(() => {
-    if (status !== 'selesai') {
-      return { lateMinutes: 0, extraHours: 0, lateFee: 0, isLate: false, ruleApplied: '' };
-    }
-    const returnRateInfo = getDateRateInfo(actualReturnDate || calculatedEndDate);
-    const bikeRate = returnRateInfo.ratePerHour;
-    return calculateLateFee(
-      calculatedEndDate,
-      calculatedEndTime,
-      actualReturnDate,
-      actualReturnTime,
-      bikeRate
-    );
-  }, [status, calculatedEndDate, calculatedEndTime, actualReturnDate, actualReturnTime]);
-
-  const finalTotalPrice = baseRentalCost + lateCalculation.lateFee;
+  const rentalCharge = calculateRentalCharge(
+    startDate,
+    startTime,
+    actualReturnDate,
+    actualReturnTime,
+    rateInfo.ratePerHour || selectedBike.pricePerHour
+  );
+  const baseRentalCost = status === 'selesai' ? rentalCharge.totalPrice : 0;
+  const finalTotalPrice = status === 'selesai'
+    ? baseRentalCost + (booking.addonTotalCost || 0)
+    : 0;
 
   // Validasi bentrok jam / double transaksi untuk sepeda & jam baru (mengecualikan booking saat ini!)
   const conflictCheck = useMemo(() => {
@@ -170,16 +126,21 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
       bikeId,
       startDate,
       startTime,
-      calculatedEndTime,
+      startTime,
       bookings,
       selectedBike,
       booking.id // Kecualikan booking ini dari pemeriksaan bentrok
     );
-  }, [bikeId, startDate, startTime, calculatedEndTime, bookings, selectedBike, booking.id]);
+  }, [bikeId, startDate, startTime, bookings, selectedBike, booking.id]);
 
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSave = () => {
+    if (status === 'selesai' && !rentalCharge.isValid) {
+      setErrorMessage('Waktu pengembalian tidak boleh lebih awal dari waktu mulai sewa.');
+      return;
+    }
+
     if (conflictCheck.hasConflict) {
       setErrorMessage(conflictCheck.message || 'Waktu atau sepeda bentrok dengan transaksi lain.');
       return;
@@ -192,10 +153,10 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
         bikeImage: selectedBike.imageUrl,
         startDate,
         startTime,
-        endDate: calculatedEndDate,
-        endTime: calculatedEndTime,
-        durationType,
-        durationValue,
+        endDate: status === 'selesai' ? actualReturnDate : startDate,
+        endTime: status === 'selesai' ? actualReturnTime : '',
+        durationType: 'jam',
+        durationValue: status === 'selesai' ? rentalCharge.durationHours : 0,
         totalPrice: baseRentalCost,
         status,
         customerName,
@@ -208,9 +169,9 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
           ? {
               actualReturnDate,
               actualReturnTime,
-              lateMinutes: lateCalculation.lateMinutes,
-              lateExtraHours: lateCalculation.extraHours,
-              lateFee: lateCalculation.lateFee,
+              lateMinutes: 0,
+              lateExtraHours: 0,
+              lateFee: 0,
               finalTotalPrice,
               returnNotes,
               returnedAt: `${actualReturnDate}T${actualReturnTime}:00`,
@@ -332,7 +293,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Ganti Tanggal, Jam, dan Durasi Sewa (Sinkron & Bebas Bingung) */}
+          {/* Section 2: Ganti Tanggal dan Jam Mulai */}
           <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -402,29 +363,6 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                  Durasi Sewa:
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={1}
-                    max={24}
-                    value={durationValue}
-                    onChange={e => setDurationValue(Math.max(1, Number(e.target.value)))}
-                    className="w-20 px-3 py-2 text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
-                  />
-                  <select
-                    value={durationType}
-                    onChange={e => setDurationType(e.target.value as 'jam' | 'hari')}
-                    className="flex-1 px-2.5 py-2 text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs"
-                  >
-                    <option value="jam">Jam</option>
-                    <option value="hari">Hari</option>
-                  </select>
-                </div>
-              </div>
             </div>
 
             {/* Quick Jam Buttons (06:00 - 23:00) */}
@@ -448,10 +386,12 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs pt-2 border-t border-slate-200/80 gap-1">
               <span className="text-slate-600">
-                Jadwal Sewa: <strong>{startDate} ({startTime})</strong> ➔ Selesai: <strong>{calculatedEndDate} ({calculatedEndTime} WIB)</strong>
+                Mulai sewa: <strong>{startDate} pukul {startTime} WIB</strong> • Durasi hingga pengembalian
               </span>
               <span className="font-extrabold text-emerald-700">
-                Tarif Pokok: {formatRupiah(baseRentalCost)}
+                {status === 'selesai'
+                  ? `Durasi aktual ${rentalCharge.durationHours.toFixed(2)} jam • ${formatRupiah(baseRentalCost)}`
+                  : `Tarif ${formatRupiah(rateInfo.ratePerHour)}/jam • dihitung saat pengembalian`}
               </span>
             </div>
           </div>
@@ -484,17 +424,17 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
               ))}
             </div>
 
-            {/* Jika Status 'selesai': Form Jam Kepulangan & Biaya Tambahan Keterlambatan Real-Time */}
+            {/* Jika Status 'selesai': hitung biaya dari waktu mulai hingga pengembalian */}
             {status === 'selesai' && (
               <div className="mt-3 p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-emerald-700" />
-                      Waktu Kepulangan Real-Time & Hitungan Denda:
+                      Waktu Kepulangan & Hitungan Biaya:
                     </span>
                     <span className="text-[10px] text-slate-500 block">
-                      Jadwal selesai sewa sebelumnya: {calculatedEndTime} WIB
+                      Biaya sewa dihitung proporsional per menit berdasarkan tarif {formatRupiah(rateInfo.ratePerHour)}/jam.
                     </span>
                   </div>
 
@@ -534,26 +474,24 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                   </div>
                 </div>
 
-                {/* Ringkasan Denda */}
+                {/* Ringkasan Durasi dan Biaya Sewa */}
                 <div className="p-3 bg-white rounded-xl border border-emerald-200 text-xs flex items-center justify-between shadow-2xs">
                   <div>
                     <span className="font-bold text-slate-800 block">
-                      {lateCalculation.isLate
-                        ? `⚠️ Terlambat ${lateCalculation.lateMinutes} Menit (${lateCalculation.ruleApplied})`
-                        : '✅ Tepat Waktu / Sebelum Jadwal Selesai'}
+                      {rentalCharge.isValid
+                        ? `Durasi aktual ${rentalCharge.durationHours} jam`
+                        : '⚠️ Waktu pengembalian lebih awal dari waktu mulai sewa'}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      {lateCalculation.extraHours > 0
-                        ? `Dikenakan +${lateCalculation.extraHours} jam denda keterlambatan`
-                        : 'Bebas biaya denda tambahan (Toleransi terpenuhi)'}
+                      Sewa: {formatRupiah(rentalCharge.totalPrice)} • dihitung per menit
                     </span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 block uppercase font-bold">
-                      Denda Keterlambatan
+                      Tarif per jam
                     </span>
-                    <span className="font-black text-rose-600 text-sm">
-                      {formatRupiah(lateCalculation.lateFee)}
+                    <span className="font-black text-emerald-700 text-sm">
+                      {formatRupiah(rateInfo.ratePerHour)}
                     </span>
                   </div>
                 </div>
@@ -645,7 +583,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
             <div>
               <span className="text-xs text-slate-400 block font-medium">Total Tagihan Final:</span>
               <span className="text-[10px] text-slate-400 block">
-                Sewa: {formatRupiah(baseRentalCost)} {lateCalculation.lateFee > 0 && `+ Denda: ${formatRupiah(lateCalculation.lateFee)}`}
+                Sewa: {formatRupiah(baseRentalCost)}
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md inline-block mt-1 ${
                 status === 'selesai'

@@ -24,12 +24,10 @@ import {
   getSessionForTime,
   getOperatingHoursForSession,
   isPastHourToday,
-  isTimeRangeOverlap,
   BookingTimeSession
 } from '../utils/scheduleUtils';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo } from '../utils/pricingUtils';
-import { Tag } from 'lucide-react';
 
 interface CinemaScheduleModalProps {
   bike: Bike;
@@ -39,7 +37,6 @@ interface CinemaScheduleModalProps {
     bike: Bike,
     date: string,
     startTime: string,
-    duration: number,
     customerName?: string,
     customerPhone?: string
   ) => void;
@@ -76,8 +73,6 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
     return getSessionForTime(getInitialStartTime());
   });
   const [startTime, setStartTime] = useState(getInitialStartTime);
-  const [durationHours, setDurationHours] = useState(3);
-
   const sessionHours = getOperatingHoursForSession(selectedTimeSession);
 
   // Customer info for quick WhatsApp booking
@@ -86,32 +81,18 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
 
   const upcomingDates = getUpcomingDates(todayStr, 7);
 
-  // Hitung jam selesai otomatis
-  const calculateEndTime = (start: string, duration: number): string => {
-    try {
-      const [h, m] = start.split(':').map(Number);
-      const endH = (h + duration) % 24;
-      return `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    } catch {
-      return '10:00';
-    }
-  };
-
-  const endTime = calculateEndTime(startTime, durationHours);
-
-  // Cek ketersediaan real-time berdasarkan unit sepeda, tanggal, & jam yang diinput
+  // Cek ketersediaan real-time. Durasi baru diketahui setelah unit dikembalikan.
   const { isAvailable, conflictingBooking, conflictReason, bookedList } = checkCustomTimeCollision(
     bike.id,
     selectedDate,
     startTime,
-    endTime,
+    startTime,
     bookings,
     bike
   );
 
-  // Cek tarif berdasarkan tanggal: hari biasa 8rb, sabtu/minggu & libur 10rb
+  // Tarif ditampilkan sebagai acuan; total dihitung saat pengembalian.
   const rateInfo = getDateRateInfo(selectedDate);
-  const totalCost = rateInfo.ratePerHour * durationHours;
 
   // Handle WhatsApp Submission & Automatic Pending Booking Creation
   const handleSendToWhatsApp = async (e: React.FormEvent) => {
@@ -136,10 +117,8 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
         startDate: selectedDate,
         startTime,
         endDate: selectedDate,
-        endTime,
-        durationType: 'jam',
-        durationValue: durationHours,
-        totalPrice: totalCost,
+        endTime: '',
+        totalPrice: 0,
         depositAmount: bike.depositRequired || 0,
         status: 'pending', // Menunggu ACC Admin (Admin tinggal klik ACC, tidak perlu input manual!)
         paymentMethod: 'bayar_nanti',
@@ -154,7 +133,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
         `• Kode Booking: *${newBook.bookingCode}*`,
         `• Unit Sepeda: *${bike.name}* (${bike.licenseNumber})`,
         `• Tanggal Sewa: *${formatDateIndo(selectedDate)}*`,
-        `• Jam Sewa: *${startTime} - ${endTime} WIB* (${durationHours} Jam)`,
+        `• Jam Mulai: *${startTime} WIB*`,
         `• Nama Pemesan: ${customerName}`,
         customerPhone ? `• No WhatsApp: ${customerPhone}` : '',
         `• Pembayaran: *Bayar di Akhir (Saat Pengembalian Sepeda)*`,
@@ -374,36 +353,13 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                 />
               </div>
 
-              {/* Durasi Jam */}
+              {/* Biaya dihitung berdasarkan waktu pengembalian aktual */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Durasi Sewa
+                  Penghitungan Biaya
                 </label>
-                <select
-                  value={durationHours}
-                  onChange={e => setDurationHours(parseInt(e.target.value, 10))}
-                  className="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
-                >
-                  <option value={1}>1 Jam</option>
-                  <option value={2}>2 Jam</option>
-                  <option value={3}>3 Jam</option>
-                  <option value={4}>4 Jam</option>
-                  <option value={5}>5 Jam</option>
-                  <option value={6}>6 Jam</option>
-                  <option value={8}>8 Jam</option>
-                  <option value={10}>10 Jam</option>
-                  <option value={12}>12 Jam (Seharian)</option>
-                </select>
-              </div>
-
-              {/* Jam Selesai Terhitung */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Jam Kembali
-                </label>
-                <div className="w-full text-xs font-bold px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800 flex items-center justify-between">
-                  <span>{endTime} WIB</span>
-                  <span className="text-[10px] text-slate-500 font-normal">({durationHours} Jam)</span>
+                <div className="w-full text-xs font-bold px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800">
+                  Tarif {formatRupiah(rateInfo.ratePerHour)} per jam, dihitung proporsional per menit saat sepeda kembali.
                 </div>
               </div>
             </div>
@@ -487,12 +443,13 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                       className="px-2.5 py-1 rounded-xl bg-white border border-rose-200 text-rose-700 font-mono text-xs font-bold flex items-center gap-1.5 shadow-2xs"
                     >
                       <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                      Pukul {b.startTime} - {b.endTime} WIB (Sudah Dibooking)
+                      {b.startDate < selectedDate && `${formatDateIndo(b.startDate)} • `}
+                      Mulai {b.startTime} WIB (hingga pengembalian)
                     </span>
                   ))}
                 </div>
                 <p className="text-[11px] text-amber-800">
-                  💡 <strong>Tips:</strong> Jam di luar jadwal di atas masih kosong dan bebas Anda sewa!
+                  💡 Unit disewa tanpa durasi tetap, jadi tidak dapat dibooking lagi pada tanggal ini sebelum dikembalikan.
                 </p>
               </div>
             ) : (
@@ -515,7 +472,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                     JAM INI KOSONG & BISA DIBOOKING!
                   </strong>
                   <span className="text-emerald-700">
-                    Sepeda bebas digunakan pada <strong>{startTime} - {endTime} WIB</strong> tanggal {formatDateIndo(selectedDate)}.
+                    Waktu mulai sewa <strong>{startTime} WIB</strong> pada tanggal {formatDateIndo(selectedDate)}.
                   </span>
                 </div>
               </div>
@@ -529,10 +486,10 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                     ⛔ TRANSAKSI DITOLAK / DILARANG DOUBLE BOOKING!
                   </strong>
                   <p className="text-rose-800 mt-1 font-semibold leading-relaxed">
-                    {conflictReason || `Unit sepeda sudah dibooking pada jam ${conflictingBooking?.startTime} - ${conflictingBooking?.endTime} WIB (${conflictingBooking?.customerName || ''}).`}
+                    {conflictReason || `Unit sepeda sudah dipesan sejak ${conflictingBooking?.startTime} WIB oleh ${conflictingBooking?.customerName || 'penyewa lain'}.`}
                   </p>
                   <span className="text-[11px] text-rose-600 block mt-1 font-medium">
-                    ⚠️ Transaksi tidak bisa diproses jika unit sepeda sudah dibooking pada jam tersebut atau sepeda masih aktif di jalan.
+                    ⚠️ Transaksi tidak bisa diproses jika unit sepeda masih memiliki booking aktif dan belum tercatat kembali.
                   </span>
                 </div>
               </div>
@@ -546,7 +503,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                   Bagan Jadwal Jam (Pilih Jam Mulai Langsung di Bawah):
                 </span>
                 <span className="text-[11px] text-slate-500">
-                  {bookedList.length === 0 ? '🟢 Semua jam masih kosong' : `🔴 ${bookedList.length} jadwal terisi`}
+                  {bookedList.length === 0 ? '🟢 Unit tersedia' : '🔴 Unit tidak tersedia pada tanggal ini'}
                 </span>
               </div>
 
@@ -554,12 +511,9 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
               <div className="grid grid-cols-6 sm:grid-cols-9 md:grid-cols-9 lg:grid-cols-[repeat(18,minmax(0,1fr))] gap-1 sm:gap-1.5 text-center">
                 {timelineHours.map(h => {
                   const hourStr = `${String(h).padStart(2, '0')}:00`;
-                  const nextHourStr = h === 23 ? '24:00' : `${String(h + 1).padStart(2, '0')}:00`;
                   const isHourPast = isPastHourToday(selectedDate, h);
-                  const isHourBooked = bookedList.some(
-                    b => isTimeRangeOverlap(b.startTime, b.endTime, hourStr, nextHourStr)
-                  );
-                  const isUserSelected = isTimeRangeOverlap(startTime, endTime, hourStr, nextHourStr);
+                  const isHourBooked = bookedList.length > 0;
+                  const isUserSelected = startTime === hourStr;
 
                   return (
                     <button
@@ -569,7 +523,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                         if (isHourPast) {
                           alert(`Pukul ${hourStr} WIB sudah lewat hari ini. Pilih jam sekarang atau jam selanjutnya.`);
                         } else if (isHourBooked) {
-                          alert(`Pukul ${hourStr} - ${nextHourStr} WIB sudah dibooking / sepeda masih di jalan. Silakan klik jam lain yang berwarna hijau.`);
+                          alert(`Unit sudah dipesan atau disewa pada tanggal ${formatDateIndo(selectedDate)}.`);
                         } else {
                           setStartTime(hourStr);
                         }
@@ -674,17 +628,17 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-slate-400">Jadwal:</span>
               <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-bold text-xs">
-                {formatDateIndo(selectedDate)}, {startTime} - {endTime} WIB
+                {formatDateIndo(selectedDate)}, mulai {startTime} WIB
               </span>
             </div>
 
             {!isCustomer ? (
               <div className="mt-1 flex items-baseline gap-2">
                 <span className="text-xl font-extrabold text-emerald-400">
-                  {formatRupiah(totalCost)}
+                  {formatRupiah(rateInfo.ratePerHour)}/jam
                 </span>
                 <span className="text-[11px] text-slate-400">
-                  ({durationHours} Jam @ {formatRupiah(rateInfo.ratePerHour)}/jam • {rateInfo.label})
+                  (biaya dihitung proporsional saat pengembalian • {rateInfo.label})
                 </span>
               </div>
             ) : (
@@ -693,7 +647,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                   Unit Bebas Bentrok &amp; Siap Di-ACC
                 </span>
                 <span className="text-[11px] text-slate-400">
-                  ({durationHours} Jam • SOP Bayar di Akhir)
+                  (biaya dihitung saat pengembalian)
                 </span>
               </div>
             )}
@@ -730,7 +684,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                   disabled={!isAvailable}
                   onClick={() => {
                     if (onAdminInputDirect) {
-                      onAdminInputDirect(bike, selectedDate, startTime, durationHours, customerName, customerPhone);
+                      onAdminInputDirect(bike, selectedDate, startTime, customerName, customerPhone);
                     }
                   }}
                   className={`px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md ${
@@ -763,7 +717,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                 disabled={!isAvailable}
                 onClick={() => {
                   if (onAdminInputDirect) {
-                    onAdminInputDirect(bike, selectedDate, startTime, durationHours, customerName, customerPhone);
+                    onAdminInputDirect(bike, selectedDate, startTime, customerName, customerPhone);
                   }
                 }}
                 className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-md ${

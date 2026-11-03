@@ -645,10 +645,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                     </td>
                     <td className="py-3">
                       <div className="font-medium text-slate-800">
-                        {book.startTime} - {book.endTime}
+                        Mulai {book.startTime}
+                        {book.actualReturnTime ? ` • Kembali ${book.actualReturnTime}` : ' • Berjalan'}
                       </div>
                       <div className="text-slate-400 text-[11px]">
-                        Durasi: {book.durationValue} {book.durationType}
+                        {book.status === 'selesai' && book.durationValue !== undefined
+                          ? `Durasi aktual: ${book.durationValue.toFixed(2)} jam`
+                          : 'Biaya dihitung saat pengembalian'}
                       </div>
                     </td>
                     <td className="py-3">

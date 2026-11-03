@@ -792,7 +792,7 @@ export const FinanceManager: React.FC = () => {
                         {formatDateIndo(b.actualReturnDate || b.startDate)}
                       </span>
                       <span className="text-[11px] text-slate-400">
-                        {b.startTime} - {b.endTime} WIB
+                        Mulai {b.startTime} • Kembali {b.actualReturnTime || b.endTime || '-'} WIB
                       </span>
                     </td>
                     <td className="py-3">
@@ -803,7 +803,7 @@ export const FinanceManager: React.FC = () => {
                       {b.bikeName}
                     </td>
                     <td className="py-3 text-slate-600">
-                      {b.durationValue} {b.durationType === 'jam' ? 'Jam' : 'Hari'}
+                      {b.durationValue !== undefined ? `${b.durationValue.toFixed(2)} Jam` : '-'}
                     </td>
                     <td className="py-3">
                       <div className="flex flex-col gap-1">

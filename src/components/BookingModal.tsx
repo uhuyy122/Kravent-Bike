@@ -9,7 +9,6 @@ import {
   MessageCircle,
   ShieldAlert,
   Send,
-  AlertTriangle,
   Search,
   Check,
   ChevronRight,
@@ -44,8 +43,6 @@ interface BookingModalProps {
   initialSelectedBikeIds?: string[];
   initialDate?: string;
   initialStartTime?: string;
-  initialDurationType?: 'jam' | 'hari';
-  initialDurationValue?: number;
   initialCustomerName?: string;
   initialCustomerPhone?: string;
   initialStep?: 1 | 2 | 3 | 4;
@@ -68,8 +65,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   initialSelectedBikeIds,
   initialDate,
   initialStartTime,
-  initialDurationType,
-  initialDurationValue,
   initialCustomerName,
   initialCustomerPhone,
   initialStep = 1,
@@ -116,9 +111,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   });
 
   const [startTime, setStartTime] = useState(() => getDefaultStartTime(initialStartTime));
-
-  const [durationType, setDurationType] = useState<'jam' | 'hari'>(initialDurationType || 'jam');
-  const [durationValue, setDurationValue] = useState(initialDurationValue || 2);
 
   // LANGKAH 3: PILIH SEPEDA
   const [selectedBikeIds, setSelectedBikeIds] = useState<string[]>(() => {
@@ -175,38 +167,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const sessionHours = getOperatingHoursForSession(selectedTimeSession);
 
-  // Hitung jam selesai otomatis (Maksimal tutup 23:00)
-  const calculateEndTime = () => {
-    if (durationType === 'jam') {
-      const [hour, minute] = startTime.split(':').map(Number);
-      const endHour = (hour + durationValue) % 24;
-      const formattedHour = endHour.toString().padStart(2, '0');
-      return `${formattedHour}:${minute.toString().padStart(2, '0')}`;
-    } else {
-      return startTime;
-    }
-  };
-
-  const calculateEndDate = () => {
-    if (durationType === 'jam') {
-      const [hour] = startTime.split(':').map(Number);
-      if (hour + durationValue >= 24) {
-        const d = new Date(startDate);
-        const daysToAdd = Math.floor((hour + durationValue) / 24);
-        d.setDate(d.getDate() + daysToAdd);
-        return d.toISOString().split('T')[0];
-      }
-      return startDate;
-    } else {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + durationValue);
-      return d.toISOString().split('T')[0];
-    }
-  };
-
-  const calculatedEndTime = calculateEndTime();
-  const calculatedEndDate = calculateEndDate();
-
   // Auto-switch startTime ke jam aktif pertama jika jam terpilih sudah lewat untuk hari ini
   useEffect(() => {
     const sessionHours = getOperatingHoursForSession(selectedTimeSession);
@@ -226,7 +186,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   }, [startDate, startTime, selectedTimeSession, todayStr]);
 
-  // Evaluasi ketersediaan sepeda real-time pada rentang jam yang dipilih
+  // Evaluasi ketersediaan sepeda untuk waktu mulai yang dipilih
   const bikeAvailabilityMap = useMemo(() => {
     const map = new Map<string, { isAvailable: boolean; message?: string }>();
     bikes.forEach(b => {
@@ -234,7 +194,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         b.id,
         startDate,
         startTime,
-        calculatedEndTime,
+        startTime,
         bookings,
         b
       );
@@ -244,7 +204,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       });
     });
     return map;
-  }, [bikes, startDate, startTime, calculatedEndTime, bookings]);
+  }, [bikes, startDate, startTime, bookings]);
 
   // Cek bentrok khusus untuk unit sepeda yang telah dicentang
   const selectedBikeConflicts = useMemo(() => {
@@ -261,26 +221,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const hasAnyConflict = selectedBikeConflicts.some(c => c.hasConflict);
   const conflictItems = selectedBikeConflicts.filter(c => c.hasConflict);
 
-  // Price calculations (khusus staf dan owner)
+  // Tarif sewa dihitung saat unit dikembalikan berdasarkan durasi aktual.
   const rateInfo = getDateRateInfo(startDate);
-
-  const pricingPerBike = useMemo(() => {
-    return selectedBikes.map(b => {
-      const ratePerHour = rateInfo.ratePerHour;
-      const unitRentalCost =
-        durationType === 'jam'
-          ? ratePerHour * durationValue
-          : b.pricePerDay * durationValue;
-      return {
-        bike: b,
-        unitRentalCost,
-        depositAmount: b.depositRequired || 0,
-      };
-    });
-  }, [selectedBikes, rateInfo, durationType, durationValue]);
-
-  const grandTotalCost = pricingPerBike.reduce((sum, item) => sum + item.unitRentalCost, 0);
-  const finalTotalWithAddons = grandTotalCost + grandTotalAddonCost;
 
   // Filter sepeda
   const filteredBikes = useMemo(() => {
@@ -366,14 +308,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
-    if (durationType === 'jam') {
-      const [sh] = startTime.split(':').map(Number);
-      if (sh + durationValue > 23) {
-        alert(`Jam pengembalian (${startTime} + ${durationValue} jam = ${calculatedEndTime} WIB) melebihi jam tutup maksimal toko Kravent Bike (23:00 WIB). Silakan kurangi durasi sewa atau pilih jam mulai lebih awal.`);
-        return;
-      }
-    }
-
     setCurrentStep(3);
   };
 
@@ -421,33 +355,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       const createdList: Booking[] = [];
       const isPayLater = paymentMethod === 'bayar_nanti';
 
-      for (let i = 0; i < pricingPerBike.length; i++) {
-        const item = pricingPerBike[i];
+      for (let i = 0; i < selectedBikes.length; i++) {
+        const selectedBike = selectedBikes[i];
         const addonShare = i === 0 ? grandTotalAddonCost : 0;
         const newBooking = await addBooking({
-          bikeId: item.bike.id,
-          bikeName: item.bike.name,
-          bikeImage: item.bike.imageUrl,
+          bikeId: selectedBike.id,
+          bikeName: selectedBike.name,
+          bikeImage: selectedBike.imageUrl,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           startDate,
           startTime,
-          endDate: calculatedEndDate,
-          endTime: calculatedEndTime,
-          durationType,
-          durationValue,
-          totalPrice: item.unitRentalCost + addonShare,
-          depositAmount: item.depositAmount,
+          endDate: startDate,
+          endTime: '',
+          totalPrice: 0,
+          depositAmount: selectedBike.depositRequired || 0,
           status: 'aktif',
           paymentMethod,
           paymentStatus: isPayLater ? 'belum_lunas' : 'lunas',
           notes: notes.trim()
-            ? `${notes.trim()} (Rombongan ${i + 1}/${pricingPerBike.length} - ${generatedGroupCode})`
-            : `Rombongan ${i + 1}/${pricingPerBike.length} - ${generatedGroupCode}`,
+            ? `${notes.trim()} (Rombongan ${i + 1}/${selectedBikes.length} - ${generatedGroupCode})`
+            : `Rombongan ${i + 1}/${selectedBikes.length} - ${generatedGroupCode}`,
           handoverBy: currentRole === 'admin' ? 'Admin Pemilik' : 'Staff Toko Kasir',
           groupBookingCode: generatedGroupCode,
           groupItemIndex: i + 1,
-          groupItemTotal: pricingPerBike.length,
+          groupItemTotal: selectedBikes.length,
           addons: i === 0 ? selectedAddonList : [],
           addonTotalCost: addonShare,
           approvedAt: new Date().toISOString(),
@@ -495,33 +427,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       const createdList: Booking[] = [];
 
-      for (let i = 0; i < pricingPerBike.length; i++) {
-        const item = pricingPerBike[i];
+      for (let i = 0; i < selectedBikes.length; i++) {
+        const selectedBike = selectedBikes[i];
         const addonShare = i === 0 ? grandTotalAddonCost : 0;
         const newBooking = await addBooking({
-          bikeId: item.bike.id,
-          bikeName: item.bike.name,
-          bikeImage: item.bike.imageUrl,
+          bikeId: selectedBike.id,
+          bikeName: selectedBike.name,
+          bikeImage: selectedBike.imageUrl,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim() || '-',
           startDate,
           startTime,
-          endDate: calculatedEndDate,
-          endTime: calculatedEndTime,
-          durationType,
-          durationValue,
-          totalPrice: item.unitRentalCost + addonShare,
-          depositAmount: item.depositAmount,
+          endDate: startDate,
+          endTime: '',
+          totalPrice: 0,
+          depositAmount: selectedBike.depositRequired || 0,
           status: 'pending', // Menunggu ACC Admin
           paymentMethod: 'bayar_nanti',
           paymentStatus: 'belum_lunas',
           notes: notes.trim()
-            ? `${notes.trim()} (Rombongan ${i + 1}/${pricingPerBike.length} - ${generatedGroupCode})`
-            : `Rombongan ${i + 1}/${pricingPerBike.length} - ${generatedGroupCode}`,
+            ? `${notes.trim()} (Rombongan ${i + 1}/${selectedBikes.length} - ${generatedGroupCode})`
+            : `Rombongan ${i + 1}/${selectedBikes.length} - ${generatedGroupCode}`,
           handoverBy: 'Menunggu ACC Admin',
           groupBookingCode: generatedGroupCode,
           groupItemIndex: i + 1,
-          groupItemTotal: pricingPerBike.length,
+          groupItemTotal: selectedBikes.length,
           addons: i === 0 ? selectedAddonList : [],
           addonTotalCost: addonShare,
         });
@@ -549,7 +479,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         `* Atas Nama: ${customerName}`,
         customerPhone ? `* No WhatsApp: ${customerPhone}` : '',
         `* Jadwal Sewa: ${formatDateIndo(startDate)}`,
-        `* Jam Sewa: ${startTime} - ${calculatedEndTime} WIB (${durationValue} ${durationType})`,
+        `* Jam Mulai: ${startTime} WIB`,
         `* Unit Sepeda (${selectedBikes.length} Unit):`,
         bikeListText,
         `* Tambahan Lainnya (Addons):`,
@@ -729,7 +659,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           Unit #{idx + 1}: {b.bookingCode}
                         </span>
                         <h5 className="font-bold text-slate-900 truncate mt-0.5">{b.bikeName}</h5>
-                        <p className="text-[11px] text-slate-500">{b.startTime} - {b.endTime} WIB</p>
+                        <p className="text-[11px] text-slate-500">Mulai {b.startTime} WIB • durasi hingga pengembalian</p>
                       </div>
                     </div>
                   ))}
@@ -772,7 +702,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div className="flex justify-between items-center text-slate-400">
                   <span>Jadwal Sewa:</span>
                   <span className="font-bold text-white">
-                    {formatDateIndo(startDate)} ({startTime} - {calculatedEndTime} WIB)
+                    {formatDateIndo(startDate)} mulai pukul {startTime} WIB
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-slate-400">
@@ -783,13 +713,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
                 {!isCustomer ? (
                   <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                    <span className="text-sm font-bold text-slate-300">Total Tagihan ({confirmedBookings.length} Sepeda + Addon):</span>
-                    <span className="text-lg font-extrabold text-emerald-400">{formatRupiah(finalTotalWithAddons)}</span>
+                    <span className="text-sm font-bold text-slate-300">Biaya perlengkapan:</span>
+                    <span className="text-lg font-extrabold text-emerald-400">{formatRupiah(grandTotalAddonCost)}</span>
                   </div>
                 ) : (
                   <div className="pt-2 border-t border-slate-800 text-[11px] text-emerald-300 flex items-center justify-between">
                     <span>Status Pesanan:</span>
-                    <span className="font-extrabold uppercase">Tersimpan di Sistem • Menunggu ACC Admin</span>
+                    <span className="font-extrabold uppercase">Biaya sewa dihitung saat pengembalian</span>
                   </div>
                 )}
               </div>
@@ -951,7 +881,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <strong>Langkah 2 dari 4: Tentukan Jadwal &amp; Jam Sewa</strong>
                   <p className="text-emerald-800 mt-0.5">
                     Atas Nama: <strong className="text-emerald-950">{customerName}</strong> ({customerPhone}).
-                    Jam order sewa dapat dimulai dari pukul <strong>06:00 s/d 21:00 WIB</strong>, dengan waktu pengembalian maksimal toko tutup pukul <strong>23:00 WIB</strong>.
+                    Jam mulai sewa dapat dipilih dari pukul <strong>06:00 s/d 21:00 WIB</strong>. Durasi dan biaya dihitung saat sepeda dikembalikan.
                   </p>
                 </div>
               </div>
@@ -977,41 +907,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   }}
                   className="w-full text-base sm:text-sm px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-bold"
                 />
-              </div>
-
-              {/* Tipe Sewa: Jam vs Hari */}
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs font-bold text-slate-700">Pilihan Tipe Sewa:</span>
-                <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDurationType('jam');
-                      setDurationValue(2);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      durationType === 'jam'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Sewa per Jam
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDurationType('hari');
-                      setDurationValue(1);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      durationType === 'hari'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Sewa Seharian
-                  </button>
-                </div>
               </div>
 
               {/* Pagi vs Sore */}
@@ -1087,74 +982,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 )}
               </div>
 
-              {/* Pilihan Durasi */}
-              {durationType === 'jam' ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-800">Durasi Sewa:</span>
-                    <span className="font-extrabold text-emerald-700">
-                      Selesai: {calculatedEndTime} WIB ({durationValue} Jam)
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                    {[1, 2, 3, 4, 5, 6].map(hours => {
-                      const [sh] = startTime.split(':').map(Number);
-                      const isPastClosing = sh + hours > 23;
-
-                      return (
-                        <button
-                          key={hours}
-                          type="button"
-                          disabled={isPastClosing}
-                          onClick={() => setDurationValue(hours)}
-                          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                            durationValue === hours
-                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                              : isPastClosing
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          {hours} Jam
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {(() => {
-                    const [sh] = startTime.split(':').map(Number);
-                    if (sh + durationValue > 23) {
-                      return (
-                        <p className="text-[11px] text-rose-600 font-semibold flex items-center gap-1">
-                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                          <span>Melebihi jam tutup maksimal toko 23:00 WIB. Silakan kurangi durasi sewa.</span>
-                        </p>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-800 block">Berapa Hari Sewa:</span>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 5, 7].map(d => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setDurationValue(d)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                          durationValue === d
-                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        {d} Hari
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Schedule Summary Box */}
               <div className="p-3.5 rounded-2xl bg-slate-900 text-white text-xs flex items-center justify-between">
                 <div>
@@ -1162,10 +989,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     Jadwal Gowes Terpilih:
                   </span>
                   <p className="font-extrabold text-sm text-emerald-400 mt-0.5">
-                    {formatDateIndo(startDate)} • {startTime} - {calculatedEndTime} WIB
-                  </p>
-                  <p className="text-slate-300 text-[11px]">
-                    Durasi: {durationValue} {durationType}
+                    {formatDateIndo(startDate)} • Mulai {startTime} WIB
                   </p>
                 </div>
                 <div className="text-right">
@@ -1206,7 +1030,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <div className="text-xs text-emerald-950 leading-relaxed">
                     <strong>Langkah 3 dari 4: Pilih Sepeda yang Siap Gowes</strong>
                     <p className="text-emerald-800 mt-0.5">
-                      Jadwal: <strong>{formatDateIndo(startDate)}</strong> pukul <strong>{startTime} - {calculatedEndTime} WIB</strong>.
+                      Mulai: <strong>{formatDateIndo(startDate)} pukul {startTime} WIB</strong>. Durasi dan biaya dihitung saat sepeda dikembalikan.
                       Centang sepeda yang ingin Anda sewa (Bisa pilih <strong>lebih dari 1 sepeda</strong> untuk rombongan!).
                     </p>
                   </div>
@@ -1295,7 +1119,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           return;
                         }
                         if (!isAvailable) {
-                          alert(`Sepeda [${b.licenseNumber}] sudah dipesan penyewa lain pada jam ${startTime} - ${calculatedEndTime} WIB.`);
+                          alert(`Sepeda [${b.licenseNumber}] sudah dipesan atau sedang disewa pada tanggal tersebut.`);
                           return;
                         }
                         handleToggleBike(b.id);
@@ -1443,7 +1267,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     {customerName} <span className="text-slate-300 font-normal">({customerPhone})</span>
                   </p>
                   <p className="text-[11px] text-slate-300 mt-0.5">
-                    {selectedBikes.length} Unit • {formatDateIndo(startDate)} ({startTime} - {calculatedEndTime} WIB)
+                    {selectedBikes.length} Unit • {formatDateIndo(startDate)} mulai {startTime} WIB
                   </p>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -1571,10 +1395,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
 
                   <div className="space-y-1.5 text-slate-300">
-                    <div className="flex justify-between">
-                      <span>Total Sewa {selectedBikes.length} Unit:</span>
-                      <span className="font-bold text-white">{formatRupiah(grandTotalCost)}</span>
-                    </div>
+                    <p className="text-slate-300">
+                      Durasi sewa dicatat sampai waktu pengembalian. Biaya dihitung proporsional per menit berdasarkan tarif per jam.
+                    </p>
                     {grandTotalAddonCost > 0 && (
                       <div className="flex justify-between text-amber-300">
                         <span>Biaya Perlengkapan Tambahan:</span>
@@ -1582,8 +1405,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       </div>
                     )}
                     <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-sm">
-                      <span className="font-bold text-white">Grand Total Tagihan:</span>
-                      <span className="font-black text-emerald-400 text-base">{formatRupiah(finalTotalWithAddons)}</span>
+                      <span className="font-bold text-white">Biaya Perlengkapan:</span>
+                      <span className="font-black text-emerald-400 text-base">{formatRupiah(grandTotalAddonCost)}</span>
                     </div>
                   </div>
 

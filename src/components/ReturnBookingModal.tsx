@@ -13,7 +13,7 @@ import {
 import { Booking } from '../types';
 import { useApp } from '../context/AppContext';
 import { formatDateIndo, formatRupiah } from '../utils/formatters';
-import { calculateLateFee, getDateRateInfo } from '../utils/pricingUtils';
+import { calculateRentalCharge, getDateRateInfo } from '../utils/pricingUtils';
 import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
 
 interface ReturnBookingModalProps {
@@ -59,47 +59,45 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
   const [discountMode, setDiscountMode] = useState<'percent' | 'nominal'>('percent');
   const [discountValue, setDiscountValue] = useState<number>(0);
 
-  const getEffectiveScheduledEndDate = (item: Booking) => {
-    let targetEndDate = item.endDate || item.startDate;
-    if (
-      item.startTime &&
-      item.endTime &&
-      item.endTime < item.startTime &&
-      targetEndDate === item.startDate
-    ) {
-      const nextDay = new Date(item.startDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      targetEndDate = nextDay.toISOString().split('T')[0];
-    }
-    return targetEndDate;
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours === 0) return `${remainingMinutes} menit`;
+    if (remainingMinutes === 0) return `${hours} jam`;
+    return `${hours} jam ${remainingMinutes} menit`;
   };
 
-  const itemLateDetails = useMemo(
+  const itemRentalDetails = useMemo(
     () =>
       items.map(item => {
-        const ratePerHour = getDateRateInfo(returnDate || item.startDate).ratePerHour;
-        const effectiveScheduledEndDate = getEffectiveScheduledEndDate(item);
-        const lateCalc = calculateLateFee(
-          effectiveScheduledEndDate,
-          item.endTime,
+        const ratePerHour = getDateRateInfo(item.startDate).ratePerHour;
+        const charge = calculateRentalCharge(
+          item.startDate,
+          item.startTime,
           returnDate,
           returnTime,
           ratePerHour
         );
-        const baseTotal = (item.totalPrice || 0) + (item.addonTotalCost || 0);
-        const grossTotal = baseTotal + lateCalc.lateFee;
+        const { durationMinutes, durationHours } = charge;
+        const rentalCost = charge.totalPrice;
+        const baseTotal = rentalCost + (item.addonTotalCost || 0);
 
         return {
           item,
-          lateCalc,
+          durationMinutes,
+          hasInvalidTime: !charge.isValid,
+          durationHours,
+          ratePerHour,
+          rentalCost,
           baseTotal,
-          grossTotal,
+          grossTotal: baseTotal,
         };
       }),
     [items, returnDate, returnTime]
   );
 
-  const grossTotal = itemLateDetails.reduce((sum, entry) => sum + entry.grossTotal, 0);
+  const hasInvalidReturnTime = itemRentalDetails.some(entry => entry.hasInvalidTime);
+  const grossTotal = itemRentalDetails.reduce((sum, entry) => sum + entry.grossTotal, 0);
 
   const discountAmount = useMemo(() => {
     if (!discountValue) return 0;
@@ -111,44 +109,41 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
 
   const distributedTotals = useMemo(() => {
     if (grossTotal === 0) {
-      return itemLateDetails.map(() => 0);
+      return itemRentalDetails.map(() => 0);
     }
 
-    return itemLateDetails.map(entry => {
+    return itemRentalDetails.map(entry => {
       const share = entry.grossTotal / grossTotal;
       return Math.max(0, entry.grossTotal - discountAmount * share);
     });
-  }, [discountAmount, grossTotal, itemLateDetails]);
+  }, [discountAmount, grossTotal, itemRentalDetails]);
 
   const finalTotal = distributedTotals.reduce((sum, value) => sum + value, 0);
-  const totalLateFee = itemLateDetails.reduce((sum, entry) => sum + entry.lateCalc.lateFee, 0);
-  const isPreviouslyUnpaid = items.some(
-    item => item.paymentStatus === 'belum_lunas' || item.paymentMethod === 'bayar_nanti'
-  );
-  const amountToCollectNow = isPreviouslyUnpaid ? finalTotal : totalLateFee;
-
-  const setQuickTime = (minutesOffset: number) => {
-    const d = new Date(`${primaryBooking.startDate}T${primaryBooking.endTime}:00`);
-    d.setMinutes(d.getMinutes() + minutesOffset);
-    const newH = String(d.getHours()).padStart(2, '0');
-    const newM = String(d.getMinutes()).padStart(2, '0');
-    setReturnTime(`${newH}:${newM}`);
-  };
 
   const handleConfirmReturn = () => {
+    if (hasInvalidReturnTime) {
+      alert('Waktu pengembalian tidak boleh lebih awal dari waktu mulai sewa.');
+      return;
+    }
+
     const returnIso = `${returnDate}T${returnTime}:00`;
 
     items.forEach((item, index) => {
-      const lateCalc = itemLateDetails[index].lateCalc;
+      const rental = itemRentalDetails[index];
       const finalItemTotal = distributedTotals[index] || 0;
 
       updateBookingStatus(item.id, 'selesai', {
         returnedAt: returnIso,
         actualReturnDate: returnDate,
         actualReturnTime: returnTime,
-        lateMinutes: lateCalc.lateMinutes,
-        lateExtraHours: lateCalc.extraHours,
-        lateFee: lateCalc.lateFee,
+        endDate: returnDate,
+        endTime: returnTime,
+        durationType: 'jam',
+        durationValue: rental.durationHours,
+        totalPrice: rental.rentalCost,
+        lateMinutes: 0,
+        lateExtraHours: 0,
+        lateFee: 0,
         finalTotalPrice: finalItemTotal,
         returnNotes,
         paymentNotes,
@@ -173,6 +168,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
     msg += `Penyewa: *${primaryBooking.customerName}*%0A`;
     msg += `Unit: *${unitList}*%0A`;
     msg += `No. Booking: *${items.map(item => item.bookingCode).join(', ')}*%0A`;
+    msg += `Durasi Sewa: *${itemRentalDetails[0] && !itemRentalDetails[0].hasInvalidTime ? formatDuration(itemRentalDetails[0].durationMinutes) : 'Waktu tidak valid'}*%0A`;
     msg += `Jam Kepulangan: *${returnTime} WIB* (${formatDateIndo(returnDate)})%0A`;
     msg += '-----------------------------------%0A';
 
@@ -297,7 +293,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <span className="text-[10px] font-semibold text-slate-500 mr-1">Pintasan Jam:</span>
+            <span className="text-[10px] font-semibold text-slate-500 mr-1">Pintasan:</span>
             <button
               type="button"
               onClick={() => {
@@ -308,34 +304,13 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             >
               Jam Sekarang ({currentTimeStr})
             </button>
-            <button
-              type="button"
-              onClick={() => setQuickTime(0)}
-              className="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700 transition-colors"
-            >
-              Tepat Jadwal ({primaryBooking.endTime})
-            </button>
-            <button
-              type="button"
-              onClick={() => setQuickTime(30)}
-              className="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700 transition-colors"
-            >
-              +30 Mnt
-            </button>
-            <button
-              type="button"
-              onClick={() => setQuickTime(60)}
-              className="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700 transition-colors"
-            >
-              +1 Jam
-            </button>
           </div>
 
           <div className="rounded-2xl border border-slate-200 p-4 bg-white space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h4 className="font-bold text-xs text-slate-900 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-amber-500" />
-                Rincian Denda & Total
+                Rincian Biaya Sewa
               </h4>
               <span className="text-[10px] text-slate-500 font-semibold">
                 {items.length > 1 ? `${items.length} unit` : '1 unit'}
@@ -343,28 +318,40 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              {itemLateDetails.map(({ item, lateCalc, baseTotal }, index) => (
+              {itemRentalDetails.map(({ item, durationMinutes, hasInvalidTime, ratePerHour, rentalCost, baseTotal }, index) => (
                 <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-bold text-slate-800 text-[11px]">{item.bikeName}</div>
                     <div className="font-extrabold text-slate-900 text-[11px]">{formatRupiah(distributedTotals[index] || 0)}</div>
                   </div>
                   <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-                    <span>Sewa</span>
-                    <span>{formatRupiah(baseTotal)}</span>
+                    <span>Durasi Aktual</span>
+                    <span>{hasInvalidTime ? 'Waktu tidak valid' : formatDuration(durationMinutes)}</span>
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>Denda</span>
-                    <span>+{formatRupiah(lateCalc.lateFee)}</span>
+                    <span>Sewa ({formatRupiah(ratePerHour)}/jam, prorata per menit)</span>
+                    <span>{formatRupiah(rentalCost)}</span>
                   </div>
+                  {(item.addonTotalCost || 0) > 0 && (
+                    <div className="flex justify-between text-[10px] text-slate-500">
+                      <span>Perlengkapan</span>
+                      <span>+{formatRupiah(item.addonTotalCost || 0)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-[10px] text-slate-700 font-bold pt-1 border-t border-slate-200 mt-1">
                     <span>Subtotal</span>
-                    <span>{formatRupiah(itemLateDetails[index].grossTotal)}</span>
+                    <span>{formatRupiah(baseTotal)}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+
+          {hasInvalidReturnTime && (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+              Waktu pengembalian tidak boleh lebih awal dari waktu mulai sewa.
+            </p>
+          )}
 
           <div className="space-y-4 rounded-2xl border border-slate-200 p-4 bg-slate-50">
             <div className="flex items-center gap-2">
@@ -463,7 +450,8 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             <button
               type="button"
               onClick={handleConfirmReturn}
-              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm transition-colors shadow-lg shadow-emerald-600/20"
+              disabled={hasInvalidReturnTime}
+              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-sm transition-colors shadow-lg shadow-emerald-600/20"
             >
               Konfirmasi
             </button>
