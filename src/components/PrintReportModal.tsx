@@ -21,7 +21,7 @@ import {
   getSessionForTime
 } from '../utils/scheduleUtils';
 import { exportBookingsToExcel } from '../utils/exportUtils';
-import { getBookingTotalPrice } from '../utils/bookingUtils';
+import { getBookingAddonSummary, getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 import kraventLogo from '../assets/kravent-logo.svg';
 
 interface PrintReportModalProps {
@@ -92,6 +92,9 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       customerPhone: string;
       bikes: string[];
       totalUnits: number;
+      bikePrice: number;
+      addons: ReturnType<typeof getBookingAddonSummary>;
+      addonPrice: number;
       shifts: string[];
       notes: string[];
       totalPrice: number;
@@ -104,10 +107,25 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       const bikeName = b.bikeName?.trim();
       const notePool = [b.notes, b.paymentNotes, b.returnNotes].filter(Boolean) as string[];
       const bookingTotal = getBookingTotalPrice(b);
+      const bookingAddons = getBookingAddonSummary([b]);
+      const addonPrice = getBookingAddonTotal(b);
 
       if (existing) {
         if (bikeName) existing.bikes.push(bikeName);
         existing.totalUnits = existing.bikes.length;
+        existing.bikePrice += b.totalPrice;
+        existing.addonPrice += addonPrice;
+        bookingAddons.forEach(addon => {
+          const current = existing.addons.find(
+            item => item.id === addon.id && item.price === addon.price
+          );
+          if (current) {
+            current.quantity += addon.quantity;
+            current.totalPrice += addon.totalPrice;
+          } else {
+            existing.addons.push(addon);
+          }
+        });
         existing.shifts = [...new Set([...existing.shifts, shift])];
         existing.totalPrice += bookingTotal;
         if (notePool.length) {
@@ -119,6 +137,9 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           customerPhone: b.customerPhone,
           bikes: bikeName ? [bikeName] : [],
           totalUnits: bikeName ? 1 : 0,
+          bikePrice: b.totalPrice,
+          addons: bookingAddons,
+          addonPrice,
           shifts: [shift],
           notes: notePool,
           totalPrice: bookingTotal,
@@ -516,15 +537,19 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                     <th className="p-2 border-r border-slate-300">Atas Nama</th>
                     <th className="p-2 border-r border-slate-300 text-center">Jumlah Sepeda</th>
                     <th className="p-2 border-r border-slate-300">Unit Sepeda</th>
+                    <th className="p-2 border-r border-slate-300 text-right">Subtotal Sepeda</th>
+                    <th className="p-2 border-r border-slate-300">Tambahan & Harga</th>
+                    <th className="p-2 border-r border-slate-300 text-right">Total Tambahan</th>
+                    <th className="p-2 border-r border-slate-300 text-right">Denda / Diskon</th>
                     <th className="p-2 border-r border-slate-300 text-center">Shift</th>
-                    <th className="p-2 border-r border-slate-300 text-right">Total Harga</th>
+                    <th className="p-2 border-r border-slate-300 text-right">Total Tagihan</th>
                     <th className="p-2 border-r border-slate-300">Catatan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {groupedReportBookings.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-4 text-center text-slate-400">
+                      <td colSpan={11} className="p-4 text-center text-slate-400">
                         Belum ada data pada periode {activePeriodTitle}.
                       </td>
                     </tr>
@@ -538,6 +563,26 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                         </td>
                         <td className="p-2 border-r border-slate-200 text-center font-bold text-slate-900">{group.totalUnits}</td>
                         <td className="p-2 border-r border-slate-200">{group.bikes.join(', ') || '-'}</td>
+                        <td className="p-2 border-r border-slate-200 text-right font-semibold text-slate-700">
+                          {formatRupiah(group.bikePrice)}
+                        </td>
+                        <td className="p-2 border-r border-slate-200">
+                          {group.addons.length > 0 ? (
+                            <ul className="space-y-1">
+                              {group.addons.map(addon => (
+                                <li key={`${addon.id}:${addon.price}`}>
+                                  {addon.name} x{addon.quantity} ({formatRupiah(addon.price)} / item) = {formatRupiah(addon.totalPrice)}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : '-'}
+                        </td>
+                        <td className="p-2 border-r border-slate-200 text-right font-semibold text-slate-700">
+                          {formatRupiah(group.addonPrice)}
+                        </td>
+                        <td className="p-2 border-r border-slate-200 text-right text-slate-600">
+                          {formatRupiah(group.totalPrice - group.bikePrice - group.addonPrice)}
+                        </td>
                         <td className="p-2 border-r border-slate-200 text-center">
                           <span className={`px-1.5 py-0.5 rounded font-semibold ${
                             group.shifts.length > 1 ? 'bg-slate-100 text-slate-700' : group.shifts[0] === 'pagi' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
@@ -557,7 +602,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-100 font-bold border-t-2 border-slate-300 text-xs">
-                    <td colSpan={5} className="p-2 text-right">
+                    <td colSpan={9} className="p-2 text-right">
                       TOTAL OMZET KELOMPOK:
                     </td>
                     <td className="p-2 text-right text-emerald-800 font-extrabold">

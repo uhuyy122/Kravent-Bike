@@ -28,7 +28,7 @@ import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
 import { EditBookingModal } from './EditBookingModal';
 import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
-import { getBookingTotalPrice } from '../utils/bookingUtils';
+import { getBookingAddonSummary, getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 
 export const BookingList: React.FC = () => {
   const { bookings, updateBookingStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
@@ -433,6 +433,7 @@ export const BookingList: React.FC = () => {
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
                   <th className="py-3.5 pl-4">Kode & Tanggal</th>
                   <th className="py-3.5">Unit Sepeda</th>
+                  <th className="py-3.5">Tambahan</th>
                   <th className="py-3.5">Penyewa & Kontak</th>
                   <th className="py-3.5">Jadwal Jam Sewa</th>
                   <th className="py-3.5">Total & Metode</th>
@@ -447,6 +448,10 @@ export const BookingList: React.FC = () => {
                   const totalGroupPrice = group.items.reduce((sum, item) => {
                     return sum + getBookingTotalPrice(item);
                   }, 0);
+                  const groupBikePrice = group.items.reduce((sum, item) => sum + item.totalPrice, 0);
+                  const groupAddons = getBookingAddonSummary(group.items);
+                  const groupAddonTotal = group.items.reduce((sum, item) => sum + getBookingAddonTotal(item), 0);
+                  const isGroupCompleted = group.items.every(item => item.status === 'selesai');
 
                   return (
                     <tr key={group.key} className="hover:bg-slate-50/70 transition-colors align-top">
@@ -480,6 +485,28 @@ export const BookingList: React.FC = () => {
                             </div>
                           ))}
                         </div>
+                      </td>
+
+                      <td className="py-3.5">
+                        {groupAddons.length > 0 ? (
+                          <div className="space-y-1.5 min-w-[150px]">
+                            {groupAddons.map(addon => (
+                              <div key={`${addon.id}:${addon.price}`} className="text-[11px]">
+                                <span className="font-semibold text-slate-800">
+                                  {addon.name} x{addon.quantity}
+                                </span>
+                                <span className="block text-[10px] text-emerald-700">
+                                  {formatRupiah(addon.totalPrice)}
+                                </span>
+                              </div>
+                            ))}
+                            <div className="border-t border-slate-200 pt-1 text-[10px] font-bold text-emerald-800">
+                              Total tambahan: {formatRupiah(groupAddonTotal)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">Tidak ada</span>
+                        )}
                       </td>
 
                       <td className="py-3.5">
@@ -533,6 +560,15 @@ export const BookingList: React.FC = () => {
                         <span className="font-bold text-slate-900 block">
                           {formatRupiah(totalGroupPrice)}
                         </span>
+                        <span className="block text-[10px] text-slate-500">
+                          Sewa sepeda: {groupBikePrice > 0 ? formatRupiah(groupBikePrice) : 'dihitung saat kembali'}
+                        </span>
+                        <span className="block text-[10px] text-emerald-700">
+                          Tambahan: {formatRupiah(groupAddonTotal)}
+                        </span>
+                        {!isGroupCompleted && (
+                          <span className="block text-[9px] text-slate-400">Total sementara</span>
+                        )}
                         {group.items.some(item => item.paymentStatus === 'belum_lunas' || item.paymentMethod === 'bayar_nanti') ? (
                           <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md inline-block mt-1 shadow-2xs">
                             💳 Bayar Nanti
@@ -785,6 +821,40 @@ export const BookingList: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            {(() => {
+              const addons = getBookingAddonSummary(selectedGroupDetail);
+              const addonTotal = selectedGroupDetail.reduce(
+                (sum, item) => sum + getBookingAddonTotal(item),
+                0
+              );
+
+              return (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wide text-emerald-900">
+                    Tambahan Booking
+                  </h4>
+                  {addons.length > 0 ? (
+                    <div className="mt-2 space-y-1.5">
+                      {addons.map(addon => (
+                        <div key={`${addon.id}:${addon.price}`} className="flex justify-between gap-3 text-xs">
+                          <span className="font-semibold text-slate-700">
+                            {addon.name} x{addon.quantity} ({formatRupiah(addon.price)} / item)
+                          </span>
+                          <span className="font-bold text-slate-800">{formatRupiah(addon.totalPrice)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between border-t border-emerald-200 pt-2 text-xs font-extrabold text-emerald-900">
+                        <span>Total tambahan</span>
+                        <span>{formatRupiah(addonTotal)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">Tidak ada tambahan pada booking ini.</p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { Booking, FinancialSettings } from '../types';
 import { formatRupiah, formatDateIndo } from './formatters';
-import { getBookingTotalPrice } from './bookingUtils';
+import { getBookingAddonTotal, getBookingTotalPrice } from './bookingUtils';
 
 interface ExportFinancialData {
   grossRevenue: number;
@@ -33,6 +33,9 @@ export const exportBookingsToExcel = (
       <td style="font-weight: bold;">${b.customerName}</td>
       <td>'${b.customerPhone}</td>
       <td>${b.bikeName}</td>
+      <td>${b.addons?.map(addon => `${addon.name} x${addon.quantity} (${formatRupiah(addon.price * addon.quantity)})`).join(', ') || '-'}</td>
+      <td style="text-align: right;">${formatRupiah(getBookingAddonTotal(b))}</td>
+      <td style="text-align: right;">${formatRupiah(b.totalPrice)}</td>
       <td style="text-align: center;">${b.actualReturnTime ? `${b.actualReturnTime} WIB ${b.lateMinutes ? `(Telat ${b.lateMinutes}m)` : ''}` : '-'}</td>
       <td style="text-align: right; color: #b91c1c;">${b.lateFee || 0}</td>
       <td style="text-align: right; font-weight: bold;">${getBookingTotalPrice(b)}</td>
@@ -140,6 +143,9 @@ export const exportBookingsToExcel = (
             <th>Nama Penyewa</th>
             <th>No WhatsApp</th>
             <th>Unit Sepeda</th>
+            <th>Tambahan</th>
+            <th>Harga Tambahan (Rp)</th>
+            <th>Harga Sewa Sepeda (Rp)</th>
             <th>Jam Kepulangan</th>
             <th>Denda Keterlambatan (Rp)</th>
             <th>Total Tagihan (Rp)</th>
@@ -152,7 +158,7 @@ export const exportBookingsToExcel = (
         </tbody>
         <tfoot>
           <tr class="total-row">
-            <td colspan="10" style="text-align: right;">TOTAL TRANSAKSI :</td>
+            <td colspan="13" style="text-align: right;">TOTAL TRANSAKSI :</td>
             <td style="text-align: right; color: #047857;">${totalOmzet}</td>
             <td colspan="2"></td>
           </tr>
