@@ -34,7 +34,9 @@ export const BookingList: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterDate, setFilterDate] = useState<string>('');
+  const [tableView, setTableView] = useState<'today' | 'upcoming' | 'history' | 'all' | 'date'>('today');
+  const [todayDate, setTodayDate] = useState(getTodayDateStr);
+  const [selectedDate, setSelectedDate] = useState(getTodayDateStr);
   const [selectedReceipt, setSelectedReceipt] = useState<Booking | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -46,6 +48,15 @@ export const BookingList: React.FC = () => {
   const isAdmin = currentRole === 'admin';
 
   const normalizePhone = (value?: string) => (value || '').replace(/\D/g, '');
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const currentDate = getTodayDateStr();
+      setTodayDate(previousDate => previousDate === currentDate ? previousDate : currentDate);
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     setSelectedGroupDetail(current =>
@@ -89,7 +100,7 @@ export const BookingList: React.FC = () => {
     return acc;
   }, []);
 
-  const filteredBookings = groupedBookings.filter(group => {
+  const searchedBookings = groupedBookings.filter(group => {
     const items = group.items;
     const searchText = [
       group.primary.customerName,
@@ -109,11 +120,57 @@ export const BookingList: React.FC = () => {
     const matchesStatus =
       filterStatus === 'all' || getGroupStatus(items) === filterStatus;
 
-    const matchesDate =
-      !filterDate || items.some(item => item.startDate === filterDate);
-
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus;
   });
+
+  const matchesSelectedDate = (items: Booking[], date: string) =>
+    items.some(item =>
+      item.startDate === date ||
+      item.actualStartDate === date ||
+      item.actualReturnDate === date
+    );
+
+  const isClosed = (status: BookingStatus) =>
+    status === 'selesai' || status === 'dibatalkan';
+
+  const isForToday = (items: Booking[]) =>
+    items.some(item => (
+      item.startDate === todayDate ||
+      ((item.status === 'sedang di luar' || item.status === 'aktif') && !isClosed(item.status)) ||
+      item.actualStartDate === todayDate ||
+      item.actualReturnDate === todayDate
+    ));
+
+  const isUpcoming = (items: Booking[]) =>
+    items.some(item =>
+      (item.status === 'pending' || item.status === 'booking') &&
+      item.startDate > todayDate
+    );
+
+  const isHistory = (items: Booking[]) =>
+    items.some(item =>
+      isClosed(item.status) &&
+      (item.actualReturnDate || item.startDate) < todayDate
+    );
+
+  const filteredBookings = searchedBookings.filter(group => {
+    switch (tableView) {
+      case 'today':
+        return isForToday(group.items);
+      case 'upcoming':
+        return isUpcoming(group.items);
+      case 'history':
+        return isHistory(group.items);
+      case 'date':
+        return matchesSelectedDate(group.items, selectedDate);
+      default:
+        return true;
+    }
+  });
+
+  const todayBookingCount = searchedBookings.filter(group => isForToday(group.items)).length;
+  const upcomingBookingCount = searchedBookings.filter(group => isUpcoming(group.items)).length;
+  const historyBookingCount = searchedBookings.filter(group => isHistory(group.items)).length;
 
   const getStatusLabel = (status: BookingStatus) => {
     switch (status) {
@@ -279,22 +336,63 @@ export const BookingList: React.FC = () => {
             <option value="dibatalkan">Dibatalkan</option>
           </select>
 
-          {/* Date filter */}
+          <button
+            type="button"
+            onClick={() => setTableView('today')}
+            className={`text-xs font-bold px-3 py-2 rounded-xl border transition-colors ${
+              tableView === 'today'
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            Hari Ini ({todayBookingCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTableView('upcoming')}
+            className={`text-xs font-bold px-3 py-2 rounded-xl border transition-colors ${
+              tableView === 'upcoming'
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            Booking Mendatang ({upcomingBookingCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTableView('history')}
+            className={`text-xs font-bold px-3 py-2 rounded-xl border transition-colors ${
+              tableView === 'history'
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            Riwayat ({historyBookingCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTableView('all')}
+            className={`text-xs font-bold px-3 py-2 rounded-xl border transition-colors ${
+              tableView === 'all'
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            Semua Data
+          </button>
+
+          {/* Filter tanggal tertentu untuk mencari data lama */}
           <input
             type="date"
-            value={filterDate}
-            onChange={e => setFilterDate(e.target.value)}
+            aria-label="Lihat booking berdasarkan tanggal"
+            value={tableView === 'date' ? selectedDate : ''}
+            onChange={e => {
+              if (!e.target.value) return;
+              setSelectedDate(e.target.value);
+              setTableView('date');
+            }}
             className="text-xs font-semibold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
           />
-
-          {filterDate && (
-            <button
-              onClick={() => setFilterDate('')}
-              className="text-xs text-rose-600 hover:underline px-2"
-            >
-              Hapus Tanggal
-            </button>
-          )}
         </div>
       </div>
 
@@ -304,9 +402,17 @@ export const BookingList: React.FC = () => {
           <div className="p-10 text-center text-slate-400 space-y-3">
             <CalendarCheck className="w-10 h-10 mx-auto opacity-40 text-slate-400" />
             <div>
-              <p className="text-sm font-bold text-slate-700">Belum ada data booking yang sesuai filter.</p>
+              <p className="text-sm font-bold text-slate-700">
+                {tableView === 'today'
+                  ? 'Belum ada booking terjadwal hari ini atau sepeda yang masih di luar.'
+                  : tableView === 'upcoming'
+                    ? 'Belum ada booking mendatang.'
+                    : tableView === 'history'
+                      ? 'Belum ada riwayat booking sebelumnya.'
+                      : 'Belum ada data booking yang sesuai filter.'}
+              </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                Kasir & Admin dapat langsung menginput pesanan masuk dari WhatsApp atau pelanggan yang datang.
+                Data booking tetap tersimpan. Gunakan pencarian, filter tanggal, atau Semua Data untuk melihat catatan lainnya.
               </p>
             </div>
             {isAdmin && bikes.length > 0 && (
