@@ -21,6 +21,7 @@ import {
   getSessionForTime
 } from '../utils/scheduleUtils';
 import { exportBookingsToExcel } from '../utils/exportUtils';
+import { getBookingTotalPrice } from '../utils/bookingUtils';
 import kraventLogo from '../assets/kravent-logo.svg';
 
 interface PrintReportModalProps {
@@ -102,7 +103,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       const existing = groups.get(key);
       const bikeName = b.bikeName?.trim();
       const notePool = [b.notes, b.paymentNotes, b.returnNotes].filter(Boolean) as string[];
-      const bookingTotal = b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0));
+      const bookingTotal = getBookingTotalPrice(b);
 
       if (existing) {
         if (bikeName) existing.bikes.push(bikeName);
@@ -143,7 +144,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   // Total omzet riil dari transaksi yang selesai
   const activeGrossRevenue = useMemo(() => {
     return completedBookings.reduce(
-      (sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))),
+      (sum, b) => sum + getBookingTotalPrice(b),
       0
     );
   }, [completedBookings]);

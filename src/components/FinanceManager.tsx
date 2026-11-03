@@ -39,6 +39,7 @@ import {
 } from '../utils/scheduleUtils';
 import { ExpenseCategory, Booking } from '../types';
 import { PrintReportModal } from './PrintReportModal';
+import { getBookingTotalPrice } from '../utils/bookingUtils';
 
 export const FinanceManager: React.FC = () => {
   const {
@@ -123,7 +124,7 @@ export const FinanceManager: React.FC = () => {
   // Kalkulasi omzet sesuai filter tanggal/periode yang aktif
   const gross = useMemo(() => {
     return activePeriodBookings.reduce(
-      (sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))),
+      (sum, b) => sum + getBookingTotalPrice(b),
       0
     );
   }, [activePeriodBookings]);
@@ -164,7 +165,7 @@ export const FinanceManager: React.FC = () => {
 
       const dayBookings = activePeriodBookings.filter(b => getBookingEffectiveDate(b) === iso);
       const dayRev = dayBookings.reduce(
-        (sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))),
+        (sum, b) => sum + getBookingTotalPrice(b),
         0
       );
       days.push({
@@ -821,7 +822,7 @@ export const FinanceManager: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 text-right pr-2 font-extrabold text-emerald-700">
-                      {formatRupiah(b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0)))}
+                      {formatRupiah(getBookingTotalPrice(b))}
                     </td>
                   </tr>
                 ))}

@@ -13,7 +13,7 @@ export const OFFICIAL_ADDONS: AddonDefinition[] = [
     id: 'helm',
     name: 'Helm Sepeda',
     icon: '⛑️',
-    price: 3000,
+    price: 5000,
     maxStock: 4,
     description: 'Helm pelindung kepala SNI/gowes aman',
     badge: 'Stok: 4 Unit',

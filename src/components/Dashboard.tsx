@@ -21,6 +21,7 @@ import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
 import { getCurrentTimeStr, getTodayDateStr, getMondaySundayWeekRange } from '../utils/scheduleUtils';
+import { getBookingTotalPrice } from '../utils/bookingUtils';
 import { Booking } from '../types';
 
 interface DashboardProps {
@@ -98,7 +99,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
         b => b.status === 'selesai' || b.paymentStatus === 'lunas'
       );
       const rev = completedOrPaid.reduce(
-        (sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))),
+        (sum, b) => sum + getBookingTotalPrice(b),
         0
       );
       const units = dayBookings.length;
@@ -125,7 +126,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
       });
       const rev = wBookings
         .filter(b => b.status === 'selesai' || b.paymentStatus === 'lunas')
-        .reduce((sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))), 0);
+        .reduce((sum, b) => sum + getBookingTotalPrice(b), 0);
       const label = w === 0 ? 'Mg Ini (Senin-Minggu)' : `Mg -${w}`;
       list.push({ label, revenue: rev, units: wBookings.length, date: range.mondayStr });
     }
@@ -665,7 +666,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                       </div>
                     </td>
                     <td className="py-3">
-                      <span className="font-bold text-slate-900">{formatRupiah(book.totalPrice)}</span>
+                      <span className="font-bold text-slate-900">
+                        {formatRupiah(book.status === 'selesai' ? getBookingTotalPrice(book) : book.totalPrice)}
+                      </span>
                       <span className="block text-[10px] text-emerald-600 font-semibold">
                         Deposit {formatRupiah(book.depositAmount)}
                       </span>

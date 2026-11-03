@@ -1,5 +1,6 @@
 import { Booking, FinancialSettings } from '../types';
 import { formatRupiah, formatDateIndo } from './formatters';
+import { getBookingTotalPrice } from './bookingUtils';
 
 interface ExportFinancialData {
   grossRevenue: number;
@@ -34,7 +35,7 @@ export const exportBookingsToExcel = (
       <td>${b.bikeName}</td>
       <td style="text-align: center;">${b.actualReturnTime ? `${b.actualReturnTime} WIB ${b.lateMinutes ? `(Telat ${b.lateMinutes}m)` : ''}` : '-'}</td>
       <td style="text-align: right; color: #b91c1c;">${b.lateFee || 0}</td>
-      <td style="text-align: right; font-weight: bold;">${b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))}</td>
+      <td style="text-align: right; font-weight: bold;">${getBookingTotalPrice(b)}</td>
       <td style="text-align: center;">${b.paymentMethod === 'bayar_nanti' ? 'Bayar Nanti' : b.paymentMethod.toUpperCase()} (${b.paymentStatus === 'lunas' ? 'Lunas' : 'Belum Lunas'})</td>
       <td style="text-align: center;">${b.status}</td>
     </tr>
@@ -44,7 +45,7 @@ export const exportBookingsToExcel = (
 
   const totalOmzet = bookings
     .filter(b => b.status === 'selesai')
-    .reduce((sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))), 0);
+    .reduce((sum, b) => sum + getBookingTotalPrice(b), 0);
 
   const excelContent = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">

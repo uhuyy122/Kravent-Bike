@@ -28,6 +28,7 @@ import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
 import { EditBookingModal } from './EditBookingModal';
 import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
+import { getBookingTotalPrice } from '../utils/bookingUtils';
 
 export const BookingList: React.FC = () => {
   const { bookings, updateBookingStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
@@ -444,7 +445,7 @@ export const BookingList: React.FC = () => {
                   const primary = group.primary;
                   const groupStatus = getGroupStatus(group.items);
                   const totalGroupPrice = group.items.reduce((sum, item) => {
-                    return sum + (item.finalTotalPrice ?? (item.totalPrice + (item.lateFee || 0)));
+                    return sum + getBookingTotalPrice(item);
                   }, 0);
 
                   return (
@@ -839,6 +840,15 @@ export const BookingList: React.FC = () => {
                   </span>
                 </div>
               )}
+              {(selectedReceipt.addonTotalCost || 0) > 0 && (
+                <div className="flex justify-between py-1 border-b border-dashed border-slate-200">
+                  <span className="text-slate-500">Perlengkapan Tambahan:</span>
+                  <span className="font-semibold text-slate-800">
+                    {selectedReceipt.addons?.map(addon => `${addon.name} x${addon.quantity}`).join(', ') || 'Addon'}
+                    {' '}(+{formatRupiah(selectedReceipt.addonTotalCost || 0)})
+                  </span>
+                </div>
+              )}
               {selectedReceipt.lateFee && selectedReceipt.lateFee > 0 ? (
                 <div className="flex justify-between py-1 border-b border-dashed border-slate-200 text-rose-600 font-semibold">
                   <span>Denda Keterlambatan:</span>
@@ -859,7 +869,7 @@ export const BookingList: React.FC = () => {
               </div>
               <div className="flex justify-between py-2 bg-slate-50 px-3 rounded-xl font-bold">
                 <span className="text-slate-700">Total Tarif:</span>
-                <span className="text-emerald-700 text-sm">{formatRupiah(selectedReceipt.finalTotalPrice ?? (selectedReceipt.totalPrice + (selectedReceipt.lateFee || 0)))}</span>
+                <span className="text-emerald-700 text-sm">{formatRupiah(getBookingTotalPrice(selectedReceipt))}</span>
               </div>
             </div>
 

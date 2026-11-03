@@ -21,6 +21,7 @@ import {
   getMondaySundayWeekRange
 } from '../utils/scheduleUtils';
 import { db, handleFirestoreError, cleanForFirestore, OperationType } from '../firebase';
+import { getBookingTotalPrice } from '../utils/bookingUtils';
 import {
   collection,
   doc,
@@ -963,7 +964,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const bDate = b.actualReturnDate || b.startDate;
         return bDate === todayStr && (b.status === 'selesai' || b.paymentStatus === 'lunas');
       })
-      .reduce((sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))), 0);
+      .reduce((sum, b) => sum + getBookingTotalPrice(b), 0);
   }, [bookings, todayStr]);
 
   const thisWeekRevenue = useMemo(() => {
@@ -977,7 +978,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           (b.status === 'selesai' || b.paymentStatus === 'lunas')
         );
       })
-      .reduce((sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))), 0);
+      .reduce((sum, b) => sum + getBookingTotalPrice(b), 0);
   }, [bookings, currentWeekRange]);
 
   const thisMonthRevenue = useMemo(() => {
@@ -990,7 +991,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           (b.status === 'selesai' || b.paymentStatus === 'lunas')
         );
       })
-      .reduce((sum, b) => sum + (b.finalTotalPrice ?? (b.totalPrice + (b.lateFee || 0))), 0);
+      .reduce((sum, b) => sum + getBookingTotalPrice(b), 0);
   }, [bookings, selectedMonth]);
 
   // Potensi omzet berjalan

@@ -75,7 +75,7 @@ export interface Booking {
   lateMinutes?: number; // total menit keterlambatan
   lateExtraHours?: number; // jam tambahan yang dihitung (0, 0.5, 1, 1.5, dll)
   lateFee?: number; // nominal denda keterlambatan (Rp)
-  finalTotalPrice?: number; // totalPrice + lateFee
+  finalTotalPrice?: number; // Total tagihan setelah addon, denda, dan diskon
   returnNotes?: string; // catatan kondisi sepeda saat dikembalikan
   paymentNotes?: string; // catatan pembayaran khusus (cash / qris / transfer dalam satu nama)
   discountPercent?: number; // diskon persentase yang dipakai saat pengembalian
