@@ -910,13 +910,19 @@ export const BookingList: React.FC = () => {
                   </span>
                 </div>
               )}
-              {(selectedReceipt.addonTotalCost || 0) > 0 && (
+              {getBookingAddonTotal(selectedReceipt) > 0 && (
                 <div className="flex justify-between py-1 border-b border-dashed border-slate-200">
                   <span className="text-slate-500">Perlengkapan Tambahan:</span>
-                  <span className="font-semibold text-slate-800">
-                    {selectedReceipt.addons?.map(addon => `${addon.name} x${addon.quantity}`).join(', ') || 'Addon'}
-                    {' '}(+{formatRupiah(selectedReceipt.addonTotalCost || 0)})
-                  </span>
+                  <div className="text-right font-semibold text-slate-800">
+                    {selectedReceipt.addons?.length ? selectedReceipt.addons.map(addon => (
+                      <div key={addon.id}>
+                        {addon.name} ({addon.quantity} x {formatRupiah(addon.price)}) = {formatRupiah(addon.price * addon.quantity)}
+                      </div>
+                    )) : <div>Tambahan</div>}
+                    <div className="text-emerald-700">
+                      Total tambahan: {formatRupiah(getBookingAddonTotal(selectedReceipt))}
+                    </div>
+                  </div>
                 </div>
               )}
               {selectedReceipt.lateFee && selectedReceipt.lateFee > 0 ? (

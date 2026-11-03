@@ -101,7 +101,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
     }>();
 
     currentPeriodBookings.forEach(b => {
-      const key = (b.groupBookingCode || `${(b.customerName || '').trim().toLowerCase()}|${(b.customerPhone || '').trim()}`).toLowerCase();
+      const key = (b.groupBookingCode || b.bookingCode).toLowerCase();
       const shift = getSessionForTime(b.startTime);
       const existing = groups.get(key);
       const bikeName = b.bikeName?.trim();

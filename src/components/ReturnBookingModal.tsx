@@ -15,6 +15,7 @@ import { useApp } from '../context/AppContext';
 import { formatDateIndo, formatRupiah } from '../utils/formatters';
 import { calculateRentalCharge, getDateRateInfo } from '../utils/pricingUtils';
 import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
+import { getBookingAddonTotal } from '../utils/bookingUtils';
 
 interface ReturnBookingModalProps {
   booking?: Booking;
@@ -87,7 +88,8 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
         );
         const { durationMinutes, durationHours, billedDurationHours } = charge;
         const rentalCost = charge.totalPrice;
-        const baseTotal = rentalCost + (item.addonTotalCost || 0);
+        const addonTotal = getBookingAddonTotal(item);
+        const baseTotal = rentalCost + addonTotal;
 
         return {
           item,
@@ -97,6 +99,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
           billedDurationHours,
           ratePerHour,
           rentalCost,
+          addonTotal,
           baseTotal,
           grossTotal: baseTotal,
         };
@@ -127,6 +130,8 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
   }, [discountAmount, grossTotal, itemRentalDetails]);
 
   const finalTotal = distributedTotals.reduce((sum, value) => sum + value, 0);
+  const rentalTotal = itemRentalDetails.reduce((sum, entry) => sum + entry.rentalCost, 0);
+  const addonTotal = itemRentalDetails.reduce((sum, entry) => sum + entry.addonTotal, 0);
 
   const handleConfirmReturn = () => {
     if (hasInvalidReturnTime) {
@@ -169,33 +174,40 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
 
   const generateWaMessage = () => {
     const cleanPhone = primaryBooking.customerPhone.replace(/^0/, '62').replace(/\D/g, '');
-    const unitList = items.map(item => item.bikeName).join(', ');
+    const itemChargeLines = itemRentalDetails.flatMap(({ item, rentalCost }) => [
+      `• Sepeda ${item.bikeName}: ${formatRupiah(rentalCost)}`,
+      ...(item.addons || []).map(
+        addon => `  - ${addon.name} (${addon.quantity} x ${formatRupiah(addon.price)}) = ${formatRupiah(addon.price * addon.quantity)}`
+      ),
+      ...(!item.addons?.length && getBookingAddonTotal(item) > 0
+        ? [`  - Perlengkapan tambahan: ${formatRupiah(getBookingAddonTotal(item))}`]
+        : []),
+    ]);
 
-    let msg = '*STRUK PENGEMBALIAN SEPEDA - KRAVENT BIKE*%0A';
-    msg += '-----------------------------------%0A';
-    msg += `Penyewa: *${primaryBooking.customerName}*%0A`;
-    msg += `Unit: *${unitList}*%0A`;
-    msg += `No. Booking: *${items.map(item => item.bookingCode).join(', ')}*%0A`;
-    msg += `Jam Mulai Aktual: *${itemRentalDetails[0]?.item.actualStartTime || primaryBooking.startTime} WIB*%0A`;
-    msg += `Durasi Sewa: *${itemRentalDetails[0] && !itemRentalDetails[0].hasInvalidTime ? formatDuration(itemRentalDetails[0].durationMinutes) : 'Waktu tidak valid'}*%0A`;
-    msg += `Durasi Ditagihkan: *${itemRentalDetails[0] && !itemRentalDetails[0].hasInvalidTime ? formatBilledDuration(itemRentalDetails[0].billedDurationHours) : 'Waktu tidak valid'}*%0A`;
-    msg += `Jam Kepulangan: *${returnTime} WIB* (${formatDateIndo(returnDate)})%0A`;
-    msg += '-----------------------------------%0A';
+    const message = [
+      '*STRUK PENGEMBALIAN SEPEDA - KRAVENT BIKE*',
+      '-----------------------------------',
+      `Penyewa: *${primaryBooking.customerName}*`,
+      `No. Booking: *${items.map(item => item.bookingCode).join(', ')}*`,
+      `Jam Kepulangan: *${returnTime} WIB* (${formatDateIndo(returnDate)})`,
+      '-----------------------------------',
+      '*Rincian Transaksi:*',
+      ...itemChargeLines,
+      `Subtotal sewa sepeda: ${formatRupiah(rentalTotal)}`,
+      `Total perlengkapan tambahan: ${formatRupiah(addonTotal)}`,
+      `Subtotal transaksi: ${formatRupiah(grossTotal)}`,
+      ...(discountAmount > 0
+        ? [`Diskon: ${discountMode === 'percent' ? `${discountValue}%` : formatRupiah(discountAmount)} (-${formatRupiah(discountAmount)})`]
+        : []),
+      `*Total akhir: ${formatRupiah(finalTotal)}*`,
+      `Metode Pembayaran: *${feePaymentMethod.toUpperCase()}*`,
+      ...(paymentNotes ? [`Catatan Bayar: ${paymentNotes}`] : []),
+      `Catatan Kondisi: ${returnNotes}`,
+      '-----------------------------------',
+      'Terima kasih telah menyewa di Kravent Bike! CS: 0896-4712-3671',
+    ].join('\n');
 
-    if (discountAmount > 0) {
-      msg += `Diskon: *${discountMode === 'percent' ? `${discountValue}%` : formatRupiah(discountAmount)}*%0A`;
-    }
-
-    msg += `Total Akhir: *${formatRupiah(finalTotal)}*%0A`;
-    msg += `Metode Pembayaran: *${feePaymentMethod.toUpperCase()}*%0A`;
-    if (paymentNotes) {
-      msg += `Catatan Bayar: ${paymentNotes}%0A`;
-    }
-    msg += `Catatan Kondisi: ${returnNotes}%0A`;
-    msg += '-----------------------------------%0A';
-    msg += 'Terima kasih telah menyewa di Kravent Bike! CS: 0896-4712-3671';
-
-    return `https://wa.me/${cleanPhone}?text=${msg}`;
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
 
   return (
@@ -260,14 +272,17 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">Daftar Unit</div>
               <div className="flex flex-wrap gap-2">
-                {items.map((item, index) => (
+                {itemRentalDetails.map(({ item, rentalCost, addonTotal: itemAddonTotal }, index) => (
                   <span
                     key={item.id}
-                    className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2 py-1 text-[10px] font-bold text-slate-700"
+                    className="inline-flex flex-col gap-0.5 rounded-xl bg-white border border-slate-200 px-2.5 py-1.5 text-[10px] text-slate-700"
                   >
-                    {item.bikeName}
-                    <span className="text-slate-400">•</span>
-                    {formatRupiah(distributedTotals[index] || 0)}
+                    <span className="font-bold">{item.bikeName}</span>
+                    <span>Sewa {formatRupiah(rentalCost)}</span>
+                    {itemAddonTotal > 0 && <span>Tambahan {formatRupiah(itemAddonTotal)}</span>}
+                    <span className="font-extrabold text-emerald-700">
+                      Total {formatRupiah(distributedTotals[index] || 0)}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -328,7 +343,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              {itemRentalDetails.map(({ item, durationMinutes, billedDurationHours, hasInvalidTime, ratePerHour, rentalCost, baseTotal }, index) => (
+              {itemRentalDetails.map(({ item, durationMinutes, billedDurationHours, hasInvalidTime, ratePerHour, rentalCost, addonTotal: itemAddonTotal, baseTotal }, index) => (
                 <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-bold text-slate-800 text-[11px]">{item.bikeName}</div>
@@ -346,10 +361,25 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                     <span>Sewa ({formatRupiah(ratePerHour)}/jam)</span>
                     <span>{formatRupiah(rentalCost)}</span>
                   </div>
-                  {(item.addonTotalCost || 0) > 0 && (
-                    <div className="flex justify-between text-[10px] text-slate-500">
-                      <span>Perlengkapan</span>
-                      <span>+{formatRupiah(item.addonTotalCost || 0)}</span>
+                  {itemAddonTotal > 0 && (
+                    <div className="border-t border-dashed border-slate-200 pt-1 mt-1 space-y-1">
+                      <div className="text-[10px] font-bold text-slate-600">Perlengkapan tambahan</div>
+                      {item.addons?.map(addon => (
+                        <div key={addon.id} className="flex justify-between text-[10px] text-slate-500">
+                          <span>{addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
+                          <span>{formatRupiah(addon.price * addon.quantity)}</span>
+                        </div>
+                      ))}
+                      {!item.addons?.length && (
+                        <div className="flex justify-between text-[10px] text-slate-500">
+                          <span>Tambahan</span>
+                          <span>{formatRupiah(itemAddonTotal)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-[10px] font-semibold text-slate-600">
+                        <span>Total tambahan</span>
+                        <span>{formatRupiah(itemAddonTotal)}</span>
+                      </div>
                     </div>
                   )}
                   <div className="flex justify-between text-[10px] text-slate-700 font-bold pt-1 border-t border-slate-200 mt-1">

@@ -467,7 +467,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         .join('\n');
 
       const addonListText = selectedAddonList.length > 0
-        ? selectedAddonList.map(a => `  • ${a.name} (${a.quantity}x)`).join('\n')
+        ? [
+            ...selectedAddonList.map(a =>
+              `  • ${a.name} (${a.quantity} x ${formatRupiah(a.price)}) = ${formatRupiah(a.price * a.quantity)}`
+            ),
+            `  Total tambahan: ${formatRupiah(grandTotalAddonCost)}`,
+          ].join('\n')
         : '  • Tidak ada perlengkapan tambahan';
 
       const bookingCodesList = createdList.map(b => b.bookingCode).join(', ');
@@ -675,9 +680,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <div className="flex flex-wrap gap-2">
                     {selectedAddonList.map(a => (
                       <span key={a.id} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-700 font-medium text-[11px]">
-                        {a.name} ({a.quantity}x) {!isCustomer && `• ${formatRupiah(a.price * a.quantity)}`}
+                        {a.name} ({a.quantity} x {formatRupiah(a.price)}) • {formatRupiah(a.price * a.quantity)}
                       </span>
                     ))}
+                  </div>
+                  <div className="flex justify-between border-t border-amber-200 pt-2 mt-2 font-extrabold text-amber-950">
+                    <span>Total tambahan (sekali sewa)</span>
+                    <span>{formatRupiah(grandTotalAddonCost)}</span>
                   </div>
                 </div>
               )}
@@ -711,17 +720,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     Bayar di Akhir (Saat Pengembalian Sepeda)
                   </span>
                 </div>
-                {!isCustomer ? (
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                    <span className="text-sm font-bold text-slate-300">Biaya perlengkapan:</span>
-                    <span className="text-lg font-extrabold text-emerald-400">{formatRupiah(grandTotalAddonCost)}</span>
+                <div className="pt-2 border-t border-slate-800 space-y-1">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-300">Total perlengkapan tambahan:</span>
+                    <span className="font-extrabold text-emerald-300">{formatRupiah(grandTotalAddonCost)}</span>
                   </div>
-                ) : (
-                  <div className="pt-2 border-t border-slate-800 text-[11px] text-emerald-300 flex items-center justify-between">
-                    <span>Status Pesanan:</span>
-                    <span className="font-extrabold uppercase">Biaya sewa dihitung saat pengembalian</span>
+                  <div className="text-[10px] text-slate-400">
+                    Biaya sewa sepeda dihitung saat pengembalian; perlengkapan ditambahkan ke total transaksi.
                   </div>
-                )}
+                </div>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
@@ -1323,13 +1330,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             <span className="text-xs font-bold text-slate-900">{addon.name}</span>
                           </div>
                           <div className="text-[11px] text-slate-500 mt-0.5">
-                            {!isCustomer ? (
-                              <span className="font-extrabold text-emerald-700 font-mono">
-                                {formatRupiah(addon.price)} <span className="text-[10px] font-normal text-slate-400">/sewa</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-500">Perlengkapan Resmi</span>
-                            )}
+                            <span className="font-extrabold text-emerald-700 font-mono">
+                              {formatRupiah(addon.price)} <span className="text-[10px] font-normal text-slate-400">/sewa</span>
+                            </span>
                             {addon.maxStock < 99 && (
                               <span className="text-[10px] text-slate-400 ml-1.5">(Maks {addon.maxStock})</span>
                             )}
@@ -1396,14 +1399,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <p className="text-slate-300">
                       Durasi sewa dicatat sampai waktu pengembalian. Biaya dihitung proporsional per menit berdasarkan tarif per jam.
                     </p>
-                    {grandTotalAddonCost > 0 && (
-                      <div className="flex justify-between text-amber-300">
-                        <span>Biaya Perlengkapan Tambahan:</span>
-                        <span className="font-bold">+{formatRupiah(grandTotalAddonCost)}</span>
+                    {selectedAddonList.map(addon => (
+                      <div key={addon.id} className="flex justify-between text-amber-200">
+                        <span>{addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
+                        <span className="font-bold">{formatRupiah(addon.price * addon.quantity)}</span>
                       </div>
-                    )}
+                    ))}
                     <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-sm">
-                      <span className="font-bold text-white">Biaya Perlengkapan:</span>
+                      <span className="font-bold text-white">Total tambahan:</span>
                       <span className="font-black text-emerald-400 text-base">{formatRupiah(grandTotalAddonCost)}</span>
                     </div>
                   </div>
