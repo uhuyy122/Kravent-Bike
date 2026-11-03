@@ -61,7 +61,11 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
     if (booking.startTime > '23:00') return '23:00';
     return booking.startTime;
   });
-  const [status, setStatus] = useState<BookingStatus>(booking.status);
+  const [status, setStatus] = useState<BookingStatus>(
+    booking.status === 'aktif' ? 'sedang di luar' : booking.status
+  );
+  const [actualStartDate, setActualStartDate] = useState(booking.actualStartDate || '');
+  const [actualStartTime, setActualStartTime] = useState(booking.actualStartTime || '');
 
   // Customer Data
   const [customerName, setCustomerName] = useState(booking.customerName);
@@ -89,7 +93,22 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
   // Otomatis sinkronkan jam kepulangan menjadi real-time saat status diubah menjadi selesai
   const handleSetStatus = (newStatus: BookingStatus) => {
+    if (
+      newStatus === 'selesai' &&
+      !actualStartDate &&
+      !actualStartTime &&
+      booking.status !== 'aktif'
+    ) {
+      window.alert('Catat waktu mulai dengan tombol Mulai sebelum menyelesaikan booking.');
+      return;
+    }
+
     setStatus(newStatus);
+    if (newStatus === 'sedang di luar' && !actualStartTime) {
+      const rt = getRealTimeNow();
+      setActualStartDate(rt.dateStr);
+      setActualStartTime(rt.timeStr);
+    }
     if (newStatus === 'selesai') {
       const rt = getRealTimeNow();
       setActualReturnDate(rt.dateStr);
@@ -107,10 +126,12 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   const selectedBike = bikes.find(b => b.id === bikeId) || bikes[0];
 
   // Tarif sewa dihitung berdasarkan waktu mulai dan pengembalian aktual.
-  const rateInfo = getDateRateInfo(startDate);
+  const rentalStartDate = actualStartDate || startDate;
+  const rentalStartTime = actualStartTime || startTime;
+  const rateInfo = getDateRateInfo(rentalStartDate);
   const rentalCharge = calculateRentalCharge(
-    startDate,
-    startTime,
+    rentalStartDate,
+    rentalStartTime,
     actualReturnDate,
     actualReturnTime,
     rateInfo.ratePerHour || selectedBike.pricePerHour
@@ -157,6 +178,8 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
         endTime: status === 'selesai' ? actualReturnTime : '',
         durationType: 'jam',
         durationValue: status === 'selesai' ? rentalCharge.durationHours : 0,
+        actualStartDate: actualStartDate || booking.actualStartDate,
+        actualStartTime: actualStartTime || booking.actualStartTime,
         totalPrice: baseRentalCost,
         status,
         customerName,
@@ -386,7 +409,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs pt-2 border-t border-slate-200/80 gap-1">
               <span className="text-slate-600">
-                Mulai sewa: <strong>{startDate} pukul {startTime} WIB</strong> • Durasi hingga pengembalian
+                Mulai sewa: <strong>{rentalStartDate} pukul {rentalStartTime} WIB</strong> • Durasi hingga pengembalian
               </span>
               <span className="font-extrabold text-emerald-700">
                 {status === 'selesai'
@@ -402,11 +425,13 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
               3. Status Booking & Pengembalian:
             </label>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
-                { id: 'pending', label: 'Masih Booking', color: 'border-sky-300 text-sky-800 bg-sky-50' },
-                { id: 'aktif', label: 'Sedang di Luar', color: 'border-amber-300 text-amber-800 bg-amber-50' },
-                { id: 'selesai', label: 'Sudah Kembali', color: 'border-emerald-300 text-emerald-800 bg-emerald-50' },
+                { id: 'pending', label: 'Menunggu Persetujuan', color: 'border-sky-300 text-sky-800 bg-sky-50' },
+                { id: 'booking', label: 'Booking', color: 'border-blue-300 text-blue-800 bg-blue-50' },
+                { id: 'sedang di luar', label: 'Sedang di Luar', color: 'border-amber-300 text-amber-800 bg-amber-50' },
+                { id: 'selesai', label: 'Selesai', color: 'border-emerald-300 text-emerald-800 bg-emerald-50' },
+                { id: 'dibatalkan', label: 'Dibatalkan', color: 'border-slate-300 text-slate-700 bg-slate-50' },
                 { id: 'dibatalkan', label: 'Dibatalkan', color: 'border-slate-300 text-slate-700 bg-slate-50' },
               ].map(st => (
                 <button

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CalendarCheck,
   Search,
@@ -27,6 +27,7 @@ import { BookingModal } from './BookingModal';
 import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
 import { EditBookingModal } from './EditBookingModal';
+import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
 
 export const BookingList: React.FC = () => {
   const { bookings, updateBookingStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
@@ -43,13 +44,19 @@ export const BookingList: React.FC = () => {
   const [selectedGroupDetail, setSelectedGroupDetail] = useState<Booking[] | null>(null);
 
   const isAdmin = currentRole === 'admin';
-  const isKaryawan = currentRole === 'karyawan';
 
   const normalizePhone = (value?: string) => (value || '').replace(/\D/g, '');
 
+  useEffect(() => {
+    setSelectedGroupDetail(current =>
+      current ? current.map(item => bookings.find(booking => booking.id === item.id) || item) : null
+    );
+  }, [bookings]);
+
   const getGroupStatus = (items: Booking[]) => {
     if (items.some(item => item.status === 'pending')) return 'pending';
-    if (items.some(item => item.status === 'aktif')) return 'aktif';
+    if (items.some(item => item.status === 'booking')) return 'booking';
+    if (items.some(item => item.status === 'sedang di luar' || item.status === 'aktif')) return 'sedang di luar';
     if (items.some(item => item.status === 'dibatalkan')) return 'dibatalkan';
     return 'selesai';
   };
@@ -111,11 +118,14 @@ export const BookingList: React.FC = () => {
   const getStatusLabel = (status: BookingStatus) => {
     switch (status) {
       case 'pending':
-        return 'Masih Booking';
+        return 'Menunggu Persetujuan';
+      case 'booking':
+        return 'Booking';
+      case 'sedang di luar':
       case 'aktif':
         return 'Sedang di Luar';
       case 'selesai':
-        return 'Sudah Kembali';
+        return 'Selesai';
       case 'dibatalkan':
         return 'Dibatalkan';
       default:
@@ -127,8 +137,8 @@ export const BookingList: React.FC = () => {
     const staffName = isAdmin ? 'Admin Owner' : 'Karyawan Shift';
     const groupItems = getGroupItemsForBooking(booking);
 
-    groupItems.forEach(item => {
-      updateBookingStatus(item.id, 'aktif', {
+    groupItems.filter(item => item.status === 'pending').forEach(item => {
+      updateBookingStatus(item.id, 'booking', {
         approvedAt: new Date().toISOString(),
         approvedBy: staffName,
         handoverBy: staffName,
@@ -158,8 +168,32 @@ export const BookingList: React.FC = () => {
     }
   };
 
+  const handleStartGroupBooking = (booking: Booking) => {
+    const actualStartDate = getTodayDateStr();
+    const actualStartTime = getCurrentTimeStr();
+
+    getGroupItemsForBooking(booking)
+      .filter(item => item.status === 'booking')
+      .forEach(item => {
+        updateBookingStatus(item.id, 'sedang di luar', {
+          actualStartDate,
+          actualStartTime,
+          handoverBy: isAdmin ? 'Admin Owner' : 'Karyawan Shift',
+        });
+      });
+  };
+
+  const handleStartSingleBooking = (booking: Booking) => {
+    updateBookingStatus(booking.id, 'sedang di luar', {
+      actualStartDate: getTodayDateStr(),
+      actualStartTime: getCurrentTimeStr(),
+      handoverBy: isAdmin ? 'Admin Owner' : 'Karyawan Shift',
+    });
+  };
+
   const handleReturnGroupBooking = (booking: Booking) => {
-    const groupItems = getGroupItemsForBooking(booking);
+    const groupItems = getGroupItemsForBooking(booking)
+      .filter(item => item.status === 'sedang di luar' || item.status === 'aktif');
     setReturningGroupBooking(groupItems);
   };
 
@@ -238,9 +272,10 @@ export const BookingList: React.FC = () => {
             className="text-xs font-semibold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
           >
             <option value="all">Semua Status</option>
-            <option value="aktif">Sedang di Luar (Aktif)</option>
-            <option value="selesai">Sudah Kembali (Selesai)</option>
-            <option value="pending">Masih Booking</option>
+            <option value="pending">Menunggu Persetujuan</option>
+            <option value="booking">Booking</option>
+            <option value="sedang di luar">Sedang di Luar</option>
+            <option value="selesai">Selesai</option>
             <option value="dibatalkan">Dibatalkan</option>
           </select>
 
@@ -371,12 +406,14 @@ export const BookingList: React.FC = () => {
 
                       <td className="py-3.5">
                         <div className="font-medium text-slate-800">
-                          Mulai {primary.startTime} WIB
+                          Mulai {primary.actualStartTime || primary.startTime} WIB
                         </div>
                         <span className="text-[11px] text-slate-500 block">
                           {primary.status === 'selesai' && primary.durationValue !== undefined
-                            ? `Durasi aktual: ${primary.durationValue.toFixed(2)} jam`
-                            : 'Durasi dihitung saat unit dikembalikan'}
+                            ? `Mulai ${primary.actualStartTime || primary.startTime} WIB • Durasi aktual: ${primary.durationValue.toFixed(2)} jam`
+                            : primary.actualStartTime
+                              ? `Mulai aktual ${primary.actualStartTime} WIB • Biaya saat kembali`
+                              : 'Durasi dihitung sejak tombol Mulai'}
                         </span>
                         {group.items.length > 1 && (
                           <span className="mt-1 inline-flex items-center text-[9px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded">
@@ -401,7 +438,7 @@ export const BookingList: React.FC = () => {
                       </td>
 
                       <td className="py-3.5">
-                        {groupStatus === 'aktif' && (
+                        {(groupStatus === 'sedang di luar' || groupStatus === 'aktif') && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                             {getStatusLabel(groupStatus)}
@@ -417,6 +454,12 @@ export const BookingList: React.FC = () => {
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800">
                             <Clock className="w-3 h-3" />
                             {getStatusLabel(groupStatus)}
+                          </span>
+                        )}
+                        {groupStatus === 'booking' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            <Clock className="w-3 h-3" />
+                            Booking
                           </span>
                         )}
                         {groupStatus === 'dibatalkan' && (
@@ -439,6 +482,16 @@ export const BookingList: React.FC = () => {
                             </button>
                           )}
 
+                          {isAdmin && groupStatus === 'booking' && (
+                            <button
+                              onClick={() => handleStartGroupBooking(primary)}
+                              className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
+                              title="Mulai sewa dan catat waktu mulai aktual"
+                            >
+                              Mulai
+                            </button>
+                          )}
+
                           <button
                             onClick={() => setSelectedGroupDetail(group.items)}
                             className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
@@ -447,7 +500,7 @@ export const BookingList: React.FC = () => {
                             Detail
                           </button>
 
-                          {isAdmin && groupStatus === 'aktif' && (
+                          {isAdmin && (groupStatus === 'sedang di luar' || groupStatus === 'aktif') && (
                             <button
                               onClick={() => handleReturnGroupBooking(primary)}
                               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
@@ -508,10 +561,12 @@ export const BookingList: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-end mb-2">
-              {selectedGroupDetail.length > 1 && isAdmin && (
+              {selectedGroupDetail.length > 1 && isAdmin && selectedGroupDetail.some(item => item.status === 'sedang di luar' || item.status === 'aktif') && (
                 <button
                   onClick={() => {
-                    setReturningGroupBooking(selectedGroupDetail);
+                    setReturningGroupBooking(
+                      selectedGroupDetail.filter(item => item.status === 'sedang di luar' || item.status === 'aktif')
+                    );
                     setSelectedGroupDetail(null);
                   }}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
@@ -533,18 +588,22 @@ export const BookingList: React.FC = () => {
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">{item.bookingCode}</span>
                         </div>
                         <div className="text-[11px] text-slate-500 mt-1">
-                          Mulai {item.startTime} WIB
+                          Mulai {item.actualStartTime || item.startTime} WIB
                           {item.status === 'selesai' && item.actualReturnTime
                             ? ` • Kembali ${item.actualReturnTime} WIB (${item.durationValue?.toFixed(2)} jam)`
-                            : ' • Biaya dihitung saat pengembalian'}
+                            : item.status === 'booking'
+                              ? ' • Menunggu tombol Mulai'
+                              : ' • Biaya dihitung saat pengembalian'}
                         </div>
                       </div>
                     </div>
                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                      item.status === 'aktif'
+                      item.status === 'aktif' || item.status === 'sedang di luar'
                         ? 'bg-amber-100 text-amber-800 border border-amber-200'
                         : item.status === 'pending'
                           ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                          : item.status === 'booking'
+                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
                           : item.status === 'selesai'
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                             : 'bg-slate-100 text-slate-500 border border-slate-200 line-through'
@@ -577,7 +636,16 @@ export const BookingList: React.FC = () => {
                       </>
                     )}
 
-                    {item.status === 'aktif' && isAdmin && (
+                    {item.status === 'booking' && isAdmin && (
+                      <button
+                        onClick={() => handleStartSingleBooking(item)}
+                        className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
+                      >
+                        Mulai
+                      </button>
+                    )}
+
+                    {(item.status === 'sedang di luar' || item.status === 'aktif') && isAdmin && (
                       <>
                         <button
                           onClick={() => setReturningBooking(item)}

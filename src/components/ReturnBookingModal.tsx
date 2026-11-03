@@ -75,10 +75,12 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
   const itemRentalDetails = useMemo(
     () =>
       items.map(item => {
-        const ratePerHour = getDateRateInfo(item.startDate).ratePerHour;
+        const rentalStartDate = item.actualStartDate || item.startDate;
+        const rentalStartTime = item.actualStartTime || item.startTime;
+        const ratePerHour = getDateRateInfo(rentalStartDate).ratePerHour;
         const charge = calculateRentalCharge(
-          item.startDate,
-          item.startTime,
+          rentalStartDate,
+          rentalStartTime,
           returnDate,
           returnTime,
           ratePerHour
@@ -174,6 +176,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
     msg += `Penyewa: *${primaryBooking.customerName}*%0A`;
     msg += `Unit: *${unitList}*%0A`;
     msg += `No. Booking: *${items.map(item => item.bookingCode).join(', ')}*%0A`;
+    msg += `Jam Mulai Aktual: *${itemRentalDetails[0]?.item.actualStartTime || primaryBooking.startTime} WIB*%0A`;
     msg += `Durasi Sewa: *${itemRentalDetails[0] && !itemRentalDetails[0].hasInvalidTime ? formatDuration(itemRentalDetails[0].durationMinutes) : 'Waktu tidak valid'}*%0A`;
     msg += `Durasi Ditagihkan: *${itemRentalDetails[0] && !itemRentalDetails[0].hasInvalidTime ? formatBilledDuration(itemRentalDetails[0].billedDurationHours) : 'Waktu tidak valid'}*%0A`;
     msg += `Jam Kepulangan: *${returnTime} WIB* (${formatDateIndo(returnDate)})%0A`;

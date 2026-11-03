@@ -19,7 +19,9 @@ import {
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { PrintReportModal } from './PrintReportModal';
-import { getTodayDateStr, getMondaySundayWeekRange } from '../utils/scheduleUtils';
+import { ReturnBookingModal } from './ReturnBookingModal';
+import { getCurrentTimeStr, getTodayDateStr, getMondaySundayWeekRange } from '../utils/scheduleUtils';
+import { Booking } from '../types';
 
 interface DashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -48,6 +50,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
   const [chartMetric, setChartMetric] = useState<'revenue' | 'units'>('revenue');
   const [chartPeriod, setChartPeriod] = useState<'harian' | 'mingguan' | 'bulanan'>('harian');
   const [showReportModal, setShowReportModal] = useState(false);
+  const [returningBooking, setReturningBooking] = useState<Booking | null>(null);
 
   // Kalkulasi Alokasi & Bagi Hasil Omzet Harian (Khusus Harian Hari Ini)
   const dailyFinancial = React.useMemo(() => {
@@ -154,8 +157,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
   // Today active rentals
   const todayStr = getTodayDateStr();
   const todaysActiveBookings = bookings.filter(
-    b => b.startDate === todayStr || b.status === 'aktif'
+    b => b.startDate === todayStr || b.actualStartDate === todayStr || b.status === 'aktif' || b.status === 'sedang di luar'
   );
+
+  const handleStartRental = (booking: Booking) => {
+    updateBookingStatus(booking.id, 'sedang di luar', {
+      actualStartDate: getTodayDateStr(),
+      actualStartTime: getCurrentTimeStr(),
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -256,7 +266,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
             <div className="flex items-center gap-1.5 mt-2 text-xs">
               <span className="inline-flex items-center text-emerald-600 font-semibold">
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                {activeBookingsCount} Sedang di Luar
+                {activeBookingsCount} Booking / di Luar
               </span>
               <span className="text-slate-400">• Omzet {formatRupiah(todayRevenue)}</span>
             </div>
@@ -364,7 +374,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
               </div>
               <div className="bg-amber-50/70 border border-amber-100 p-3 rounded-xl text-center">
                 <span className="text-xl font-bold text-amber-700 block">{activeBookingsCount}</span>
-                <span className="text-[11px] font-medium text-amber-600">Disewa</span>
+                <span className="text-[11px] font-medium text-amber-600">Booking / Disewa</span>
               </div>
               <div className="bg-rose-50/70 border border-rose-100 p-3 rounded-xl text-center">
                 <span className="text-xl font-bold text-rose-700 block">{maintenanceBikesCount}</span>
@@ -376,7 +386,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Tingkat Utilisasi Armada:</span>
             <span className="font-bold text-slate-800">
-              {Math.round((activeBookingsCount / (bikes.length || 1)) * 100)}% Sedang Aktif
+              {Math.round((activeBookingsCount / (bikes.length || 1)) * 100)}% Terpakai
             </span>
           </div>
         </div>
@@ -645,8 +655,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                     </td>
                     <td className="py-3">
                       <div className="font-medium text-slate-800">
-                        Mulai {book.startTime}
-                        {book.actualReturnTime ? ` • Kembali ${book.actualReturnTime}` : ' • Berjalan'}
+                        Mulai {book.actualStartTime || book.startTime}
+                        {book.actualReturnTime ? ` • Kembali ${book.actualReturnTime}` : book.status === 'booking' ? ' • Belum dimulai' : ' • Berjalan'}
                       </div>
                       <div className="text-slate-400 text-[11px]">
                         {book.status === 'selesai' && book.durationValue !== undefined
@@ -661,15 +671,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                       </span>
                     </td>
                     <td className="py-3">
-                      {book.status === 'aktif' ? (
+                      {book.status === 'pending' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
+                          Menunggu Persetujuan
+                        </span>
+                      ) : book.status === 'booking' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                          Booking
+                        </span>
+                      ) : book.status === 'aktif' || book.status === 'sedang di luar' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                          Sedang Dipakai
+                          Sedang di Luar
                         </span>
                       ) : book.status === 'selesai' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Sudah Kembali
+                          Selesai
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">
@@ -678,16 +696,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                       )}
                     </td>
                     <td className="py-3 text-right pr-2">
-                      {book.status === 'aktif' && currentRole === 'admin' && (
+                      {book.status === 'booking' && currentRole === 'admin' && (
                         <button
-                          onClick={() => updateBookingStatus(book.id, 'selesai')}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px] transition-colors cursor-pointer"
+                          onClick={() => handleStartRental(book)}
+                          className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-semibold text-[11px] transition-colors cursor-pointer"
                         >
-                          Terima Kembali
+                          Mulai
                         </button>
                       )}
-                      {book.status === 'aktif' && currentRole !== 'admin' && (
+                      {(book.status === 'aktif' || book.status === 'sedang di luar') && currentRole === 'admin' && (
+                        <button
+                          onClick={() => setReturningBooking(book)}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px] transition-colors cursor-pointer"
+                        >
+                          Kembali
+                        </button>
+                      )}
+                      {(book.status === 'aktif' || book.status === 'sedang di luar') && currentRole !== 'admin' && (
                         <span className="text-[11px] text-amber-600 font-semibold">Sedang Jalan</span>
+                      )}
+                      {book.status === 'booking' && currentRole !== 'admin' && (
+                        <span className="text-[11px] text-blue-600 font-semibold">Menunggu Mulai</span>
                       )}
                       {book.status === 'selesai' && (
                         <span className="text-[11px] text-slate-400">Selesai ✓</span>
@@ -702,6 +731,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
       </div>
 
       {/* MODAL EKSTRAK LAPORAN PDF & EXCEL */}
+      {returningBooking && (
+        <ReturnBookingModal
+          booking={returningBooking}
+          onClose={() => setReturningBooking(null)}
+          onSuccess={() => setReturningBooking(null)}
+        />
+      )}
+
       {showReportModal && (
         <PrintReportModal
           bookings={bookings}

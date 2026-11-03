@@ -15,6 +15,7 @@ import {
   INITIAL_FINANCIAL_SETTINGS
 } from '../data/initialData';
 import {
+  getCurrentTimeStr,
   getTodayDateStr,
   checkBikeBookingConflict,
   getMondaySundayWeekRange
@@ -93,6 +94,9 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const isRentalBikeReserved = (status: BookingStatus) =>
+  status === 'booking' || status === 'sedang di luar' || status === 'aktif';
 
 const STORAGE_KEYS = {
   ROLE: 'kravent_role_prod',
@@ -483,7 +487,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Simpan booking ke Firestore dengan membersihkan field undefined
       await setDoc(doc(db, 'bookings', newBooking.id), cleanForFirestore(newBooking));
 
-      if (newBooking.status === 'aktif') {
+      if (isRentalBikeReserved(newBooking.status)) {
         const curBike = bikes.find(b => b.id === newBooking.bikeId);
         setBikes(prev =>
           prev.map(b =>
@@ -543,25 +547,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setBikes(bikeList =>
         bikeList.map(bike => {
           if (bike.id === currentBooking.bikeId) {
-            return currentBooking.status === 'aktif' ? { ...bike, status: 'tersedia' } : bike;
+            return isRentalBikeReserved(currentBooking.status) ? { ...bike, status: 'tersedia' } : bike;
           }
           if (bike.id === updatedFields.bikeId) {
-            return newStatus === 'aktif'
-              ? { ...bike, status: 'disewa', totalRentedCount: bike.totalRentedCount + 1 }
+            return isRentalBikeReserved(newStatus)
+              ? {
+                  ...bike,
+                  status: 'disewa',
+                  totalRentedCount: isRentalBikeReserved(currentBooking.status)
+                    ? bike.totalRentedCount
+                    : bike.totalRentedCount + 1,
+                }
               : { ...bike, status: 'tersedia' };
           }
           return bike;
         })
       );
-      if (currentBooking.status === 'aktif') {
+      if (isRentalBikeReserved(currentBooking.status)) {
         updateDoc(doc(db, 'bikes', currentBooking.bikeId), { status: 'tersedia' }).catch(err =>
           handleFirestoreError(err, OperationType.UPDATE, `bikes/${currentBooking.bikeId}`)
         );
       }
       const newBikeObj = bikes.find(b => b.id === updatedFields.bikeId);
       updateDoc(doc(db, 'bikes', updatedFields.bikeId), {
-        status: newStatus === 'aktif' ? 'disewa' : 'tersedia',
-        totalRentedCount: newStatus === 'aktif' ? (newBikeObj?.totalRentedCount || 0) + 1 : (newBikeObj?.totalRentedCount || 0),
+        status: isRentalBikeReserved(newStatus) ? 'disewa' : 'tersedia',
+        totalRentedCount: isRentalBikeReserved(newStatus) && !isRentalBikeReserved(currentBooking.status)
+          ? (newBikeObj?.totalRentedCount || 0) + 1
+          : (newBikeObj?.totalRentedCount || 0),
       }).catch(err =>
         handleFirestoreError(err, OperationType.UPDATE, `bikes/${updatedFields.bikeId}`)
       );
@@ -572,11 +584,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (newStatus === 'selesai' || newStatus === 'dibatalkan') {
               return { ...bike, status: 'tersedia' };
             }
-            if (newStatus === 'aktif') {
+            if (isRentalBikeReserved(newStatus)) {
               return {
                 ...bike,
                 status: 'disewa',
-                totalRentedCount: currentBooking.status !== 'aktif' ? bike.totalRentedCount + 1 : bike.totalRentedCount,
+                totalRentedCount: !isRentalBikeReserved(currentBooking.status)
+                  ? bike.totalRentedCount + 1
+                  : bike.totalRentedCount,
               };
             }
           }
@@ -587,11 +601,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateDoc(doc(db, 'bikes', finalBikeId), { status: 'tersedia' }).catch(err =>
           handleFirestoreError(err, OperationType.UPDATE, `bikes/${finalBikeId}`)
         );
-      } else if (newStatus === 'aktif') {
+      } else if (isRentalBikeReserved(newStatus)) {
         const curBike = bikes.find(b => b.id === finalBikeId);
         updateDoc(doc(db, 'bikes', finalBikeId), {
           status: 'disewa',
-          totalRentedCount: currentBooking.status !== 'aktif' ? (curBike?.totalRentedCount || 0) + 1 : (curBike?.totalRentedCount || 0),
+          totalRentedCount: !isRentalBikeReserved(currentBooking.status)
+            ? (curBike?.totalRentedCount || 0) + 1
+            : (curBike?.totalRentedCount || 0),
         }).catch(err =>
           handleFirestoreError(err, OperationType.UPDATE, `bikes/${finalBikeId}`)
         );
@@ -677,7 +693,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Revisi Poin 1: ACC Seluruh Rombongan Sekaligus
   const accGroupBookings = async (groupBookingCode: string, staffName: string = 'Staff Kravent Bike') => {
-    const targetBookings = bookings.filter(b => b.groupBookingCode === groupBookingCode);
+    const targetBookings = bookings.filter(
+      b => b.groupBookingCode === groupBookingCode && b.status === 'pending'
+    );
     if (targetBookings.length === 0) return;
 
     const nowIso = new Date().toISOString();
@@ -686,7 +704,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Update state bookings
     setBookings(prev =>
       prev.map(b =>
-        b.groupBookingCode === groupBookingCode
+        b.groupBookingCode === groupBookingCode && b.status === 'pending'
           ? { ...b, status: 'booking', approvedAt: nowIso, approvedBy: staffName, handoverBy: staffName }
           : b
       )
@@ -718,13 +736,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Mulai Rombongan (Status menjadi 'sedang di luar')
   const startGroupBookings = async (groupBookingCode: string, staffName: string = 'Staff Kravent Bike') => {
-    const targetBookings = bookings.filter(b => b.groupBookingCode === groupBookingCode);
+    const targetBookings = bookings.filter(
+      b => b.groupBookingCode === groupBookingCode && b.status === 'booking'
+    );
     if (targetBookings.length === 0) return;
 
+    const actualStartDate = getTodayDateStr();
+    const actualStartTime = getCurrentTimeStr();
     setBookings(prev =>
       prev.map(b =>
-        b.groupBookingCode === groupBookingCode
-          ? { ...b, status: 'sedang di luar', handoverBy: staffName }
+        b.groupBookingCode === groupBookingCode && b.status === 'booking'
+          ? { ...b, status: 'sedang di luar', actualStartDate, actualStartTime, handoverBy: staffName }
           : b
       )
     );
@@ -732,6 +754,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     for (const b of targetBookings) {
       updateDoc(doc(db, 'bookings', b.id), {
         status: 'sedang di luar',
+        actualStartDate,
+        actualStartTime,
         handoverBy: staffName,
       }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `bookings/${b.id}`));
     }

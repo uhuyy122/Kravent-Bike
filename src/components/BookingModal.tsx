@@ -370,7 +370,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           endTime: '',
           totalPrice: 0,
           depositAmount: selectedBike.depositRequired || 0,
-          status: 'aktif',
+          status: 'booking',
           paymentMethod,
           paymentStatus: isPayLater ? 'belum_lunas' : 'lunas',
           notes: notes.trim()

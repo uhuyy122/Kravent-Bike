@@ -22,8 +22,8 @@ export interface Bike {
   depositRequired: number;
 }
 
-// Revisi Alur Status & Tombol:
-// pending (menunggu ACC) -> booking (setelah tombol ACC) -> sedang di luar (setelah tombol Mulai) -> selesai (setelah tombol Terima Kembali)
+// Flow: pending (menunggu persetujuan) -> booking (ACC) -> sedang di luar (waktu mulai aktual) -> selesai (waktu kembali & biaya dihitung).
+// 'aktif' tetap didukung untuk data lama.
 export type BookingStatus = 'pending' | 'booking' | 'sedang di luar' | 'aktif' | 'selesai' | 'dibatalkan';
 export type PaymentMethod = 'bayar_nanti' | 'cash' | 'qris' | 'transfer' | 'debit';
 
@@ -49,7 +49,7 @@ export interface Booking {
   endDate: string; // YYYY-MM-DD; initially startDate, updated on return
   endTime: string; // HH:mm; empty until the bike is returned
   durationType?: 'sesi' | 'jam' | 'hari';
-  durationValue?: number; // Actual rental hours, calculated at return; may be fractional
+  durationValue?: number; // Actual elapsed rental hours, calculated at return
   bookingSession?: 'pagi' | 'siang'; // Sesi Pagi (06:00 - 12:00) atau Sesi Siang (13:00 - 21:00)
   totalPrice: number;
   depositAmount: number;
@@ -59,6 +59,8 @@ export interface Booking {
   notes?: string;
   createdAt: string; // ISO date string
   returnedAt?: string;
+  actualStartDate?: string; // YYYY-MM-DD, captured when staff starts the rental
+  actualStartTime?: string; // HH:mm, captured when staff starts the rental
   handoverBy?: string; // nama staf/admin yang menyerahkan
   // Catatan Pembayaran saat Terima Kembali (Revisi Poin 10)
   paymentNotes?: string;
