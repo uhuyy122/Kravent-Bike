@@ -142,24 +142,19 @@ export const BookingList: React.FC = () => {
     if (primaryBooking.customerPhone && primaryBooking.customerPhone !== '-') {
       const cleanPhone = normalizePhone(primaryBooking.customerPhone);
       const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
-      const totalTagihan = groupItems.reduce((sum, item) => sum + (item.finalTotalPrice ?? (item.totalPrice + (item.addonTotalCost || 0))), 0);
-      const addonText = primaryBooking.addons && primaryBooking.addons.length > 0
-        ? ` + Perlengkapan (${primaryBooking.addons.map(a => `${a.name} ${a.quantity}x`).join(', ')})`
-        : '';
-      const unitLabel = groupItems.length > 1
-        ? `${groupItems.length} unit sepeda atas nama ${primaryBooking.customerName}`
-        : primaryBooking.bikeName;
       const textMsg = [
-        `Halo Kak *${primaryBooking.customerName}*!`,
-        `Pesanan sewa sepeda Anda di *Kravent Bike Salatiga* telah kami *ACC & DISETUJUI*!`,
+        `Halo Kak! 👋😊`,
         ``,
-        `• Kode Booking: *${primaryBooking.bookingCode}*`,
-        `• Unit: *${unitLabel}*${addonText}`,
-        `• Jadwal: *${formatDateIndo(primaryBooking.startDate)}* (${primaryBooking.startTime} - ${primaryBooking.endTime} WIB)`,
-        `• Total Tagihan: *${formatRupiah(totalTagihan)}*`,
-        `• Pembayaran: *Bayar di Akhir (Saat Pengembalian Unit)*`,
+        `Terima kasih sudah melakukan booking sepeda. Booking Kakak sudah kami ACC dan dikonfirmasi ya.`,
         ``,
-        `Unit sepeda telah kami siapkan. Silakan datang ke outlet Kravent Bike untuk serah terima unit sepeda. Terima kasih! 🚴‍♂️`
+        `Mohon diperhatikan beberapa ketentuannya ya, Kak:`,
+        `* Mohon datang tepat waktu sesuai jadwal booking. Jika mengalami keterlambatan, mohon segera konfirmasi melalui WhatsApp ini.`,
+        `* Mohon tidak melakukan cancel atau reschedule secara mendadak, kecuali apabila kondisi cuaca/hujan tidak memungkinkan untuk bermain.`,
+        `* Pembayaran dilakukan di akhir setelah selesai bermain dan akan dihitung berdasarkan durasi pemakaian sepeda.`,
+        `* Tersedia parkir untuk motor dan mobil di lokasi.`,
+        ``,
+        `Terima kasih atas pengertiannya, Kak 🙏`,
+        `Sampai ketemu dan selamat bermain! 🚲✨`
       ].join('\n');
       const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(textMsg)}`;
       window.open(waUrl, '_blank');

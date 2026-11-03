@@ -533,7 +533,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       const adminWhatsAppNumber = '6289647123671'; // Nomor WhatsApp Admin Kravent Bike
 
       const bikeListText = selectedBikes
-        .map((b, idx) => `  ${idx + 1}. *${b.name}* (Kode: ${b.licenseNumber})`)
+        .map((b, idx) => `  ${idx + 1}. ${b.name} (Kode: ${b.licenseNumber})`)
         .join('\n');
 
       const addonListText = selectedAddonList.length > 0
@@ -544,9 +544,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       const textLines = [
         `Halo Admin Kravent Bike! Ada pesanan sewa baru dari website:`,
-        `* Kode Booking: *${bookingCodesList}*`,
-        `* Kode Rombongan: *${generatedGroupCode}*`,
-        `* Atas Nama: *${customerName}*`,
+        `* Kode Booking: ${bookingCodesList}`,
+        `* Kode Rombongan: ${generatedGroupCode}`,
+        `* Atas Nama: ${customerName}`,
         customerPhone ? `* No WhatsApp: ${customerPhone}` : '',
         `* Jadwal Sewa: ${formatDateIndo(startDate)}`,
         `* Jam Sewa: ${startTime} - ${calculatedEndTime} WIB (${durationValue} ${durationType})`,
@@ -554,10 +554,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         bikeListText,
         `* Tambahan Lainnya (Addons):`,
         addonListText,
-        notes.trim() ? `* Fasilitas / Catatan Titipan Barang: *${notes.trim()}*` : '',
-        `* Pembayaran: *Bayar di Akhir (Saat Pengembalian Unit)*`,
-        ``,
-        `⚠️ *Status:* Pesanan telah tersimpan di website Kravent Bike dan menunggu tombol *ACC Pesanan* dari Admin.`,
+        `* Pembayaran: Bayar di Akhir (Saat Pengembalian Unit)`,
+        `⚠️ Status: Pesanan telah tersimpan di website Kravent Bike dan menunggu tombol ACC Pesanan dari Admin.`,
         `Mohon konfirmasi ACC ketersediaan unit ini. Terima kasih! 🚴‍♂️`
       ].filter(Boolean).join('\n');
 
