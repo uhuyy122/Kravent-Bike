@@ -151,6 +151,7 @@ export const calculateRentalCharge = (
   isValid: boolean;
   durationMinutes: number;
   durationHours: number;
+  billedDurationHours: number;
   totalPrice: number;
 } => {
   const start = new Date(`${startDate}T${startTime}:00`);
@@ -159,12 +160,19 @@ export const calculateRentalCharge = (
   const isValid = Number.isFinite(elapsedMinutes) && elapsedMinutes >= 0;
   const durationMinutes = isValid ? elapsedMinutes : 0;
   const durationHours = durationMinutes / 60;
+  const fullHours = Math.floor(durationMinutes / 60);
+  const remainingMinutes = durationMinutes % 60;
+  const extraHours = remainingMinutes <= 5 ? 0 : remainingMinutes < 20 ? 0.5 : 1;
+  const billedDurationHours = durationMinutes === 0
+    ? 0
+    : Math.max(1, fullHours + extraHours);
 
   return {
     isValid,
     durationMinutes,
     durationHours,
-    totalPrice: Math.round((ratePerHour * durationMinutes) / 60),
+    billedDurationHours,
+    totalPrice: Math.round(ratePerHour * billedDurationHours),
   };
 };
 

@@ -67,6 +67,11 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
     return `${hours} jam ${remainingMinutes} menit`;
   };
 
+  const formatBilledDuration = (hours: number) => {
+    const fullHours = Math.floor(hours);
+    return hours % 1 === 0.5 ? `${fullHours} jam 30 menit` : `${fullHours} jam`;
+  };
+
   const itemRentalDetails = useMemo(
     () =>
       items.map(item => {
@@ -78,7 +83,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
           returnTime,
           ratePerHour
         );
-        const { durationMinutes, durationHours } = charge;
+        const { durationMinutes, durationHours, billedDurationHours } = charge;
         const rentalCost = charge.totalPrice;
         const baseTotal = rentalCost + (item.addonTotalCost || 0);
 
@@ -87,6 +92,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
           durationMinutes,
           hasInvalidTime: !charge.isValid,
           durationHours,
+          billedDurationHours,
           ratePerHour,
           rentalCost,
           baseTotal,
@@ -102,9 +108,9 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
   const discountAmount = useMemo(() => {
     if (!discountValue) return 0;
     if (discountMode === 'percent') {
-      return grossTotal * (discountValue / 100);
+      return Math.round(grossTotal * (discountValue / 100));
     }
-    return Math.min(discountValue, grossTotal);
+    return Math.round(Math.min(discountValue, grossTotal));
   }, [discountMode, discountValue, grossTotal]);
 
   const distributedTotals = useMemo(() => {
@@ -114,7 +120,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
 
     return itemRentalDetails.map(entry => {
       const share = entry.grossTotal / grossTotal;
-      return Math.max(0, entry.grossTotal - discountAmount * share);
+      return Math.round(Math.max(0, entry.grossTotal - discountAmount * share));
     });
   }, [discountAmount, grossTotal, itemRentalDetails]);
 
@@ -169,6 +175,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
     msg += `Unit: *${unitList}*%0A`;
     msg += `No. Booking: *${items.map(item => item.bookingCode).join(', ')}*%0A`;
     msg += `Durasi Sewa: *${itemRentalDetails[0] && !itemRentalDetails[0].hasInvalidTime ? formatDuration(itemRentalDetails[0].durationMinutes) : 'Waktu tidak valid'}*%0A`;
+    msg += `Durasi Ditagihkan: *${itemRentalDetails[0] && !itemRentalDetails[0].hasInvalidTime ? formatBilledDuration(itemRentalDetails[0].billedDurationHours) : 'Waktu tidak valid'}*%0A`;
     msg += `Jam Kepulangan: *${returnTime} WIB* (${formatDateIndo(returnDate)})%0A`;
     msg += '-----------------------------------%0A';
 
@@ -318,7 +325,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              {itemRentalDetails.map(({ item, durationMinutes, hasInvalidTime, ratePerHour, rentalCost, baseTotal }, index) => (
+              {itemRentalDetails.map(({ item, durationMinutes, billedDurationHours, hasInvalidTime, ratePerHour, rentalCost, baseTotal }, index) => (
                 <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-bold text-slate-800 text-[11px]">{item.bikeName}</div>
@@ -329,7 +336,11 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                     <span>{hasInvalidTime ? 'Waktu tidak valid' : formatDuration(durationMinutes)}</span>
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>Sewa ({formatRupiah(ratePerHour)}/jam, prorata per menit)</span>
+                    <span>Durasi Ditagihkan</span>
+                    <span>{hasInvalidTime ? 'Waktu tidak valid' : formatBilledDuration(billedDurationHours)}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span>Sewa ({formatRupiah(ratePerHour)}/jam)</span>
                     <span>{formatRupiah(rentalCost)}</span>
                   </div>
                   {(item.addonTotalCost || 0) > 0 && (
