@@ -36,15 +36,13 @@ export const formatDateIndo = (dateStr: string): string => {
 
 export const getCategoryLabel = (category: string): string => {
   switch (category) {
-    case 'road':
-      return 'Vintage / Federal';
     case 'mtb':
       return 'MTB';
-    case 'folding':
-      return 'Mini Cruiser';
-    case 'ebike':
-      return 'Electric Bike';
+    case 'commuter':
     case 'city':
+    case 'road':
+    case 'folding':
+    case 'ebike':
       return 'Commuter Bike';
     default:
       return category;

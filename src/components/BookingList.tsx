@@ -7,7 +7,6 @@ import {
   XCircle,
   Clock,
   ArrowRight,
-  User,
   Phone,
   Bike,
   Trash2,
@@ -109,8 +108,6 @@ export const BookingList: React.FC = () => {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  const pendingBookings = bookings.filter(b => b.status === 'pending');
-
   const getStatusLabel = (status: BookingStatus) => {
     switch (status) {
       case 'pending':
@@ -164,12 +161,6 @@ export const BookingList: React.FC = () => {
   const handleReturnGroupBooking = (booking: Booking) => {
     const groupItems = getGroupItemsForBooking(booking);
     setReturningGroupBooking(groupItems);
-  };
-
-  const handleCancel = (booking: Booking) => {
-    if (window.confirm(`Batalkan booking ${booking.bookingCode}?`)) {
-      updateBookingStatus(booking.id, 'dibatalkan');
-    }
   };
 
   const handleCancelSingleUnit = (booking: Booking) => {
@@ -227,138 +218,6 @@ export const BookingList: React.FC = () => {
         </div>
       </div>
 
-      {/* ============================================================== */}
-      {/* 🔔 REVISI 1 OWNER: FITUR ACC PESANAN MASUK DARI CUSTOMER          */}
-      {/* Tugas admin bertambah jadi nge-ACC aja bukan input manual lagi    */}
-      {/* ============================================================== */}
-      {pendingBookings.length > 0 && (
-        <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border-2 border-amber-400 rounded-3xl p-5 shadow-sm space-y-3.5">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-sm shadow-xs animate-bounce">
-                {pendingBookings.length}
-              </div>
-              <div>
-                <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                  <span>Pesanan Masuk dari Customer (Perlu ACC Admin)</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 uppercase tracking-wider">
-                    {pendingBookings.length} Menunggu ACC
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-600">
-                  Pesanan masuk otomatis dari web customer. Klik tombol <strong>ACC Pesanan</strong> untuk langsung menyetujui unit sepeda &amp; kirim balasan WhatsApp!
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            {pendingBookings.map(b => {
-              const totalTagihan = b.finalTotalPrice ?? (b.totalPrice + (b.addonTotalCost || 0));
-              return (
-                <div
-                  key={b.id}
-                  className="bg-white border-2 border-amber-300 rounded-2xl p-4 shadow-xs flex flex-col justify-between gap-3 text-xs"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-[11px]">
-                        {b.bookingCode}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {formatDateIndo(b.startDate)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <img
-                        src={b.bikeImage}
-                        alt={b.bikeName}
-                        className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-black text-slate-900 text-sm truncate">{b.bikeName}</h4>
-                        <div className="flex items-center gap-1.5 text-slate-600 font-semibold mt-0.5">
-                          <User className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="truncate">{b.customerName}</span>
-                          <span className="text-slate-400">•</span>
-                          <a
-                            href={`https://wa.me/62${b.customerPhone.replace(/\D/g, '').replace(/^0/, '')}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-emerald-700 hover:underline flex items-center gap-0.5 font-mono"
-                          >
-                            <Phone className="w-3 h-3 text-emerald-600" />
-                            <span>{b.customerPhone}</span>
-                          </a>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          ⏰ Mulai {b.startTime} WIB
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Addons if any */}
-                    {b.addons && b.addons.length > 0 && (
-                      <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
-                        <span className="font-bold text-slate-700 block text-[10px] uppercase">
-                          🎒 Perlengkapan Tambahan:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {b.addons.map((a, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-amber-100 text-amber-900 font-bold rounded text-[10px]">
-                              {a.name} ({a.quantity}x) • {formatRupiah(a.price * a.quantity)}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Catatan / Titip Barang */}
-                    {b.notes && (
-                      <div className="p-2 rounded-xl bg-blue-50/70 border border-blue-200 text-[11px] space-y-0.5">
-                        <span className="font-bold text-blue-900 block text-[10px] uppercase">
-                          📦 Catatan / Titip Barang:
-                        </span>
-                        <p className="text-blue-800 font-medium text-[11px]">{b.notes}</p>
-                      </div>
-                    )}
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Total Tagihan Resmi Toko:</span>
-                        <span className="font-extrabold text-sm text-emerald-700">{formatRupiah(totalTagihan)}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                        Bayar di Akhir
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Tombol ACC Cepat */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => handleAccBooking(b)}
-                      className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>ACC &amp; Balas WA</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCancel(b)}
-                      className="py-2 px-3 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-                    >
-                      Tolak
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />

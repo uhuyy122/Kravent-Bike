@@ -188,10 +188,8 @@ export const Catalog: React.FC = () => {
 
   const categories: { id: string; label: string }[] = [
     { id: 'all', label: 'Semua Sepeda (25 Unit Asli)' },
-    { id: 'city', label: 'Commuter Bike (12 Model)' },
-    { id: 'road', label: 'Vintage & Federal (6 Model)' },
-    { id: 'mtb', label: 'MTB (6 Model)' },
-    { id: 'folding', label: 'Mini Cruiser (Leoni)' },
+    { id: 'commuter', label: 'Commuter Bike' },
+    { id: 'mtb', label: 'MTB' },
   ];
 
   return (
@@ -585,10 +583,19 @@ export const Catalog: React.FC = () => {
                           <div className="mt-2.5 p-2 rounded-xl bg-rose-50 border border-rose-200 flex flex-col gap-0.5 text-[11px]">
                             <span className="text-rose-900 font-extrabold flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                              Tidak tersedia untuk tanggal ini
+                              Tidak tersedia untuk saat ini
                             </span>
                             <span className="text-rose-700 text-[10px]">
-                              {conflict.message || 'Sudah dibooking pada jam tersebut'}
+                              Untuk informasi lebih lanjut bisa hubungi{' '}
+                              <a
+                                href="https://wa.me/6289647123671"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-bold underline hover:text-rose-900"
+                              >
+                                WA Admin
+                              </a>
+                              .
                             </span>
                           </div>
                         );
@@ -1100,7 +1107,7 @@ export const Catalog: React.FC = () => {
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                <span>⭐ Katalog Vintage / Federal (7 Model)</span>
+                <span>⭐ Commuter Bike - Vintage / Federal (7 Model)</span>
               </button>
 
               <button
@@ -1224,9 +1231,9 @@ export const Catalog: React.FC = () => {
                   type="button"
                   onClick={() => {
                     const catMap: Record<'city1' | 'city2' | 'vintage' | 'mtb', string> = {
-                      city1: 'city',
-                      city2: 'city',
-                      vintage: 'road',
+                      city1: 'commuter',
+                      city2: 'commuter',
+                      vintage: 'commuter',
                       mtb: 'mtb',
                     };
                     setSelectedCategory(catMap[activePosterTab]);

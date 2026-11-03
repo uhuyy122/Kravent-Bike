@@ -1059,10 +1059,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none text-xs">
                   {[
                     { id: 'all', label: 'Semua' },
-                    { id: 'road', label: 'Road' },
+                    { id: 'commuter', label: 'Commuter Bike' },
                     { id: 'mtb', label: 'MTB' },
-                    { id: 'folding', label: 'Lipat' },
-                    { id: 'ebike', label: 'E-Bike' },
                   ].map(cat => (
                     <button
                       key={cat.id}

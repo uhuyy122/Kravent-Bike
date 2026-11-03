@@ -217,7 +217,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsCloudConnected(true);
         const list: Bike[] = [];
         snapshot.forEach(docSnap => {
-          list.push(docSnap.data() as Bike);
+          const data = docSnap.data();
+          const category: Bike['category'] = data.category === 'mtb' ? 'mtb' : 'commuter';
+          if (data.category !== category) {
+            updateDoc(doc(db, 'bikes', docSnap.id), { category }).catch(err =>
+              handleFirestoreError(err, OperationType.UPDATE, `bikes/${docSnap.id}`)
+            );
+          }
+          list.push({ ...data, id: docSnap.id, category } as Bike);
         });
 
         // Jika kosong, berisi sepeda placeholder lama, atau berisi unit dobel (Unit 01/02), sinkronkan 25 sepeda asli sesuai 4 lembar brosur
@@ -259,7 +266,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else {
           const list: Booking[] = [];
           snapshot.forEach(docSnap => {
-            const data = docSnap.data() as Booking;
+            const data = { ...docSnap.data(), id: docSnap.id } as Booking;
             if (docSnap.id === 'book-1793009088589' || data.customerName === 'Tata' || data.bookingCode === 'BOK-1026-599') {
               deleteDoc(doc(db, 'bookings', docSnap.id)).catch(() => {});
               return;

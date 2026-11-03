@@ -1,7 +1,6 @@
 export type UserRole = 'admin' | 'karyawan' | 'customer';
 
-// Revisi: Kategori sepeda hanya ada 2 (MTB & Commuter Bike)
-export type BikeCategory = 'commuter' | 'mtb' | 'city' | 'road' | 'folding' | 'ebike';
+export type BikeCategory = 'commuter' | 'mtb';
 
 export type BikeStatus = 'tersedia' | 'disewa' | 'maintenance';
 

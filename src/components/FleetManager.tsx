@@ -42,7 +42,7 @@ export const FleetManager: React.FC = () => {
   // Form states
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('Kravent Bike');
-  const [category, setCategory] = useState<BikeCategory>('city');
+  const [category, setCategory] = useState<BikeCategory>('commuter');
   const [frameSize, setFrameSize] = useState('All Size Standar Dewasa');
   const [color, setColor] = useState('Sky Blue');
   const [pricePerHour, setPricePerHour] = useState('8000');
@@ -63,7 +63,7 @@ export const FleetManager: React.FC = () => {
     setEditingBike(null);
     setName('');
     setBrand('Kravent Bike');
-    setCategory('city');
+    setCategory('commuter');
     setFrameSize('All Size Standar Dewasa');
     setColor('Biru Sky');
     setPricePerHour('8000');
@@ -219,11 +219,8 @@ export const FleetManager: React.FC = () => {
             className="text-xs font-semibold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
           >
             <option value="all">Semua Kategori</option>
-            <option value="road">Road Bike</option>
+            <option value="commuter">Commuter Bike</option>
             <option value="mtb">MTB</option>
-            <option value="folding">Sepeda Lipat</option>
-            <option value="ebike">E-Bike</option>
-            <option value="city">Commuter Bike</option>
           </select>
 
           <select
@@ -459,11 +456,8 @@ export const FleetManager: React.FC = () => {
                     onChange={e => setCategory(e.target.value as BikeCategory)}
                     className="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-semibold"
                   >
-                    <option value="road">Road Bike (Balap)</option>
-                    <option value="mtb">MTB (Gunung)</option>
-                    <option value="folding">Sepeda Lipat</option>
-                    <option value="ebike">E-Bike (Listrik)</option>
-                    <option value="city">Commuter Bike</option>
+                    <option value="commuter">Commuter Bike</option>
+                    <option value="mtb">MTB</option>
                   </select>
                 </div>
 
