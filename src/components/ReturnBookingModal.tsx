@@ -271,19 +271,34 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
           {items.length > 1 && (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">Daftar Unit</div>
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2">
                 {itemRentalDetails.map(({ item, rentalCost, addonTotal: itemAddonTotal }, index) => (
-                  <span
+                  <div
                     key={item.id}
-                    className="inline-flex flex-col gap-0.5 rounded-xl bg-white border border-slate-200 px-2.5 py-1.5 text-[10px] text-slate-700"
+                    className="rounded-xl bg-white border border-slate-200 px-2.5 py-2 text-[10px] text-slate-700"
                   >
-                    <span className="font-bold">{item.bikeName}</span>
-                    <span>Sewa {formatRupiah(rentalCost)}</span>
-                    {itemAddonTotal > 0 && <span>Tambahan {formatRupiah(itemAddonTotal)}</span>}
-                    <span className="font-extrabold text-emerald-700">
-                      Total {formatRupiah(distributedTotals[index] || 0)}
-                    </span>
-                  </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-slate-800">{item.bikeName}</span>
+                      <span className="font-extrabold text-emerald-700">{formatRupiah(distributedTotals[index] || 0)}</span>
+                    </div>
+                    <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                      <span>Sewa</span>
+                      <span>{formatRupiah(rentalCost)}</span>
+                    </div>
+                    {item.addons?.length ? (
+                      item.addons.map(addon => (
+                        <div key={`${item.id}-${addon.id}`} className="flex justify-between text-[10px] text-slate-500">
+                          <span>{addon.name}</span>
+                          <span>{formatRupiah(addon.price * addon.quantity)}</span>
+                        </div>
+                      ))
+                    ) : itemAddonTotal > 0 ? (
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span>Tambahan</span>
+                        <span>{formatRupiah(itemAddonTotal)}</span>
+                      </div>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             </div>
@@ -349,6 +364,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                     <div className="font-bold text-slate-800 text-[11px]">{item.bikeName}</div>
                     <div className="font-extrabold text-slate-900 text-[11px]">{formatRupiah(distributedTotals[index] || 0)}</div>
                   </div>
+
                   <div className="mt-1 flex justify-between text-[10px] text-slate-500">
                     <span>Durasi Aktual</span>
                     <span>{hasInvalidTime ? 'Waktu tidak valid' : formatDuration(durationMinutes)}</span>
@@ -357,34 +373,31 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                     <span>Durasi Ditagihkan</span>
                     <span>{hasInvalidTime ? 'Waktu tidak valid' : formatBilledDuration(billedDurationHours)}</span>
                   </div>
-                  <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>Sewa ({formatRupiah(ratePerHour)}/jam)</span>
-                    <span>{formatRupiah(rentalCost)}</span>
-                  </div>
-                  {itemAddonTotal > 0 && (
-                    <div className="border-t border-dashed border-slate-200 pt-1 mt-1 space-y-1">
-                      <div className="text-[10px] font-bold text-slate-600">Perlengkapan tambahan</div>
-                      {item.addons?.map(addon => (
-                        <div key={addon.id} className="flex justify-between text-[10px] text-slate-500">
+
+                  <div className="mt-1 border-t border-dashed border-slate-200 pt-2 space-y-1">
+                    <div className="flex justify-between text-[10px] text-slate-500">
+                      <span>Sewa ({formatRupiah(ratePerHour)}/jam)</span>
+                      <span>{formatRupiah(rentalCost)}</span>
+                    </div>
+
+                    {item.addons?.length ? (
+                      item.addons.map(addon => (
+                        <div key={`${item.id}-${addon.id}`} className="flex justify-between text-[10px] text-slate-500">
                           <span>{addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
                           <span>{formatRupiah(addon.price * addon.quantity)}</span>
                         </div>
-                      ))}
-                      {!item.addons?.length && (
-                        <div className="flex justify-between text-[10px] text-slate-500">
-                          <span>Tambahan</span>
-                          <span>{formatRupiah(itemAddonTotal)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-[10px] font-semibold text-slate-600">
-                        <span>Total tambahan</span>
+                      ))
+                    ) : itemAddonTotal > 0 ? (
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span>Perlengkapan tambahan</span>
                         <span>{formatRupiah(itemAddonTotal)}</span>
                       </div>
+                    ) : null}
+
+                    <div className="flex justify-between text-[10px] font-bold text-slate-700 pt-1 border-t border-slate-200 mt-1">
+                      <span>Subtotal {item.bikeName}</span>
+                      <span>{formatRupiah(baseTotal)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-[10px] text-slate-700 font-bold pt-1 border-t border-slate-200 mt-1">
-                    <span>Subtotal</span>
-                    <span>{formatRupiah(baseTotal)}</span>
                   </div>
                 </div>
               ))}

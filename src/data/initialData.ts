@@ -453,6 +453,8 @@ export const INITIAL_FINANCIAL_SETTINGS: FinancialSettings = {
   partner2Name: 'Owner 2 (Co-Founder/Operasional)',
   partner2Percentage: 40,
   maintenanceBudgetPercentage: 15,
+  maintenanceBudgetNominal: 0,
+  maintenanceMode: 'percentage',
   contentBudgetAmount: 500000, // Rp 500.000 nominal uang gaji konten kreator & ads
   contentBudgetPercentage: 10,
   operationalBudgetPercentage: 15,

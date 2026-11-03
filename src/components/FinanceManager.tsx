@@ -73,6 +73,12 @@ export const FinanceManager: React.FC = () => {
   const [partner2Name, setPartner2Name] = useState(financialSettings.partner2Name);
 
   const [maintPct, setMaintPct] = useState(financialSettings.maintenanceBudgetPercentage);
+  const [maintenanceMode, setMaintenanceMode] = useState<'percentage' | 'nominal'>(
+    financialSettings.maintenanceMode ?? 'percentage'
+  );
+  const [maintenanceBudgetNominal, setMaintenanceBudgetNominal] = useState<number>(
+    financialSettings.maintenanceBudgetNominal ?? 0
+  );
   const [contentBudgetNominal, setContentBudgetNominal] = useState<number>(
     financialSettings.contentBudgetAmount ?? 500000
   );
@@ -189,6 +195,8 @@ export const FinanceManager: React.FC = () => {
       partner2Name,
       partner2Percentage: 100 - partner1Pct,
       maintenanceBudgetPercentage: maintPct,
+      maintenanceBudgetNominal: maintenanceBudgetNominal > 0 ? maintenanceBudgetNominal : 0,
+      maintenanceMode,
       contentBudgetAmount: contentBudgetNominal,
       contentBudgetPercentage: gross > 0 ? Math.round((contentBudgetNominal / gross) * 100) : 0,
       operationalBudgetPercentage: opsPct,
@@ -232,7 +240,10 @@ export const FinanceManager: React.FC = () => {
     setShowAddExpense(false);
   };
 
-  const maintAmount = Math.round((gross * maintPct) / 100);
+  const maintAmount =
+    maintenanceMode === 'nominal'
+      ? Number(maintenanceBudgetNominal || 0)
+      : Math.round((gross * maintPct) / 100);
   // Konten & Ads: Nominal uang langsung (Gaji Konten Kreator & Ads)
   const contentAmount = Number(contentBudgetNominal || 0);
   const opsAmount = Math.round((gross * opsPct) / 100);
@@ -618,7 +629,7 @@ export const FinanceManager: React.FC = () => {
                     <Wrench className="w-4 h-4" /> Maintenance (Servis)
                   </span>
                   <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-bold text-[11px]">
-                    {maintPct}%
+                    {maintenanceMode === 'nominal' ? 'Nominal' : `${maintPct}%`}
                   </span>
                 </div>
                 <div className="text-xl font-bold text-white mt-1">
@@ -982,32 +993,94 @@ export const FinanceManager: React.FC = () => {
               2. Alokasi 3 Pos Wajib (Maintenance, Gaji Konten Kreator & Operasional)
             </span>
             <span className="text-xs text-slate-500">
-              Total disisihkan: {formatRupiah(totalAlloc)} (Maintenance: {maintPct}%, Gaji Konten: {formatRupiah(contentAmount)}, Toko: {opsPct}%)
+              Total disisihkan: {formatRupiah(totalAlloc)} (Maintenance: {maintenanceMode === 'nominal' ? formatRupiah(maintAmount) : `${maintPct}%`}, Gaji Konten: {formatRupiah(contentAmount)}, Toko: {opsPct}%)
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Maintenance */}
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="flex justify-between items-center text-xs mb-1">
+              <div className="flex justify-between items-center text-xs mb-2">
                 <span className="font-bold text-slate-800 flex items-center gap-1">
                   <Wrench className="w-3.5 h-3.5 text-amber-500" /> Maintenance
                 </span>
-                <span className="font-extrabold text-amber-600">{maintPct}%</span>
+                <span className="font-extrabold text-amber-600">
+                  {maintenanceMode === 'nominal' ? 'Nominal' : `${maintPct}%`}
+                </span>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="40"
-                step="1"
-                value={maintPct}
-                disabled={!isAdmin}
-                onChange={e => setMaintPct(parseInt(e.target.value, 10))}
-                className={`w-full accent-amber-500 h-1.5 bg-slate-200 rounded-lg ${
-                  isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'
-                }`}
-              />
-              <span className="text-[11px] text-slate-400 block mt-1">
+
+              <div className="flex items-center gap-2 mb-2">
+                {(['percentage', 'nominal'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={!isAdmin}
+                    onClick={() => setMaintenanceMode(mode)}
+                    className={`flex-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                      maintenanceMode === mode
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    } ${!isAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    {mode === 'percentage' ? 'Persen' : 'Nominal'}
+                  </button>
+                ))}
+              </div>
+
+              {maintenanceMode === 'percentage' ? (
+                <>
+                  <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                    {[5, 10, 15, 20, 25].map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        disabled={!isAdmin}
+                        onClick={() => setMaintPct(p)}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${
+                          maintPct === p
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                        } ${!isAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                      >
+                        {p}%
+                      </button>
+                    ))}
+                  </div>
+
+                  <input
+                    type="range"
+                    min="0"
+                    max="40"
+                    step="1"
+                    value={maintPct}
+                    disabled={!isAdmin}
+                    onChange={e => setMaintPct(parseInt(e.target.value, 10))}
+                    className={`w-full accent-amber-500 h-1.5 bg-slate-200 rounded-lg ${
+                      isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'
+                    }`}
+                  />
+                </>
+              ) : (
+                <div className="mt-1">
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Nominal manual</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">Rp</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50000"
+                      value={maintenanceBudgetNominal}
+                      disabled={!isAdmin}
+                      onChange={e => setMaintenanceBudgetNominal(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className={`w-full pl-7 pr-2 py-1.5 text-[11px] font-bold border border-slate-300 rounded-lg bg-white focus:outline-amber-500 font-mono ${
+                        isAdmin ? 'cursor-text' : 'cursor-not-allowed opacity-75'
+                      }`}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <span className="text-[11px] text-slate-400 block mt-2">
                 Nominal ({periodLabel}): {formatRupiah(maintAmount)}
               </span>
             </div>

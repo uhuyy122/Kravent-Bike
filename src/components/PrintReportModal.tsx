@@ -97,6 +97,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       addonPrice: number;
       shifts: string[];
       notes: string[];
+      paymentNotes: string[];
       totalPrice: number;
     }>();
 
@@ -105,7 +106,8 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       const shift = getSessionForTime(b.startTime);
       const existing = groups.get(key);
       const bikeName = b.bikeName?.trim();
-      const notePool = [b.notes, b.paymentNotes, b.returnNotes].filter(Boolean) as string[];
+      const notePool = [b.notes, b.returnNotes].filter(Boolean) as string[];
+      const paymentNotePool = [b.paymentNotes].filter(Boolean) as string[];
       const bookingTotal = getBookingTotalPrice(b);
       const bookingAddons = getBookingAddonSummary([b]);
       const addonPrice = getBookingAddonTotal(b);
@@ -131,6 +133,9 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
         if (notePool.length) {
           existing.notes = [...new Set([...existing.notes, ...notePool])].filter(Boolean);
         }
+        if (paymentNotePool.length) {
+          existing.paymentNotes = [...new Set([...existing.paymentNotes, ...paymentNotePool])].filter(Boolean);
+        }
       } else {
         groups.set(key, {
           customerName: b.customerName,
@@ -142,6 +147,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           addonPrice,
           shifts: [shift],
           notes: notePool,
+          paymentNotes: paymentNotePool,
           totalPrice: bookingTotal,
         });
       }
@@ -173,7 +179,10 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   // Kalkulasi Bagi Hasil dinamis untuk periode yang dipilih
   const dynamicBreakdown = useMemo(() => {
     const gross = activeGrossRevenue;
-    const maint = Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
+    const maint =
+      (financialSettings.maintenanceMode ?? 'percentage') === 'nominal'
+        ? Number(financialSettings.maintenanceBudgetNominal ?? 0)
+        : Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
     // Gaji Konten Kreator & Ads berupa input nominal uang tetap
     const content =
       financialSettings.contentBudgetAmount !== undefined
@@ -543,7 +552,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                     <th className="p-2 border-r border-slate-300 text-right">Denda / Diskon</th>
                     <th className="p-2 border-r border-slate-300 text-center">Shift</th>
                     <th className="p-2 border-r border-slate-300 text-right">Total Tagihan</th>
-                    <th className="p-2 border-r border-slate-300">Catatan</th>
+                    <th className="p-2 border-r border-slate-300">Pembayaran / Catatan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -594,7 +603,11 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                           {formatRupiah(group.totalPrice)}
                         </td>
                         <td className="p-2 text-slate-700">
-                          {group.notes.length ? group.notes.join(' • ') : 'Tidak ada catatan'}
+                          {group.paymentNotes.length
+                            ? group.paymentNotes.join(' • ')
+                            : group.notes.length
+                              ? group.notes.join(' • ')
+                              : 'Tidak ada catatan'}
                         </td>
                       </tr>
                     ))

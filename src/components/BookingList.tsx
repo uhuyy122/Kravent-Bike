@@ -155,6 +155,9 @@ export const BookingList: React.FC = () => {
     );
 
   const filteredBookings = searchedBookings.filter(group => {
+    const groupStatus = getGroupStatus(group.items);
+    if (groupStatus === 'selesai') return false;
+
     switch (tableView) {
       case 'today':
         return isForToday(group.items);
@@ -780,12 +783,26 @@ export const BookingList: React.FC = () => {
                     )}
 
                     {item.status === 'booking' && isAdmin && (
-                      <button
-                        onClick={() => handleStartSingleBooking(item)}
-                        className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
-                      >
-                        Mulai
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleStartSingleBooking(item)}
+                          className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
+                        >
+                          Mulai
+                        </button>
+                        <button
+                          onClick={() => handleSwapBike(item)}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
+                        >
+                          Tukar Unit
+                        </button>
+                        <button
+                          onClick={() => handleCancelSingleUnit(item)}
+                          className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
+                        >
+                          Batal Unit
+                        </button>
+                      </>
                     )}
 
                     {(item.status === 'sedang di luar' || item.status === 'aktif') && isAdmin && (

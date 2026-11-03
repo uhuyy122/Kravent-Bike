@@ -56,7 +56,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
   // Kalkulasi Alokasi & Bagi Hasil Omzet Harian (Khusus Harian Hari Ini)
   const dailyFinancial = React.useMemo(() => {
     const gross = todayRevenue;
-    const maint = Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
+    const maint =
+      (financialSettings.maintenanceMode ?? 'percentage') === 'nominal'
+        ? Number(financialSettings.maintenanceBudgetNominal ?? 0)
+        : Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
     const content =
       financialSettings.contentBudgetAmount !== undefined
         ? Number(financialSettings.contentBudgetAmount)

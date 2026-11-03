@@ -1017,9 +1017,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const financialBreakdown = useMemo<FinancialBreakdown>(() => {
     const grossRevenue = thisMonthRevenue;
 
-    const maintenanceAllocation = Math.round(
-      (grossRevenue * financialSettings.maintenanceBudgetPercentage) / 100
-    );
+    const maintenanceMode = financialSettings.maintenanceMode ?? 'percentage';
+    const maintenanceAllocation =
+      maintenanceMode === 'nominal'
+        ? Number(financialSettings.maintenanceBudgetNominal ?? 0)
+        : Math.round(
+            (grossRevenue * financialSettings.maintenanceBudgetPercentage) / 100
+          );
     // Pos Konten & Ads: Nominal uang untuk gaji konten kreator
     const contentAllocation =
       financialSettings.contentBudgetAmount !== undefined

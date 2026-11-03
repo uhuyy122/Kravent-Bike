@@ -110,6 +110,8 @@ export interface FinancialSettings {
   partner2Name: string;
   partner2Percentage: number; // e.g. 40
   maintenanceBudgetPercentage: number; // e.g. 15% dari omset dialokasikan ke pos maintenance
+  maintenanceBudgetNominal?: number; // override nominal untuk maintenance, jika diisi akan dipakai sebagai nilai tetap
+  maintenanceMode?: 'percentage' | 'nominal'; // mode aktif perhitungan maintenance
   contentBudgetAmount: number; // Nominal uang (Rp) untuk Gaji Konten Kreator & Budget Ads
   contentBudgetPercentage?: number; // Opsional kompatibilitas jika dibutuhkan
   operationalBudgetPercentage: number; // e.g. 15% dari omset dialokasikan ke operasional
