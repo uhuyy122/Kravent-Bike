@@ -458,7 +458,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                 onChange={e => setPaymentNotes(e.target.value)}
                 rows={3}
                 className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium bg-white focus:outline-emerald-500 resize-none"
-                placeholder="Contoh: customer membayar kombinasi QRIS dan tunai dalam satu nama"
+                placeholder="Kosongkan jika tidak ada catatan pembayaran. Jika ada, catatan ini akan muncul di laporan."
               />
             </div>
 

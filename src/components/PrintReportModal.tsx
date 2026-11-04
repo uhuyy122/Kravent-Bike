@@ -615,11 +615,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                           {formatRupiah(group.totalPrice)}
                         </td>
                         <td className="p-2 text-slate-700">
-                          {group.paymentNotes.length
-                            ? group.paymentNotes.join(' • ')
-                            : group.notes.length
-                              ? group.notes.join(' • ')
-                              : 'Tidak ada catatan'}
+                          {group.paymentNotes.join(' • ')}
                         </td>
                       </tr>
                     ))

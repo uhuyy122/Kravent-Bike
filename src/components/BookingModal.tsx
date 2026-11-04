@@ -100,7 +100,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [customerName, setCustomerName] = useState(initialCustomerName || '');
   const [customerPhone, setCustomerPhone] = useState(initialCustomerPhone || '');
   const [verifiedPhone, setVerifiedPhone] = useState('');
-  const isPhoneVerified = Boolean(customerPhone.trim()) && verifiedPhone === customerPhone.trim();
+  const isPhoneVerified = Boolean(customerPhone.trim());
   // Catatan penitipan default KOSONG sesuai instruksi owner
   const [notes, setNotes] = useState('');
 
@@ -329,10 +329,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       alert('Mohon isi nomor WhatsApp aktif pemesan.');
       return;
     }
-    if (!isPhoneVerified) {
-      alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
-      return;
-    }
     setCurrentStep(2);
   };
 
@@ -350,8 +346,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // Validasi Step 3: Pilih Sepeda ➔ Lanjut Tambahan & Konfirmasi
   const handleProceedToStep4 = () => {
-    if (!isPhoneVerified) {
-      alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
+    if (!customerPhone.trim()) {
+      alert('Mohon isi nomor WhatsApp aktif pemesan sebelum melanjutkan.');
       setCurrentStep(1);
       return;
     }
@@ -379,10 +375,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
-    if (!isPhoneVerified) {
-      alert('Verifikasi nomor WhatsApp pelanggan terlebih dahulu sebelum menyimpan booking.');
-      return;
-    }
 
     if (hasAnyConflict) {
       const conflictMsg = conflictItems
@@ -457,10 +449,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
-    if (!isPhoneVerified) {
-      alert('Verifikasi nomor WhatsApp pelanggan terlebih dahulu sebelum mengirim booking.');
-      return;
-    }
 
     if (hasAnyConflict) {
       const conflictMsg = conflictItems
@@ -633,11 +621,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     alert('Mohon isi nama dan no. WhatsApp pada Langkah 1 terlebih dahulu.');
                     return;
                   }
-                  if (!isPhoneVerified) {
-                    alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
-                    setCurrentStep(1);
-                    return;
-                  }
                   setCurrentStep(2);
                 }}
                 className={`flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
@@ -655,11 +638,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 onClick={() => {
                   if (!customerName.trim() || !customerPhone.trim()) {
                     alert('Mohon isi data diri terlebih dahulu.');
-                    setCurrentStep(1);
-                    return;
-                  }
-                  if (!isPhoneVerified) {
-                    alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
                     setCurrentStep(1);
                     return;
                   }
@@ -683,8 +661,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     setCurrentStep(3);
                     return;
                   }
-                  if (!isPhoneVerified) {
-                    alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
+                  if (!customerPhone.trim()) {
+                    alert('Mohon isi nomor WhatsApp aktif pemesan sebelum melanjutkan.');
                     setCurrentStep(1);
                     return;
                   }
@@ -877,18 +855,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 <div>
                   <label className="text-xs font-bold text-slate-800 block mb-1">
-                    Nomor WhatsApp / HP Aktif *
+                    Nomor WhatsApp / HP Aktif (Hanya Angka) *
                   </label>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     required
                     placeholder="Contoh: 08123456789"
                     value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
+                    onChange={e => {
+                      const nextValue = e.target.value.replace(/\D/g, '');
+                      if (e.target.value !== nextValue) {
+                        alert('Nomor WhatsApp hanya boleh berisi angka. Huruf atau simbol tidak diperbolehkan.');
+                      }
+                      setCustomerPhone(nextValue);
+                    }}
                     className="w-full text-base sm:text-sm px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-mono font-medium"
                   />
                   <span className="text-[11px] text-slate-400 mt-1 block">
-                    Kode verifikasi akan dikirim ke nomor ini. Nomor harus terhubung ke WhatsApp agar booking dapat dilanjutkan.
+                    Pastikan nomor yang diisi sesuai dengan nomor WhatsApp aktif pelanggan. Hanya angka yang diizinkan, dan nomor yang salah akan menghambat konfirmasi booking.
                   </span>
                   <WhatsAppOtpVerification
                     phone={customerPhone}

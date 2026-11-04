@@ -81,7 +81,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [verifiedPhone, setVerifiedPhone] = useState('');
-  const isPhoneVerified = Boolean(customerPhone.trim()) && verifiedPhone === customerPhone.trim();
+  const isPhoneVerified = Boolean(customerPhone.trim());
 
   const upcomingDates = getUpcomingDates(todayStr, 7);
 
@@ -109,8 +109,8 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
       alert('Mohon masukkan nama Anda terlebih dahulu.');
       return;
     }
-    if (!customerPhone.trim() || !isPhoneVerified) {
-      alert('Verifikasi nomor WhatsApp aktif terlebih dahulu sebelum memesan.');
+    if (!customerPhone.trim()) {
+      alert('Masukkan nomor WhatsApp aktif pelanggan sebelum memesan.');
       return;
     }
 
@@ -627,14 +627,22 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
 
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1">
-                    Nomor WhatsApp Aktif Anda *
+                    Nomor WhatsApp Aktif Anda (Hanya Angka) *
                   </label>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     required
                     placeholder="0812xxxxxxxx"
                     value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
+                    onChange={e => {
+                      const nextValue = e.target.value.replace(/\D/g, '');
+                      if (e.target.value !== nextValue) {
+                        alert('Nomor WhatsApp hanya boleh berisi angka. Huruf atau simbol tidak diperbolehkan.');
+                      }
+                      setCustomerPhone(nextValue);
+                    }}
                     className="w-full text-base sm:text-xs px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-medium"
                   />
                   <WhatsAppOtpVerification

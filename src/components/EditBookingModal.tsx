@@ -158,11 +158,8 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSave = () => {
-    if (
-      customerPhone.trim() !== booking.customerPhone.trim() &&
-      verifiedPhone !== customerPhone.trim()
-    ) {
-      setErrorMessage('Verifikasi nomor WhatsApp baru sebelum menyimpan perubahan.');
+    if (!customerPhone.trim()) {
+      setErrorMessage('Nomor WhatsApp pelanggan wajib diisi sebelum menyimpan perubahan.');
       return;
     }
 
@@ -565,18 +562,26 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                No. WhatsApp Penyewa:
+                No. WhatsApp Penyewa (Hanya Angka):
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={customerPhone}
-                onChange={e => setCustomerPhone(e.target.value)}
+                onChange={e => {
+                  const nextValue = e.target.value.replace(/\D/g, '');
+                  if (e.target.value !== nextValue) {
+                    alert('Nomor WhatsApp hanya boleh berisi angka. Huruf atau simbol tidak diperbolehkan.');
+                  }
+                  setCustomerPhone(nextValue);
+                }}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-emerald-500 font-medium"
               />
               {customerPhone.trim() !== booking.customerPhone.trim() && (
                 <WhatsAppOtpVerification
                   phone={customerPhone}
-                  verified={verifiedPhone === customerPhone.trim()}
+                  verified={Boolean(customerPhone.trim())}
                   onVerified={() => setVerifiedPhone(customerPhone.trim())}
                 />
               )}
