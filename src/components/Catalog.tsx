@@ -41,6 +41,7 @@ import {
 import { compressImageFile } from '../utils/imageCompressor';
 import { BookingModal } from './BookingModal';
 import { CinemaScheduleModal } from './CinemaScheduleModal';
+import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
 
 export const Catalog: React.FC = () => {
   const { bikes, bookings, currentRole, updateBike } = useApp();
@@ -597,7 +598,7 @@ export const Catalog: React.FC = () => {
                             <span className="text-rose-700 text-[10px]">
                               Untuk informasi lebih lanjut bisa hubungi{' '}
                               <a
-                                href="https://wa.me/6289647123671"
+                                href={`https://wa.me/${ADMIN_WHATSAPP_NUMBER}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="font-bold underline hover:text-rose-900"

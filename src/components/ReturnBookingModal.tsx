@@ -16,6 +16,7 @@ import { formatDateIndo, formatRupiah } from '../utils/formatters';
 import { calculateRentalCharge, getDateRateInfo } from '../utils/pricingUtils';
 import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
 import { getBookingAddonTotal } from '../utils/bookingUtils';
+import { ADMIN_WHATSAPP_DISPLAY } from '../utils/whatsapp';
 
 interface ReturnBookingModalProps {
   booking?: Booking;
@@ -202,7 +203,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
       ...(paymentNotes ? [`Catatan Bayar: ${paymentNotes}`] : []),
       `Catatan Kondisi: ${returnNotes}`,
       '-----------------------------------',
-      'Terima kasih telah menyewa di Kravent Bike! CS: 0896-4712-3671',
+      `Terima kasih telah menyewa di Kravent Bike! CS: ${ADMIN_WHATSAPP_DISPLAY}`,
     ].join('\n');
 
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;

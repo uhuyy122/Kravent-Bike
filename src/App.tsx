@@ -13,6 +13,7 @@ import { FleetManager } from './components/FleetManager';
 import { FinanceManager } from './components/FinanceManager';
 import { Bike, Shield, User, HeartHandshake } from 'lucide-react';
 import kraventLogo from './assets/kravent-logo.svg';
+import { ADMIN_WHATSAPP_DISPLAY, ADMIN_WHATSAPP_NUMBER } from './utils/whatsapp';
 
 function MainApp() {
   const { currentRole, setCurrentRole } = useApp();
@@ -150,12 +151,12 @@ function MainApp() {
               <span>Mode: <strong className="text-slate-700 capitalize">{currentRole}</strong></span>
               <span>•</span>
               <a
-                href="https://wa.me/6289647123671"
+                href={`https://wa.me/${ADMIN_WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noreferrer"
                 className="hover:text-emerald-700 transition-colors"
               >
-                WA: 0896-4712-3671
+                WA: {ADMIN_WHATSAPP_DISPLAY}
               </a>
             </div>
           </div>

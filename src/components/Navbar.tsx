@@ -32,6 +32,7 @@ import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 import kraventLogo from '../assets/kravent-logo.svg';
 import { PinAuthModal } from './PinAuthModal';
+import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
 
 interface NavbarProps {
   activeTab: string;
@@ -420,7 +421,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           <div className="flex items-center gap-1 shrink-0">
             {currentRole === 'customer' ? (
               <a
-                href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+                href={`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/30 text-xs font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
@@ -584,7 +585,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 </button>
 
                 <a
-                  href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+                  href={`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-white/5 transition-colors"
@@ -708,7 +709,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </button>
 
             <a
-              href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+              href={`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda`}
               target="_blank"
               rel="noreferrer"
               className="flex flex-col items-center justify-center py-1 px-3 text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -853,7 +854,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               {/* Chat WhatsApp CS */}
               <div className="relative group">
                 <a
-                  href="https://wa.me/6289647123671?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda"
+                  href={`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=Halo%20Admin%20Kravent%20Bike,%20saya%20ingin%20tanya%20sewa%20sepeda`}
                   target="_blank"
                   rel="noreferrer"
                   className={`w-full flex items-center ${

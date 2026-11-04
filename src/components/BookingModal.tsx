@@ -37,6 +37,8 @@ import {
   BookingTimeSession
 } from '../utils/scheduleUtils';
 import { OFFICIAL_ADDONS } from '../data/addons';
+import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
+import { WhatsAppOtpVerification } from './WhatsAppOtpVerification';
 
 interface BookingModalProps {
   bike?: Bike;
@@ -97,6 +99,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // LANGKAH 1: DATA DIRI & FASILITAS PENITIPAN
   const [customerName, setCustomerName] = useState(initialCustomerName || '');
   const [customerPhone, setCustomerPhone] = useState(initialCustomerPhone || '');
+  const [verifiedPhone, setVerifiedPhone] = useState('');
+  const isPhoneVerified = Boolean(customerPhone.trim()) && verifiedPhone === customerPhone.trim();
   // Catatan penitipan default KOSONG sesuai instruksi owner
   const [notes, setNotes] = useState('');
 
@@ -325,6 +329,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       alert('Mohon isi nomor WhatsApp aktif pemesan.');
       return;
     }
+    if (!isPhoneVerified) {
+      alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
+      return;
+    }
     setCurrentStep(2);
   };
 
@@ -342,6 +350,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // Validasi Step 3: Pilih Sepeda ➔ Lanjut Tambahan & Konfirmasi
   const handleProceedToStep4 = () => {
+    if (!isPhoneVerified) {
+      alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
+      setCurrentStep(1);
+      return;
+    }
+
     if (selectedBikeIds.length === 0) {
       alert('Silakan pilih minimal 1 sepeda yang ready di jam tersebut.');
       return;
@@ -362,6 +376,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     if (selectedBikes.length === 0) {
       alert('Pilih minimal 1 sepeda yang akan disewa.');
+      return;
+    }
+
+    if (!isPhoneVerified) {
+      alert('Verifikasi nomor WhatsApp pelanggan terlebih dahulu sebelum menyimpan booking.');
       return;
     }
 
@@ -438,6 +457,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
+    if (!isPhoneVerified) {
+      alert('Verifikasi nomor WhatsApp pelanggan terlebih dahulu sebelum mengirim booking.');
+      return;
+    }
+
     if (hasAnyConflict) {
       const conflictMsg = conflictItems
         .map(c => `• [${c.bike.licenseNumber}] ${c.bike.name}: ${c.message}`)
@@ -489,8 +513,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       setConfirmedBookings(createdList);
 
-      const adminWhatsAppNumber = '6289647123671'; // Nomor WhatsApp Admin Kravent Bike
-
       const bikeListText = selectedBikes
         .map((b, idx) => `  ${idx + 1}. ${b.name} (Kode: ${b.licenseNumber})`)
         .join('\n');
@@ -536,7 +558,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         `Mohon konfirmasi ACC ketersediaan unit ini. Terima kasih! 🚴‍♂️`
       ].filter(Boolean).join('\n');
 
-      const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(textLines)}`;
+      const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(textLines)}`;
       setLastWhatsAppUrl(whatsappUrl);
       window.open(whatsappUrl, '_blank');
 
@@ -611,6 +633,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     alert('Mohon isi nama dan no. WhatsApp pada Langkah 1 terlebih dahulu.');
                     return;
                   }
+                  if (!isPhoneVerified) {
+                    alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
+                    setCurrentStep(1);
+                    return;
+                  }
                   setCurrentStep(2);
                 }}
                 className={`flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
@@ -628,6 +655,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 onClick={() => {
                   if (!customerName.trim() || !customerPhone.trim()) {
                     alert('Mohon isi data diri terlebih dahulu.');
+                    setCurrentStep(1);
+                    return;
+                  }
+                  if (!isPhoneVerified) {
+                    alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
                     setCurrentStep(1);
                     return;
                   }
@@ -649,6 +681,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   if (selectedBikeIds.length === 0) {
                     alert('Pilih minimal 1 sepeda pada Langkah 3 terlebih dahulu.');
                     setCurrentStep(3);
+                    return;
+                  }
+                  if (!isPhoneVerified) {
+                    alert('Verifikasi nomor WhatsApp terlebih dahulu sebelum melanjutkan.');
+                    setCurrentStep(1);
                     return;
                   }
                   setCurrentStep(4);
@@ -851,8 +888,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     className="w-full text-base sm:text-sm px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-mono font-medium"
                   />
                   <span className="text-[11px] text-slate-400 mt-1 block">
-                    Digunakan untuk konfirmasi ACC pesanan dan koordinasi serah terima unit di Kravent Bike.
+                    Kode verifikasi akan dikirim ke nomor ini. Nomor harus terhubung ke WhatsApp agar booking dapat dilanjutkan.
                   </span>
+                  <WhatsAppOtpVerification
+                    phone={customerPhone}
+                    verified={isPhoneVerified}
+                    onVerified={() => setVerifiedPhone(customerPhone.trim())}
+                  />
                 </div>
 
                 {/* FASILITAS PENITIPAN BARANG DI OUTLET & CATATAN */}

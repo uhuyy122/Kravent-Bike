@@ -23,6 +23,7 @@ import {
 import { exportBookingsToExcel } from '../utils/exportUtils';
 import { getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 import kraventLogo from '../assets/kravent-logo.svg';
+import { ADMIN_WHATSAPP_DISPLAY } from '../utils/whatsapp';
 
 interface PrintReportModalProps {
   bookings: Booking[];
@@ -463,7 +464,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   Sistem Informasi Rental Sepeda & Laporan Finansial Bisnis Bagi Hasil
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  Outlet Rental Sepeda Kravent Bike Salatiga • Hubungi CS: 0896-4712-3671
+                  Outlet Rental Sepeda Kravent Bike Salatiga • Hubungi CS: {ADMIN_WHATSAPP_DISPLAY}
                 </p>
               </div>
             </div>

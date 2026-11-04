@@ -21,6 +21,7 @@ import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo, calculateRentalCharge } from '../utils/pricingUtils';
 import { checkBikeBookingConflict, getTodayDateStr } from '../utils/scheduleUtils';
+import { WhatsAppOtpVerification } from './WhatsAppOtpVerification';
 
 interface EditBookingModalProps {
   booking: Booking;
@@ -69,6 +70,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   // Customer Data
   const [customerName, setCustomerName] = useState(booking.customerName);
   const [customerPhone, setCustomerPhone] = useState(booking.customerPhone);
+  const [verifiedPhone, setVerifiedPhone] = useState('');
   const [idCardNumber, setIdCardNumber] = useState(booking.idCardNumber || '');
   const [notes, setNotes] = useState(booking.notes || '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(booking.paymentMethod);
@@ -156,6 +158,14 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSave = () => {
+    if (
+      customerPhone.trim() !== booking.customerPhone.trim() &&
+      verifiedPhone !== customerPhone.trim()
+    ) {
+      setErrorMessage('Verifikasi nomor WhatsApp baru sebelum menyimpan perubahan.');
+      return;
+    }
+
     if (status === 'selesai' && !rentalCharge.isValid) {
       setErrorMessage('Waktu pengembalian tidak boleh lebih awal dari waktu mulai sewa.');
       return;
@@ -563,6 +573,13 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                 onChange={e => setCustomerPhone(e.target.value)}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-emerald-500 font-medium"
               />
+              {customerPhone.trim() !== booking.customerPhone.trim() && (
+                <WhatsAppOtpVerification
+                  phone={customerPhone}
+                  verified={verifiedPhone === customerPhone.trim()}
+                  onVerified={() => setVerifiedPhone(customerPhone.trim())}
+                />
+              )}
             </div>
 
             <div>

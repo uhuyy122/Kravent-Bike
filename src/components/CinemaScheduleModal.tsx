@@ -28,6 +28,8 @@ import {
 } from '../utils/scheduleUtils';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo } from '../utils/pricingUtils';
+import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
+import { WhatsAppOtpVerification } from './WhatsAppOtpVerification';
 
 interface CinemaScheduleModalProps {
   bike: Bike;
@@ -78,6 +80,8 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
   // Customer info for quick WhatsApp booking
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [verifiedPhone, setVerifiedPhone] = useState('');
+  const isPhoneVerified = Boolean(customerPhone.trim()) && verifiedPhone === customerPhone.trim();
 
   const upcomingDates = getUpcomingDates(todayStr, 7);
 
@@ -105,6 +109,10 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
       alert('Mohon masukkan nama Anda terlebih dahulu.');
       return;
     }
+    if (!customerPhone.trim() || !isPhoneVerified) {
+      alert('Verifikasi nomor WhatsApp aktif terlebih dahulu sebelum memesan.');
+      return;
+    }
 
     try {
       // Otomatis simpan pesanan customer ke Firestore dengan status 'pending' (Menunggu ACC Admin)
@@ -127,7 +135,6 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
         handoverBy: 'Menunggu ACC Admin',
       });
 
-      const adminWhatsAppNumber = '6289647123671';
       const message = [
         `Halo Admin Kravent Bike! Saya ingin booking sewa sepeda:`,
         `• Kode Booking: *${newBook.bookingCode}*`,
@@ -142,7 +149,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
         `⚠️ Pesanan sudah otomatis masuk ke sistem Kravent Bike dengan kode *${newBook.bookingCode}*. Mohon untuk di-ACC oleh Admin. Terima kasih!`
       ].filter(Boolean).join('\n');
 
-      const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       alert(`✅ Pesanan Anda berhasil disimpan ke sistem dengan kode ${newBook.bookingCode} & diteruskan ke WhatsApp Admin! Mohon tunggu konfirmasi (ACC) dari Admin.`);
       onClose();
@@ -620,14 +627,20 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
 
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1">
-                    Nomor WhatsApp Anda
+                    Nomor WhatsApp Aktif Anda *
                   </label>
                   <input
                     type="tel"
+                    required
                     placeholder="0812xxxxxxxx"
                     value={customerPhone}
                     onChange={e => setCustomerPhone(e.target.value)}
                     className="w-full text-base sm:text-xs px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-medium"
+                  />
+                  <WhatsAppOtpVerification
+                    phone={customerPhone}
+                    verified={isPhoneVerified}
+                    onVerified={() => setVerifiedPhone(customerPhone.trim())}
                   />
                 </div>
               </div>
