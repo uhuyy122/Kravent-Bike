@@ -127,28 +127,51 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // LANGKAH 4: TAMBAHAN & PEMBAYARAN
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bayar_nanti');
-  const [selectedAddons, setSelectedAddons] = useState<{ [id: string]: number }>({});
+  const [selectedAddons, setSelectedAddons] = useState<Record<string, Record<string, number>>>({});
 
-  const handleUpdateAddonQty = (addonId: string, delta: number) => {
+  const handleUpdateAddonQty = (bikeId: string, addonId: string, delta: number) => {
     setSelectedAddons(prev => {
-      const cur = prev[addonId] || 0;
+      const currentBikeQty = prev[bikeId]?.[addonId] || 0;
       const target = OFFICIAL_ADDONS.find(a => a.id === addonId);
       const max = target ? target.maxStock : 99;
-      const next = Math.max(0, Math.min(cur + delta, max));
-      return { ...prev, [addonId]: next };
+      const totalQty = selectedBikeIds.reduce(
+        (sum, selectedBikeId) => sum + (prev[selectedBikeId]?.[addonId] || 0),
+        0
+      );
+      if (delta > 0 && totalQty >= max) return prev;
+
+      const next = Math.max(0, currentBikeQty + delta);
+      return {
+        ...prev,
+        [bikeId]: { ...prev[bikeId], [addonId]: next },
+      };
     });
   };
 
   const selectedAddonList: BookingAddonItem[] = useMemo(() => {
-    return OFFICIAL_ADDONS
-      .filter(a => (selectedAddons[a.id] || 0) > 0)
-      .map(a => ({
-        id: a.id,
-        name: a.name,
-        price: a.price, // Flat sekali sewa
-        quantity: selectedAddons[a.id],
+    return OFFICIAL_ADDONS.flatMap(addon => {
+      const quantity = selectedBikeIds.reduce(
+        (sum, bikeId) => sum + (selectedAddons[bikeId]?.[addon.id] || 0),
+        0
+      );
+      return quantity > 0
+        ? [{ id: addon.id, name: addon.name, price: addon.price, quantity }]
+        : [];
+    });
+  }, [selectedAddons, selectedBikeIds]);
+
+  const getBikeAddonList = (bikeId: string): BookingAddonItem[] =>
+    OFFICIAL_ADDONS
+      .filter(addon => (selectedAddons[bikeId]?.[addon.id] || 0) > 0)
+      .map(addon => ({
+        id: addon.id,
+        name: addon.name,
+        price: addon.price,
+        quantity: selectedAddons[bikeId]?.[addon.id] || 0,
       }));
-  }, [selectedAddons]);
+
+  const getBikeAddonTotal = (bikeId: string) =>
+    getBikeAddonList(bikeId).reduce((sum, addon) => sum + addon.price * addon.quantity, 0);
 
   const grandTotalAddonCost = useMemo(() => {
     return selectedAddonList.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -357,7 +380,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       for (let i = 0; i < selectedBikes.length; i++) {
         const selectedBike = selectedBikes[i];
-        const addonShare = i === 0 ? grandTotalAddonCost : 0;
+        const bikeAddons = getBikeAddonList(selectedBike.id);
         const newBooking = await addBooking({
           bikeId: selectedBike.id,
           bikeName: selectedBike.name,
@@ -380,8 +403,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           groupBookingCode: generatedGroupCode,
           groupItemIndex: i + 1,
           groupItemTotal: selectedBikes.length,
-          addons: i === 0 ? selectedAddonList : [],
-          addonTotalCost: addonShare,
+          addons: bikeAddons,
+          addonTotalCost: getBikeAddonTotal(selectedBike.id),
           approvedAt: new Date().toISOString(),
           approvedBy: currentRole === 'admin' ? 'Admin Pemilik' : 'Staff Toko Kasir',
         });
@@ -429,7 +452,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       for (let i = 0; i < selectedBikes.length; i++) {
         const selectedBike = selectedBikes[i];
-        const addonShare = i === 0 ? grandTotalAddonCost : 0;
+        const bikeAddons = getBikeAddonList(selectedBike.id);
         const newBooking = await addBooking({
           bikeId: selectedBike.id,
           bikeName: selectedBike.name,
@@ -452,8 +475,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           groupBookingCode: generatedGroupCode,
           groupItemIndex: i + 1,
           groupItemTotal: selectedBikes.length,
-          addons: i === 0 ? selectedAddonList : [],
-          addonTotalCost: addonShare,
+          addons: bikeAddons,
+          addonTotalCost: getBikeAddonTotal(selectedBike.id),
         });
         createdList.push(newBooking);
       }
@@ -468,9 +491,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       const addonListText = selectedAddonList.length > 0
         ? [
-            ...selectedAddonList.map(a =>
-              `  • ${a.name} (${a.quantity} x ${formatRupiah(a.price)}) = ${formatRupiah(a.price * a.quantity)}`
-            ),
+            ...selectedBikes.flatMap(selectedBike => {
+              const bikeAddons = getBikeAddonList(selectedBike.id);
+              return bikeAddons.length > 0
+                ? [
+                    `  ${selectedBike.name}:`,
+                    ...bikeAddons.map(addon =>
+                      `    • ${addon.name} (${addon.quantity} x ${formatRupiah(addon.price)}) = ${formatRupiah(addon.price * addon.quantity)}`
+                    ),
+                  ]
+                : [];
+            }),
             `  Total tambahan: ${formatRupiah(grandTotalAddonCost)}`,
           ].join('\n')
         : '  • Tidak ada perlengkapan tambahan';
@@ -675,14 +706,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {selectedAddonList.length > 0 && (
                 <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs space-y-1">
                   <span className="font-bold text-amber-950 block text-[11px] uppercase">
-                    Perlengkapan Tambahan Terpilih:
+                    Tambahan per Unit:
                   </span>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedAddonList.map(a => (
-                      <span key={a.id} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-700 font-medium text-[11px]">
-                        {a.name} ({a.quantity} x {formatRupiah(a.price)}) • {formatRupiah(a.price * a.quantity)}
-                      </span>
-                    ))}
+                  <div className="space-y-2">
+                    {confirmedBookings.map(booking => {
+                      const bookingAddons = booking.addons || [];
+                      if (bookingAddons.length === 0) return null;
+                      return (
+                        <div key={booking.id} className="rounded-lg bg-white border border-amber-100 px-2.5 py-2">
+                          <span className="font-bold text-slate-800">{booking.bikeName}</span>
+                          {bookingAddons.map(addon => (
+                            <div key={addon.id} className="flex justify-between gap-2 text-slate-600 mt-1">
+                              <span>{addon.name} x{addon.quantity}</span>
+                              <span>{formatRupiah(addon.price * addon.quantity)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="flex justify-between border-t border-amber-200 pt-2 mt-2 font-extrabold text-amber-950">
                     <span>Total tambahan (sekali sewa)</span>
@@ -1303,74 +1344,92 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     </span>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">
-                    Biaya Flat Sekali Sewa
+                    Biaya flat per unit
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600">
-                  Pilih perlengkapan tambahan jika diperlukan (harga bukan per jam, berlaku sekali sewa).
+                  Pilih perlengkapan untuk setiap sepeda. Harga tambahan bukan per jam dan berlaku sekali sewa per unit.
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {OFFICIAL_ADDONS.map(addon => {
-                    const currentQty = selectedAddons[addon.id] || 0;
-                    const isMax = currentQty >= addon.maxStock;
-
-                    return (
-                      <div
-                        key={addon.id}
-                        className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
-                          currentQty > 0
-                            ? 'bg-white border-emerald-400 shadow-2xs'
-                            : 'bg-white/80 border-slate-200'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm">{addon.icon}</span>
-                            <span className="text-xs font-bold text-slate-900">{addon.name}</span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
-                            <span className="font-extrabold text-emerald-700 font-mono">
-                              {formatRupiah(addon.price)} <span className="text-[10px] font-normal text-slate-400">/sewa</span>
-                            </span>
-                            {addon.maxStock < 99 && (
-                              <span className="text-[10px] text-slate-400 ml-1.5">(Maks {addon.maxStock})</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateAddonQty(addon.id, -1)}
-                            disabled={currentQty === 0}
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition-colors ${
-                              currentQty === 0
-                                ? 'text-slate-300 cursor-not-allowed'
-                                : 'bg-white text-slate-800 hover:bg-slate-200 shadow-2xs cursor-pointer'
-                            }`}
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="w-6 text-center font-mono font-bold text-xs text-slate-900">
-                            {currentQty}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateAddonQty(addon.id, 1)}
-                            disabled={isMax}
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition-colors ${
-                              isMax
-                                ? 'text-slate-300 cursor-not-allowed'
-                                : 'bg-white text-emerald-700 hover:bg-emerald-100 shadow-2xs cursor-pointer'
-                            }`}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                        </div>
+                <div className="space-y-3 pt-1">
+                  {selectedBikes.map(selectedBike => (
+                    <div key={selectedBike.id} className="rounded-xl border border-emerald-200 bg-white p-3 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-extrabold text-slate-900">{selectedBike.name}</span>
+                        <span className="text-[10px] font-bold text-emerald-700">
+                          Tambahan {formatRupiah(getBikeAddonTotal(selectedBike.id))}
+                        </span>
                       </div>
-                    );
-                  })}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {OFFICIAL_ADDONS.map(addon => {
+                          const currentQty = selectedAddons[selectedBike.id]?.[addon.id] || 0;
+                          const totalAssigned = selectedBikeIds.reduce(
+                            (sum, bikeId) => sum + (selectedAddons[bikeId]?.[addon.id] || 0),
+                            0
+                          );
+                          const isMax = totalAssigned >= addon.maxStock;
+
+                          return (
+                            <div
+                              key={addon.id}
+                              className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                                currentQty > 0
+                                  ? 'bg-white border-emerald-400 shadow-2xs'
+                                  : 'bg-white/80 border-slate-200'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm">{addon.icon}</span>
+                                  <span className="text-xs font-bold text-slate-900">{addon.name}</span>
+                                </div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">
+                                  <span className="font-extrabold text-emerald-700 font-mono">
+                                    {formatRupiah(addon.price)} <span className="text-[10px] font-normal text-slate-400">/sewa</span>
+                                  </span>
+                                  {addon.maxStock < 99 && (
+                                    <span className="text-[10px] text-slate-400 ml-1.5">
+                                      ({totalAssigned}/{addon.maxStock} terpilih)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateAddonQty(selectedBike.id, addon.id, -1)}
+                                  disabled={currentQty === 0}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition-colors ${
+                                    currentQty === 0
+                                      ? 'text-slate-300 cursor-not-allowed'
+                                      : 'bg-white text-slate-800 hover:bg-slate-200 shadow-2xs cursor-pointer'
+                                  }`}
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="w-6 text-center font-mono font-bold text-xs text-slate-900">
+                                  {currentQty}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateAddonQty(selectedBike.id, addon.id, 1)}
+                                  disabled={isMax}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition-colors ${
+                                    isMax
+                                      ? 'text-slate-300 cursor-not-allowed'
+                                      : 'bg-white text-emerald-700 hover:bg-emerald-100 shadow-2xs cursor-pointer'
+                                  }`}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1399,12 +1458,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <p className="text-slate-300">
                       Durasi sewa dicatat sampai waktu pengembalian. Biaya dihitung proporsional per menit berdasarkan tarif per jam.
                     </p>
-                    {selectedAddonList.map(addon => (
-                      <div key={addon.id} className="flex justify-between text-amber-200">
-                        <span>{addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
-                        <span className="font-bold">{formatRupiah(addon.price * addon.quantity)}</span>
-                      </div>
-                    ))}
+                    {selectedBikes.flatMap(selectedBike =>
+                      getBikeAddonList(selectedBike.id).map(addon => (
+                        <div key={`${selectedBike.id}-${addon.id}`} className="flex justify-between gap-2 text-amber-200">
+                          <span>{selectedBike.name} — {addon.name} x{addon.quantity}</span>
+                          <span className="font-bold">{formatRupiah(addon.price * addon.quantity)}</span>
+                        </div>
+                      ))
+                    )}
                     <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-sm">
                       <span className="font-bold text-white">Total tambahan:</span>
                       <span className="font-black text-emerald-400 text-base">{formatRupiah(grandTotalAddonCost)}</span>

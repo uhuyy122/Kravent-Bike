@@ -21,7 +21,7 @@ import {
   getSessionForTime
 } from '../utils/scheduleUtils';
 import { exportBookingsToExcel } from '../utils/exportUtils';
-import { getBookingAddonSummary, getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
+import { getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 import kraventLogo from '../assets/kravent-logo.svg';
 
 interface PrintReportModalProps {
@@ -93,7 +93,14 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       bikes: string[];
       totalUnits: number;
       bikePrice: number;
-      addons: ReturnType<typeof getBookingAddonSummary>;
+      addons: Array<{
+        bikeName: string;
+        id: string;
+        name: string;
+        price: number;
+        quantity: number;
+        totalPrice: number;
+      }>;
       addonPrice: number;
       shifts: string[];
       notes: string[];
@@ -109,7 +116,11 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       const notePool = [b.notes, b.returnNotes].filter(Boolean) as string[];
       const paymentNotePool = [b.paymentNotes].filter(Boolean) as string[];
       const bookingTotal = getBookingTotalPrice(b);
-      const bookingAddons = getBookingAddonSummary([b]);
+      const bookingAddons = (b.addons || []).map(addon => ({
+        ...addon,
+        bikeName: b.bikeName,
+        totalPrice: addon.price * addon.quantity,
+      }));
       const addonPrice = getBookingAddonTotal(b);
 
       if (existing) {
@@ -119,7 +130,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
         existing.addonPrice += addonPrice;
         bookingAddons.forEach(addon => {
           const current = existing.addons.find(
-            item => item.id === addon.id && item.price === addon.price
+            item => item.bikeName === addon.bikeName && item.id === addon.id && item.price === addon.price
           );
           if (current) {
             current.quantity += addon.quantity;
@@ -580,7 +591,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                             <ul className="space-y-1">
                               {group.addons.map(addon => (
                                 <li key={`${addon.id}:${addon.price}`}>
-                                  {addon.name} x{addon.quantity} ({formatRupiah(addon.price)} / item) = {formatRupiah(addon.totalPrice)}
+                                  {addon.bikeName}: {addon.name} x{addon.quantity} ({formatRupiah(addon.price)} / item) = {formatRupiah(addon.totalPrice)}
                                 </li>
                               ))}
                             </ul>

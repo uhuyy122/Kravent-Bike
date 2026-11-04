@@ -15,7 +15,7 @@ import { useApp } from '../context/AppContext';
 import { formatDateIndo, formatRupiah } from '../utils/formatters';
 import { calculateRentalCharge, getDateRateInfo } from '../utils/pricingUtils';
 import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
-import { getBookingAddonSummary, getBookingAddonTotal } from '../utils/bookingUtils';
+import { getBookingAddonTotal } from '../utils/bookingUtils';
 
 interface ReturnBookingModalProps {
   booking?: Booking;
@@ -105,11 +105,6 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
     [items, returnDate, returnTime]
   );
 
-  const addonSummary = useMemo(() => getBookingAddonSummary(items), [items]);
-  const legacyAddonTotal = items.reduce(
-    (sum, item) => sum + (!item.addons?.length ? item.addonTotalCost ?? 0 : 0),
-    0
-  );
   const hasInvalidReturnTime = itemRentalDetails.some(entry => entry.hasInvalidTime);
   const grossTotal = itemRentalDetails.reduce((sum, entry) => sum + entry.grossTotal, 0);
 
@@ -376,17 +371,22 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             {addonTotal > 0 && (
               <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-1.5">
                 <div className="text-[11px] font-bold text-amber-900">Biaya tambahan</div>
-                {addonSummary.map(addon => (
-                  <div key={`${addon.id}:${addon.price}`} className="flex justify-between gap-3 text-[10px] text-slate-600">
-                    <span>{addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
-                    <span>{formatRupiah(addon.totalPrice)}</span>
-                  </div>
-                ))}
-                {legacyAddonTotal > 0 && (
-                  <div className="flex justify-between text-[10px] text-slate-600">
-                    <span>Tambahan lainnya</span>
-                    <span>{formatRupiah(legacyAddonTotal)}</span>
-                  </div>
+                {itemRentalDetails.flatMap(({ item, addonTotal: itemAddonTotal }) =>
+                  item.addons?.length
+                    ? item.addons.map(addon => (
+                        <div key={`${item.id}-${addon.id}`} className="flex justify-between gap-3 text-[10px] text-slate-600">
+                          <span>{item.bikeName} — {addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
+                          <span>{formatRupiah(addon.price * addon.quantity)}</span>
+                        </div>
+                      ))
+                    : itemAddonTotal > 0
+                      ? [(
+                          <div key={item.id} className="flex justify-between gap-3 text-[10px] text-slate-600">
+                            <span>{item.bikeName} — Tambahan booking lama</span>
+                            <span>{formatRupiah(itemAddonTotal)}</span>
+                          </div>
+                        )]
+                      : []
                 )}
                 <div className="flex justify-between border-t border-amber-200 pt-1 text-[10px] font-bold text-amber-900">
                   <span>Total biaya tambahan</span>

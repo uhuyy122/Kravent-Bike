@@ -28,7 +28,7 @@ import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
 import { EditBookingModal } from './EditBookingModal';
 import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
-import { getBookingAddonSummary, getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
+import { getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 
 export const BookingList: React.FC = () => {
   const { bookings, updateBookingStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
@@ -474,8 +474,8 @@ export const BookingList: React.FC = () => {
                     return sum + getBookingTotalPrice(item);
                   }, 0);
                   const groupBikePrice = group.items.reduce((sum, item) => sum + item.totalPrice, 0);
-                  const groupAddons = getBookingAddonSummary(group.items);
                   const groupAddonTotal = group.items.reduce((sum, item) => sum + getBookingAddonTotal(item), 0);
+                  const itemsWithAddons = group.items.filter(item => getBookingAddonTotal(item) > 0);
                   const isGroupCompleted = group.items.every(item => item.status === 'selesai');
 
                   return (
@@ -513,16 +513,23 @@ export const BookingList: React.FC = () => {
                       </td>
 
                       <td className="py-3.5">
-                        {groupAddons.length > 0 ? (
+                        {itemsWithAddons.length > 0 ? (
                           <div className="space-y-1.5 min-w-[150px]">
-                            {groupAddons.map(addon => (
-                              <div key={`${addon.id}:${addon.price}`} className="text-[11px]">
-                                <span className="font-semibold text-slate-800">
-                                  {addon.name} x{addon.quantity}
-                                </span>
-                                <span className="block text-[10px] text-emerald-700">
-                                  {formatRupiah(addon.totalPrice)}
-                                </span>
+                            {itemsWithAddons.map(item => (
+                              <div key={item.id} className="text-[11px]">
+                                <span className="font-bold text-slate-800">{item.bikeName}</span>
+                                {item.addons?.length ? item.addons.map(addon => (
+                                  <span key={addon.id} className="block text-slate-700">
+                                    {addon.name} x{addon.quantity}
+                                    <span className="block text-[10px] text-emerald-700">
+                                      {formatRupiah(addon.price * addon.quantity)}
+                                    </span>
+                                  </span>
+                                )) : (
+                                  <span className="block text-slate-700">
+                                    Tambahan booking lama: {formatRupiah(getBookingAddonTotal(item))}
+                                  </span>
+                                )}
                               </div>
                             ))}
                             <div className="border-t border-slate-200 pt-1 text-[10px] font-bold text-emerald-800">
@@ -862,25 +869,41 @@ export const BookingList: React.FC = () => {
             </div>
 
             {(() => {
-              const addons = getBookingAddonSummary(selectedGroupDetail);
               const addonTotal = selectedGroupDetail.reduce(
                 (sum, item) => sum + getBookingAddonTotal(item),
                 0
+              );
+              const itemsWithAddons = selectedGroupDetail.filter(item =>
+                (item.addons?.length || 0) > 0 || getBookingAddonTotal(item) > 0
               );
 
               return (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <h4 className="text-xs font-extrabold uppercase tracking-wide text-emerald-900">
-                    Tambahan Booking
+                    Tambahan per Unit
                   </h4>
-                  {addons.length > 0 ? (
+                  {itemsWithAddons.length > 0 ? (
                     <div className="mt-2 space-y-1.5">
-                      {addons.map(addon => (
-                        <div key={`${addon.id}:${addon.price}`} className="flex justify-between gap-3 text-xs">
-                          <span className="font-semibold text-slate-700">
-                            {addon.name} x{addon.quantity} ({formatRupiah(addon.price)} / item)
-                          </span>
-                          <span className="font-bold text-slate-800">{formatRupiah(addon.totalPrice)}</span>
+                      {itemsWithAddons.map(item => (
+                        <div key={item.id} className="rounded-xl border border-emerald-100 bg-white px-3 py-2">
+                          <div className="text-xs font-bold text-slate-800">{item.bikeName}</div>
+                          {item.addons?.length ? item.addons.map(addon => (
+                            <div key={addon.id} className="mt-1 flex justify-between gap-3 text-xs">
+                              <span className="font-semibold text-slate-700">
+                                {addon.name} x{addon.quantity} ({formatRupiah(addon.price)} / item)
+                              </span>
+                              <span className="font-bold text-slate-800">
+                                {formatRupiah(addon.price * addon.quantity)}
+                              </span>
+                            </div>
+                          )) : (
+                            <div className="mt-1 flex justify-between gap-3 text-xs">
+                              <span className="font-semibold text-slate-700">Tambahan booking lama</span>
+                              <span className="font-bold text-slate-800">
+                                {formatRupiah(getBookingAddonTotal(item))}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ))}
                       <div className="flex justify-between border-t border-emerald-200 pt-2 text-xs font-extrabold text-emerald-900">

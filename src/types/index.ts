@@ -30,7 +30,7 @@ export type PaymentMethod = 'bayar_nanti' | 'cash' | 'qris' | 'transfer' | 'debi
 export interface BookingAddonItem {
   id: string; // 'helm' | 'tripod' | 'holder_hp' | 'gembok' | 'mineral_water' | 'boncengan_bayi'
   name: string;
-  price: number; // Sekali sewa (flat per transaksi peminjaman)
+  price: number; // Sekali sewa per unit sepeda
   quantity: number;
 }
 
@@ -83,7 +83,7 @@ export interface Booking {
   groupBookingCode?: string; // e.g. "GRP-2610-123" for group rentals
   groupItemIndex?: number; // 1, 2, 3...
   groupItemTotal?: number; // total units in this group booking
-  // Revisi Owner: Addons opsional (harga sekali sewa) & Alur ACC
+  // Addons opsional yang ditagihkan pada unit sepeda ini
   addons?: BookingAddonItem[];
   addonTotalCost?: number;
   approvedAt?: string;
