@@ -274,44 +274,16 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
           {items.length > 1 && (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">Daftar Unit</div>
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {itemRentalDetails.map(({ item, rentalCost }) => (
-                  <div
+                  <span
                     key={item.id}
-                    className="rounded-xl bg-white border border-slate-200 px-2.5 py-2 text-[10px] text-slate-700"
+                    className="inline-flex min-w-[84px] flex-col gap-0.5 rounded-xl bg-white border border-slate-200 px-2.5 py-1.5 text-[10px] text-slate-700"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-slate-800">{item.bikeName}</span>
-                      <span className="font-extrabold text-emerald-700">{formatRupiah(rentalCost)}</span>
-                    </div>
-                    <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-                      <span>Sewa sepeda</span>
-                      <span>{formatRupiah(rentalCost)}</span>
-                    </div>
-                  </div>
+                    <span className="font-bold">{item.bikeName}</span>
+                    <span className="text-slate-500">Sewa {formatRupiah(rentalCost)}</span>
+                  </span>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {addonTotal > 0 && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-1.5">
-              <div className="text-xs font-bold text-amber-900">Biaya Tambahan</div>
-              {addonSummary.map(addon => (
-                <div key={`${addon.id}:${addon.price}`} className="flex justify-between gap-3 text-[11px] text-slate-600">
-                  <span>{addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
-                  <span>{formatRupiah(addon.totalPrice)}</span>
-                </div>
-              ))}
-              {legacyAddonTotal > 0 && (
-                <div className="flex justify-between text-[11px] text-slate-600">
-                  <span>Tambahan lainnya</span>
-                  <span>{formatRupiah(legacyAddonTotal)}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-t border-amber-200 pt-1 text-[11px] font-bold text-amber-900">
-                <span>Total biaya tambahan</span>
-                <span>{formatRupiah(addonTotal)}</span>
               </div>
             </div>
           )}
@@ -401,6 +373,27 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
                 );
               })}
             </div>
+            {addonTotal > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-1.5">
+                <div className="text-[11px] font-bold text-amber-900">Biaya tambahan</div>
+                {addonSummary.map(addon => (
+                  <div key={`${addon.id}:${addon.price}`} className="flex justify-between gap-3 text-[10px] text-slate-600">
+                    <span>{addon.name} ({addon.quantity} x {formatRupiah(addon.price)})</span>
+                    <span>{formatRupiah(addon.totalPrice)}</span>
+                  </div>
+                ))}
+                {legacyAddonTotal > 0 && (
+                  <div className="flex justify-between text-[10px] text-slate-600">
+                    <span>Tambahan lainnya</span>
+                    <span>{formatRupiah(legacyAddonTotal)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-amber-200 pt-1 text-[10px] font-bold text-amber-900">
+                  <span>Total biaya tambahan</span>
+                  <span>{formatRupiah(addonTotal)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {hasInvalidReturnTime && (
