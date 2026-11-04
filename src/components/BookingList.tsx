@@ -156,7 +156,7 @@ export const BookingList: React.FC = () => {
 
   const filteredBookings = searchedBookings.filter(group => {
     const groupStatus = getGroupStatus(group.items);
-    if (groupStatus === 'selesai') return false;
+    if (tableView !== 'history' && groupStatus === 'selesai') return false;
 
     switch (tableView) {
       case 'today':
