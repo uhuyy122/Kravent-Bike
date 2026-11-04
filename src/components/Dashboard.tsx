@@ -672,9 +672,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                       <span className="font-bold text-slate-900">
                         {formatRupiah(book.status === 'selesai' ? getBookingTotalPrice(book) : book.totalPrice)}
                       </span>
-                      <span className="block text-[10px] text-emerald-600 font-semibold">
-                        Deposit {formatRupiah(book.depositAmount)}
-                      </span>
                     </td>
                     <td className="py-3">
                       {book.status === 'pending' ? (
