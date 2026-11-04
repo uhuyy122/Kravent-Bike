@@ -118,8 +118,14 @@ export const BookingList: React.FC = () => {
       group.primary.bookingCode.toLowerCase().includes(search.toLowerCase()) ||
       items.some(item => item.bikeName.toLowerCase().includes(search.toLowerCase()));
 
-    const matchesStatus =
-      filterStatus === 'all' || getGroupStatus(items) === filterStatus;
+    const matchesStatus = filterStatus === 'all' || (
+      tableView === 'history'
+        ? items.some(item =>
+            item.status === filterStatus &&
+            (item.status === 'selesai' || item.status === 'dibatalkan')
+          )
+        : getGroupStatus(items) === filterStatus
+    );
 
     return matchesSearch && matchesStatus;
   });
@@ -148,28 +154,44 @@ export const BookingList: React.FC = () => {
       item.startDate > todayDate
     );
 
-  const isHistory = (items: Booking[]) =>
-    items.some(item =>
-      isClosed(item.status) &&
-      (item.actualReturnDate || item.startDate) < todayDate
-    );
+  const isHistory = (items: Booking[]) => items.some(item => isClosed(item.status));
 
-  const filteredBookings = searchedBookings.filter(group => {
-    const groupStatus = getGroupStatus(group.items);
-    if (tableView !== 'history' && groupStatus === 'selesai') return false;
+  const filteredBookings = searchedBookings.flatMap(group => {
+    const visibleItems = tableView === 'history'
+      ? group.items.filter(item =>
+          isClosed(item.status) && (filterStatus === 'all' || item.status === filterStatus)
+        )
+      : group.items;
+    if (tableView === 'history' && visibleItems.length === 0) return [];
 
+    const visibleGroup = visibleItems === group.items
+      ? group
+      : {
+          ...group,
+          items: visibleItems,
+          primary: visibleItems.find(item => item.id === group.primary.id) || visibleItems[0],
+        };
+    const groupStatus = getGroupStatus(visibleGroup.items);
+    if (tableView !== 'history' && groupStatus === 'selesai') return [];
+
+    let matchesView: boolean;
     switch (tableView) {
       case 'today':
-        return isForToday(group.items);
+        matchesView = isForToday(visibleGroup.items);
+        break;
       case 'upcoming':
-        return isUpcoming(group.items);
+        matchesView = isUpcoming(visibleGroup.items);
+        break;
       case 'history':
-        return isHistory(group.items);
+        matchesView = isHistory(visibleGroup.items);
+        break;
       case 'date':
-        return matchesSelectedDate(group.items, selectedDate);
+        matchesView = matchesSelectedDate(visibleGroup.items, selectedDate);
+        break;
       default:
-        return true;
+        matchesView = true;
     }
+    return matchesView ? [visibleGroup] : [];
   });
 
   const todayBookingCount = searchedBookings.filter(group => isForToday(group.items)).length;
@@ -412,7 +434,7 @@ export const BookingList: React.FC = () => {
                   : tableView === 'upcoming'
                     ? 'Belum ada booking mendatang.'
                     : tableView === 'history'
-                      ? 'Belum ada riwayat booking sebelumnya.'
+                      ? 'Belum ada transaksi selesai atau dibatalkan.'
                       : 'Belum ada data booking yang sesuai filter.'}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
