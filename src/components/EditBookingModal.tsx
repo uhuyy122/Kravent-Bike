@@ -46,7 +46,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
     return {
       dateStr: `${year}-${month}-${day}`,
       timeStr: `${hours}:${minutes}`,
-      boundedTimeStr: hours < '06' ? '06:00' : hours > '23' ? '23:00' : `${hours}:${minutes}`
+      boundedTimeStr: hours < '06' ? '06:00' : hours > '21' ? '21:00' : `${hours}:${minutes}`
     };
   };
 
@@ -55,10 +55,9 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   // State Form Edit
   const [bikeId, setBikeId] = useState(booking.bikeId);
   const [startDate, setStartDate] = useState(booking.startDate);
-  // Pastikan jam mulai berada di rentang 06:00 s/d 23:00
+  // Pastikan jam mulai baru berada di rentang operasional 06:00 s/d 21:00.
   const [startTime, setStartTime] = useState(() => {
     if (booking.startTime < '06:00') return '06:00';
-    if (booking.startTime > '23:00') return '23:00';
     return booking.startTime;
   });
   const [status, setStatus] = useState<BookingStatus>(
@@ -368,17 +367,17 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                     <Clock className="w-3.5 h-3.5 text-emerald-600" />
                     Jam Mulai Ambil:
                   </span>
-                  <span className="text-[10px] text-slate-400 font-normal">06:00 - 23:00</span>
+                  <span className="text-[10px] text-slate-400 font-normal">06:00 - 21:00</span>
                 </label>
                 <input
                   type="time"
                   min="06:00"
-                  max="23:00"
+                  max="21:00"
                   value={startTime}
                   onChange={e => {
                     let val = e.target.value;
                     if (val && val < '06:00') val = '06:00';
-                    if (val && val > '23:00') val = '23:00';
+                    if (val && val > '21:00') val = '21:00';
                     setStartTime(val);
                   }}
                   className="w-full px-3.5 py-2.5 sm:py-2 text-base sm:text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs font-mono font-bold"
@@ -388,10 +387,10 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
             </div>
 
-            {/* Quick Jam Buttons (06:00 - 23:00) */}
+            {/* Quick Jam Buttons (06:00 - 21:00) */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
-              <span className="text-[10px] text-slate-400 font-semibold shrink-0">Pilihan Jam (06:00 - 23:00):</span>
-              {['06:00', '07:00', '08:00', '10:00', '13:00', '15:00', '17:00', '19:00', '21:00', '23:00'].map(t => (
+              <span className="text-[10px] text-slate-400 font-semibold shrink-0">Pilihan Jam (06:00 - 21:00):</span>
+              {['06:00', '07:00', '08:00', '10:00', '13:00', '15:00', '17:00', '19:00', '21:00'].map(t => (
                 <button
                   key={t}
                   type="button"

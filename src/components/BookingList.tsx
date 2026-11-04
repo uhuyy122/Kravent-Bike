@@ -85,6 +85,18 @@ export const BookingList: React.FC = () => {
     });
   };
 
+  const getNextBooking = (booking: Booking) =>
+    bookings
+      .filter(b =>
+        b.id !== booking.id &&
+        b.bikeId === booking.bikeId &&
+        b.startDate === booking.startDate &&
+        b.startTime > booking.startTime &&
+        b.status !== 'dibatalkan' &&
+        b.status !== 'selesai'
+      )
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+
   const groupedBookings = bookings.reduce<Array<{ key: string; items: Booking[]; primary: Booking }>>((acc, booking) => {
     const key = booking.groupBookingCode || `${(booking.customerName || '').trim().toLowerCase()}|${normalizePhone(booking.customerPhone)}`;
     const group = acc.find(item => item.key === key);
@@ -770,6 +782,11 @@ export const BookingList: React.FC = () => {
                               ? ' • Menunggu tombol Mulai'
                               : ' • Biaya dihitung saat pengembalian'}
                         </div>
+                        {item.status !== 'selesai' && item.status !== 'dibatalkan' && getNextBooking(item) && (
+                          <div className="mt-1 text-[10px] font-semibold text-amber-800">
+                            Harus kembali sebelum {getNextBooking(item)?.startTime} WIB (booking berikutnya)
+                          </div>
+                        )}
                       </div>
                     </div>
                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold ${

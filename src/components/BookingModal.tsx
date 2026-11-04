@@ -211,7 +211,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // Evaluasi ketersediaan sepeda untuk waktu mulai yang dipilih
   const bikeAvailabilityMap = useMemo(() => {
-    const map = new Map<string, { isAvailable: boolean; message?: string }>();
+    const map = new Map<string, {
+      isAvailable: boolean;
+      message?: string;
+      nextBooking?: Booking;
+    }>();
     bikes.forEach(b => {
       const conflict = checkBikeBookingConflict(
         b.id,
@@ -224,6 +228,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       map.set(b.id, {
         isAvailable: !conflict.hasConflict,
         message: conflict.message,
+        nextBooking: conflict.nextBooking,
       });
     });
     return map;
@@ -237,6 +242,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         bike: b,
         hasConflict: info ? !info.isAvailable : false,
         message: info?.message,
+        nextBooking: info?.nextBooking,
       };
     });
   }, [selectedBikes, bikeAvailabilityMap]);
@@ -516,6 +522,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         customerPhone ? `* No WhatsApp: ${customerPhone}` : '',
         `* Jadwal Sewa: ${formatDateIndo(startDate)}`,
         `* Jam Mulai: ${startTime} WIB`,
+        ...selectedBikeConflicts.flatMap(({ bike: selectedBike, nextBooking }) =>
+          nextBooking
+            ? [`* Batas kembali ${selectedBike.name}: sebelum ${nextBooking.startTime} WIB (jadwal booking berikutnya)`]
+            : []
+        ),
         `* Unit Sepeda (${selectedBikes.length} Unit):`,
         bikeListText,
         `* Tambahan Lainnya (Addons):`,
@@ -1236,6 +1247,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                               <span className="text-rose-600 font-medium">Tidak tersedia di jam ini</span>
                             )}
                           </div>
+                        )}
+                        {isAvailable && avail?.nextBooking && (
+                          <p className="mt-1 text-[10px] font-semibold text-amber-700">
+                            Harus kembali sebelum {avail.nextBooking.startTime} WIB
+                          </p>
                         )}
                       </div>
                     </div>

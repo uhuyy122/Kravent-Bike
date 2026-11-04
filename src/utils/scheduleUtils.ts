@@ -181,10 +181,8 @@ export const BOOKING_SESSIONS: BookingSessionDef[] = [
 ];
 
 /**
- * Cek bentrok unit sepeda & jam secara menyeluruh:
- * 1. Tidak bisa double transaksi jika jam tersebut sudah dibooking.
- * 2. Tidak bisa transaksi jika sepeda masih di jalan (sedang disewa keluar).
- * 3. Tidak bisa booking pada jam yang sudah lewat di hari ini.
+ * Booking dapat dijadwalkan berurutan pada hari yang sama selama jam mulainya berbeda.
+ * Setiap penyewaan harus kembali sebelum booking berikutnya; unit yang sedang di luar tetap memblokir booking baru.
  */
 export const checkBikeBookingConflict = (
   bikeId: string,
@@ -196,9 +194,10 @@ export const checkBikeBookingConflict = (
   excludeBookingId?: string
 ): {
   hasConflict: boolean;
-  reason?: 'already_booked' | 'on_road' | 'past_time' | 'maintenance';
+  reason?: 'already_booked' | 'on_road' | 'past_time' | 'maintenance' | 'outside_hours';
   message?: string;
   conflictingBooking?: Booking;
+  nextBooking?: Booking;
 } => {
   const today = getTodayDateStr();
 
@@ -220,6 +219,22 @@ export const checkBikeBookingConflict = (
     };
   }
 
+  const isUnchangedExistingTime = excludeBookingId
+    ? bookings.some(b =>
+        b.id === excludeBookingId &&
+        b.bikeId === bikeId &&
+        b.startDate === date &&
+        b.startTime === startTime
+      )
+    : false;
+  if (startTime > '21:00' && !isUnchangedExistingTime) {
+    return {
+      hasConflict: true,
+      reason: 'outside_hours',
+      message: 'Jam mulai booking paling akhir adalah pukul 21:00 WIB.',
+    };
+  }
+
   // 3. Cek jika unit sepeda sedang diservis (maintenance)
   if (bike && bike.status === 'maintenance') {
     return {
@@ -229,27 +244,50 @@ export const checkBikeBookingConflict = (
     };
   }
 
-  // Durasi tidak diketahui sebelum pengembalian, jadi booking aktif menahan unit sejak tanggal mulai.
+  // Booking dari tanggal sebelumnya atau unit yang sedang di luar selalu menahan unit.
+  // Booking pada hari yang sama hanya bentrok jika jam mulainya sama.
   const conflictingBooking = bookings.find(
     b => b.id !== excludeBookingId &&
       b.bikeId === bikeId &&
       isBookingBlockingAvailability(b) &&
-      date >= b.startDate
+      (
+        b.startDate < date ||
+        (
+          b.startDate === date &&
+          (
+            b.status === 'sedang di luar' ||
+            b.status === 'aktif' ||
+            b.startTime === startTime
+          )
+        )
+      )
   );
 
   if (conflictingBooking) {
+    const isReserved = conflictingBooking.status === 'pending' || conflictingBooking.status === 'booking';
     return {
       hasConflict: true,
-      reason: conflictingBooking.status === 'pending' ? 'already_booked' : 'on_road',
-      message: conflictingBooking.status === 'pending'
+      reason: isReserved ? 'already_booked' : 'on_road',
+      message: isReserved
         ? `Unit sepeda sudah dipesan oleh ${conflictingBooking.customerName} mulai ${conflictingBooking.startDate} pukul ${conflictingBooking.startTime} WIB.`
         : `Unit sepeda masih disewa oleh ${conflictingBooking.customerName} sejak ${conflictingBooking.startDate} pukul ${conflictingBooking.startTime} dan belum dicatat kembali.`,
       conflictingBooking,
     };
   }
 
+  const nextBooking = bookings
+    .filter(b =>
+      b.id !== excludeBookingId &&
+      b.bikeId === bikeId &&
+      isBookingBlockingAvailability(b) &&
+      b.startDate === date &&
+      b.startTime > startTime
+    )
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+
   return {
     hasConflict: false,
+    nextBooking,
   };
 };
 
@@ -291,6 +329,7 @@ export const checkCustomTimeCollision = (
   isAvailable: boolean;
   conflictingBooking?: Booking;
   conflictReason?: string;
+  nextBooking?: Booking;
   bookedList: Array<{ startDate: string; startTime: string; endTime: string; customerName: string; bookingCode: string }>;
 } => {
   const dayBookings = bookings.filter(
@@ -318,6 +357,7 @@ export const checkCustomTimeCollision = (
     isAvailable: !conflictCheck.hasConflict,
     conflictingBooking: conflictCheck.conflictingBooking,
     conflictReason: conflictCheck.message,
+    nextBooking: conflictCheck.nextBooking,
     bookedList,
   };
 };

@@ -180,7 +180,16 @@ export const Catalog: React.FC = () => {
 
     const matchesStatus =
       selectedStatus === 'all' ||
-      (selectedStatus === 'available' && bike.status === 'tersedia') ||
+      (selectedStatus === 'available' &&
+        bike.status !== 'maintenance' &&
+        !checkBikeBookingConflict(
+          bike.id,
+          selectedCatalogDate,
+          selectedCatalogStartTime,
+          selectedCatalogStartTime,
+          bookings,
+          bike
+        ).hasConflict) ||
       (selectedStatus === 'rented' && bike.status === 'disewa');
 
     return matchesSearch && matchesCategory && matchesStatus;
@@ -429,7 +438,7 @@ export const Catalog: React.FC = () => {
               className="text-xs font-semibold px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500"
             >
               <option value="all">Semua Status</option>
-              <option value="available">Hanya Yang Tersedia</option>
+              <option value="available">Tersedia di Jam Pilihan</option>
               <option value="rented">Sedang Disewa</option>
             </select>
           </div>
@@ -602,14 +611,21 @@ export const Catalog: React.FC = () => {
                       }
 
                       return (
-                        <div className="mt-2.5 p-2 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-between text-[11px]">
-                          <span className="text-emerald-800 font-bold flex items-center gap-1">
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            Siap Gowes di Jam Ini
-                          </span>
-                          <span className="text-emerald-700 font-extrabold text-[10px]">
-                            Mulai {selectedCatalogStartTime} WIB
-                          </span>
+                        <div className="mt-2.5 p-2 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-emerald-800 font-bold flex items-center gap-1">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              Siap Gowes di Jam Ini
+                            </span>
+                            <span className="text-emerald-700 font-extrabold text-[10px]">
+                              Mulai {selectedCatalogStartTime} WIB
+                            </span>
+                          </div>
+                          {conflict.nextBooking && (
+                            <p className="mt-1 text-[10px] font-semibold text-amber-700">
+                              Harus kembali sebelum {conflict.nextBooking.startTime} WIB.
+                            </p>
+                          )}
                         </div>
                       );
                     })()}
