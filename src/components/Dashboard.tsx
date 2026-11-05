@@ -39,8 +39,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
     thisWeekRevenue,
     thisMonthRevenue,
     activeBookingsCount,
-    availableBikesCount,
-    maintenanceBikesCount,
     financialBreakdown,
     financialSettings,
     bookings,
@@ -52,6 +50,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
   const [chartPeriod, setChartPeriod] = useState<'harian' | 'mingguan' | 'bulanan'>('harian');
   const [showReportModal, setShowReportModal] = useState(false);
   const [returningBooking, setReturningBooking] = useState<Booking | null>(null);
+  const [selectedFleetDate, setSelectedFleetDate] = useState(() => getTodayDateStr());
+
+  const fleetAvailability = React.useMemo(() => {
+    const today = getTodayDateStr();
+    const bikeIds = new Set(bikes.map(bike => bike.id));
+    const maintenanceBikeIds = new Set(
+      bikes.filter(bike => bike.status === 'maintenance').map(bike => bike.id)
+    );
+    const bookedBikeIds = new Set(
+      bookings
+        .filter(booking =>
+          booking.status !== 'dibatalkan' &&
+          booking.status !== 'selesai' &&
+          bikeIds.has(booking.bikeId) &&
+          booking.startDate <= selectedFleetDate &&
+          (booking.endDate || booking.startDate) >= selectedFleetDate
+        )
+        .map(booking => booking.bikeId)
+    );
+    const unavailableBikeIds = new Set(bookedBikeIds);
+
+    if (selectedFleetDate === today) {
+      bikes
+        .filter(bike => bike.status === 'disewa')
+        .forEach(bike => unavailableBikeIds.add(bike.id));
+    }
+
+    const busyBikeIds = [...unavailableBikeIds].filter(id => !maintenanceBikeIds.has(id));
+    const maintenanceCount = maintenanceBikeIds.size;
+
+    return {
+      available: Math.max(0, bikes.length - maintenanceCount - busyBikeIds.length),
+      booked: busyBikeIds.length,
+      maintenance: maintenanceCount,
+    };
+  }, [bikes, bookings, selectedFleetDate]);
 
   // Kalkulasi Alokasi & Bagi Hasil Omzet Harian (Khusus Harian Hari Ini)
   const dailyFinancial = React.useMemo(() => {
@@ -371,17 +405,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                 Detail
               </button>
             </div>
+            <label
+              htmlFor="fleet-availability-date"
+              className="flex items-center justify-between gap-3 text-xs text-slate-500"
+            >
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Kesiapan tanggal
+              </span>
+              <input
+                id="fleet-availability-date"
+                type="date"
+                min={getTodayDateStr()}
+                value={selectedFleetDate}
+                onChange={event => {
+                  const date = event.target.value;
+                  if (date && date >= getTodayDateStr()) setSelectedFleetDate(date);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              />
+            </label>
             <div className="grid grid-cols-3 gap-2 mt-4">
               <div className="bg-emerald-50/70 border border-emerald-100 p-3 rounded-xl text-center">
-                <span className="text-xl font-bold text-emerald-700 block">{availableBikesCount}</span>
+                <span className="text-xl font-bold text-emerald-700 block">{fleetAvailability.available}</span>
                 <span className="text-[11px] font-medium text-emerald-600">Tersedia</span>
               </div>
               <div className="bg-amber-50/70 border border-amber-100 p-3 rounded-xl text-center">
-                <span className="text-xl font-bold text-amber-700 block">{activeBookingsCount}</span>
+                <span className="text-xl font-bold text-amber-700 block">{fleetAvailability.booked}</span>
                 <span className="text-[11px] font-medium text-amber-600">Booking / Disewa</span>
               </div>
               <div className="bg-rose-50/70 border border-rose-100 p-3 rounded-xl text-center">
-                <span className="text-xl font-bold text-rose-700 block">{maintenanceBikesCount}</span>
+                <span className="text-xl font-bold text-rose-700 block">{fleetAvailability.maintenance}</span>
                 <span className="text-[11px] font-medium text-rose-600">Maintenance</span>
               </div>
             </div>
@@ -390,7 +444,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Tingkat Utilisasi Armada:</span>
             <span className="font-bold text-slate-800">
-              {Math.round((activeBookingsCount / (bikes.length || 1)) * 100)}% Terpakai
+              {Math.round((fleetAvailability.booked / (bikes.length || 1)) * 100)}% Terpakai
             </span>
           </div>
         </div>
