@@ -41,7 +41,7 @@ import {
 import { compressImageFile } from '../utils/imageCompressor';
 import { BookingModal } from './BookingModal';
 import { CinemaScheduleModal } from './CinemaScheduleModal';
-import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
+  import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
 
 export const Catalog: React.FC = () => {
   const { bikes, bookings, currentRole, updateBike } = useApp();
@@ -485,7 +485,23 @@ export const Catalog: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredBikes.map(bike => {
-            const badge = getBikeStatusBadge(bike.status);
+            const scheduleConflict = checkBikeBookingConflict(
+              bike.id,
+              selectedCatalogDate,
+              selectedCatalogStartTime,
+              selectedCatalogStartTime,
+              bookings,
+              bike
+            );
+            const badge = getBikeStatusBadge(
+              bike.status === 'maintenance'
+                ? 'maintenance'
+                : scheduleConflict.reason === 'past_time'
+                  ? bike.status
+                  : scheduleConflict.hasConflict
+                    ? 'disewa'
+                    : 'tersedia'
+            );
 
             return (
               <div
@@ -571,14 +587,7 @@ export const Catalog: React.FC = () => {
 
                     {/* STATUS JADWAL PADA TANGGAL & JAM DIPILIH */}
                     {(() => {
-                      const conflict = checkBikeBookingConflict(
-                        bike.id,
-                        selectedCatalogDate,
-                        selectedCatalogStartTime,
-                        selectedCatalogStartTime,
-                        bookings,
-                        bike
-                      );
+                      const conflict = scheduleConflict;
 
                       if (bike.status === 'maintenance') {
                         return (
@@ -705,14 +714,7 @@ export const Catalog: React.FC = () => {
 
                         {/* UTAMA: SEWA SEPEDA (ALUR 3 LANGKAH MULTI-UNIT) */}
                         {(() => {
-                          const conflict = checkBikeBookingConflict(
-                            bike.id,
-                            selectedCatalogDate,
-                            selectedCatalogStartTime,
-                            selectedCatalogStartTime,
-                            bookings,
-                            bike
-                          );
+                          const conflict = scheduleConflict;
                           const isDisabled = bike.status === 'maintenance' || conflict.hasConflict;
 
                           return (

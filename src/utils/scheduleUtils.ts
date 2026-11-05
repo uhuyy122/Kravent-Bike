@@ -181,8 +181,8 @@ export const BOOKING_SESSIONS: BookingSessionDef[] = [
 ];
 
 /**
- * Booking dapat dijadwalkan berurutan pada hari yang sama selama jam mulainya berbeda.
- * Setiap penyewaan harus kembali sebelum booking berikutnya; unit yang sedang di luar tetap memblokir booking baru.
+ * Booking hanya saling membatasi pada tanggal yang sama.
+ * Pada hari yang sama, unit yang sedang di luar memblokir booking lain.
  */
 export const checkBikeBookingConflict = (
   bikeId: string,
@@ -244,22 +244,17 @@ export const checkBikeBookingConflict = (
     };
   }
 
-  // Booking dari tanggal sebelumnya atau unit yang sedang di luar selalu menahan unit.
-  // Booking pada hari yang sama hanya bentrok jika jam mulainya sama.
+  // Booking pada tanggal lain tidak menahan unit; pada tanggal yang sama,
+  // unit yang sedang di luar memblokir booking lain sepanjang hari.
   const conflictingBooking = bookings.find(
     b => b.id !== excludeBookingId &&
       b.bikeId === bikeId &&
       isBookingBlockingAvailability(b) &&
+      b.startDate === date &&
       (
-        b.startDate < date ||
-        (
-          b.startDate === date &&
-          (
-            b.status === 'sedang di luar' ||
-            b.status === 'aktif' ||
-            b.startTime === startTime
-          )
-        )
+        b.status === 'sedang di luar' ||
+        b.status === 'aktif' ||
+        b.startTime === startTime
       )
   );
 
@@ -304,7 +299,7 @@ export const checkSlotAvailability = (
   const overlappingBooking = bookings.find(b => {
     if (b.bikeId !== bikeId) return false;
     if (!isBookingBlockingAvailability(b)) return false;
-    if (date < b.startDate) return false;
+    if (b.startDate !== date) return false;
 
     return true;
   });
@@ -333,7 +328,7 @@ export const checkCustomTimeCollision = (
   bookedList: Array<{ startDate: string; startTime: string; endTime: string; customerName: string; bookingCode: string }>;
 } => {
   const dayBookings = bookings.filter(
-    b => b.bikeId === bikeId && b.startDate <= date && isBookingBlockingAvailability(b)
+    b => b.bikeId === bikeId && b.startDate === date && isBookingBlockingAvailability(b)
   );
 
   const bookedList = dayBookings.map(b => ({
