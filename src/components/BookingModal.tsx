@@ -522,28 +522,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           ].join('\n')
         : '  • Tidak ada perlengkapan tambahan';
 
-      const bookingCodesList = createdList.map(b => b.bookingCode).join(', ');
-
       const textLines = [
         `Halo Admin Kravent Bike! Ada pesanan sewa baru dari website:`,
-        `* Kode Booking: ${bookingCodesList}`,
-        `* Kode Rombongan: ${generatedGroupCode}`,
         `* Atas Nama: ${customerName}`,
         customerPhone ? `* No WhatsApp: ${customerPhone}` : '',
         `* Jadwal Sewa: ${formatDateIndo(startDate)}`,
-        `* Jam Mulai: ${startTime} WIB`,
-        ...selectedBikeConflicts.flatMap(({ bike: selectedBike, nextBooking }) =>
-          nextBooking
-            ? [`* Batas kembali ${selectedBike.name}: sebelum ${nextBooking.startTime} WIB (jadwal booking berikutnya)`]
-            : []
-        ),
+        `* Jam Sewa: ${startTime} WIB (durasi dihitung saat pengembalian unit)`,
         `* Unit Sepeda (${selectedBikes.length} Unit):`,
         bikeListText,
         `* Tambahan Lainnya (Addons):`,
         addonListText,
         `* Pembayaran: Bayar di Akhir (Saat Pengembalian Unit)`,
-        `⚠️ Status: Pesanan telah tersimpan di website Kravent Bike dan menunggu tombol ACC Pesanan dari Admin.`,
-        `Mohon konfirmasi ACC ketersediaan unit ini. Terima kasih! 🚴‍♂️`
+        `Status: Pesanan telah tersimpan di website Kravent Bike dan menunggu tombol ACC Pesanan dari Admin.`,
+        `Mohon konfirmasi ACC ketersediaan unit ini. Terima kasih!`
       ].filter(Boolean).join('\n');
 
       const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(textLines)}`;
