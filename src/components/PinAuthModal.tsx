@@ -52,7 +52,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
         onSuccess('karyawan');
       }, 450);
     } else {
-      setErrorMsg('PIN salah. Masukkan 3110 (Owner) atau 3131 (Staff).');
+      setErrorMsg('PIN salah. Silakan coba lagi.');
       setPin('');
     }
   };
