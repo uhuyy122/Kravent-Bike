@@ -20,7 +20,12 @@ import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
-import { getCurrentTimeStr, getTodayDateStr, getMondaySundayWeekRange } from '../utils/scheduleUtils';
+import {
+  getCurrentTimeStr,
+  getTodayDateStr,
+  getMondaySundayWeekRange,
+  getSessionForTime
+} from '../utils/scheduleUtils';
 import { getBookingTotalPrice } from '../utils/bookingUtils';
 import { Booking } from '../types';
 
@@ -51,6 +56,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [returningBooking, setReturningBooking] = useState<Booking | null>(null);
   const [selectedFleetDate, setSelectedFleetDate] = useState(() => getTodayDateStr());
+  const [selectedFleetShift, setSelectedFleetShift] = useState<'all' | 'pagi' | 'sore'>('all');
 
   const fleetAvailability = React.useMemo(() => {
     const today = getTodayDateStr();
@@ -65,7 +71,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
           booking.status !== 'selesai' &&
           bikeIds.has(booking.bikeId) &&
           booking.startDate <= selectedFleetDate &&
-          (booking.endDate || booking.startDate) >= selectedFleetDate
+          (booking.endDate || booking.startDate) >= selectedFleetDate &&
+          (
+            selectedFleetShift === 'all' ||
+            booking.startDate < selectedFleetDate ||
+            getSessionForTime(booking.startTime) === selectedFleetShift
+          )
         )
         .map(booking => booking.bikeId)
     );
@@ -85,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
       booked: busyBikeIds.length,
       maintenance: maintenanceCount,
     };
-  }, [bikes, bookings, selectedFleetDate]);
+  }, [bikes, bookings, selectedFleetDate, selectedFleetShift]);
 
   // Kalkulasi Alokasi & Bagi Hasil Omzet Harian (Khusus Harian Hari Ini)
   const dailyFinancial = React.useMemo(() => {
@@ -425,6 +436,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                 className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
               />
             </label>
+            <div
+              className="grid grid-cols-3 gap-1 mt-3 rounded-lg bg-slate-100 p-1"
+              role="group"
+              aria-label="Filter shift kesiapan armada"
+            >
+              {([
+                { value: 'all', label: 'Semua' },
+                { value: 'pagi', label: 'Pagi' },
+                { value: 'sore', label: 'Sore' },
+              ] as const).map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={selectedFleetShift === option.value}
+                  onClick={() => setSelectedFleetShift(option.value)}
+                  className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                    selectedFleetShift === option.value
+                      ? 'bg-white text-emerald-700 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-3 gap-2 mt-4">
               <div className="bg-emerald-50/70 border border-emerald-100 p-3 rounded-xl text-center">
                 <span className="text-xl font-bold text-emerald-700 block">{fleetAvailability.available}</span>
