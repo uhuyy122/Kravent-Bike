@@ -702,7 +702,7 @@ export const FinanceManager: React.FC = () => {
                   <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
                     Penerima 1 ({partner1Pct}%)
                   </span>
-                  <h4 className="text-base font-bold text-white mt-0.5">{partner1Name}</h4>
+                  <h4 className="text-base font-bold text-white mt-0.5">Owner</h4>
                 </div>
                 <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-extrabold text-sm border border-emerald-500/30">
                   {partner1Pct}%
@@ -726,7 +726,7 @@ export const FinanceManager: React.FC = () => {
                   <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
                     Penerima 2 ({100 - partner1Pct}%)
                   </span>
-                  <h4 className="text-base font-bold text-white mt-0.5">{partner2Name}</h4>
+                  <h4 className="text-base font-bold text-white mt-0.5">Investor</h4>
                 </div>
                 <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-extrabold text-sm border border-amber-500/30">
                   {100 - partner1Pct}%
