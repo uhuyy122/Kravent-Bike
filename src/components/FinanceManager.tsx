@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   PieChart,
   Percent,
@@ -46,6 +46,7 @@ export const FinanceManager: React.FC = () => {
     currentRole,
     financialSettings,
     updateFinancialSettings,
+    setSelectedMonth,
     financialBreakdown,
     todayRevenue,
     thisWeekRevenue,
@@ -67,6 +68,16 @@ export const FinanceManager: React.FC = () => {
   const [selectedDailyDate, setSelectedDailyDate] = useState<string>(todayStr);
   const [selectedWeeklyDate, setSelectedWeeklyDate] = useState<string>(todayStr);
   const [selectedMonthlyMonth, setSelectedMonthlyMonth] = useState<string>(() => todayStr.slice(0, 7));
+  const [monthlyCapitalDraft, setMonthlyCapitalDraft] = useState('0');
+  const savedMonthlyCapital = financialSettings.monthlyCapitalByMonth?.[selectedMonthlyMonth] ?? 0;
+
+  useEffect(() => {
+    setSelectedMonth(selectedMonthlyMonth);
+  }, [selectedMonthlyMonth, setSelectedMonth]);
+
+  useEffect(() => {
+    setMonthlyCapitalDraft(String(savedMonthlyCapital));
+  }, [selectedMonthlyMonth, savedMonthlyCapital]);
 
   // Local state for editing percentage allocations
   const [partner1Pct, setPartner1Pct] = useState(financialSettings.partner1Percentage);
@@ -188,22 +199,48 @@ export const FinanceManager: React.FC = () => {
   }, [selectedPeriod, currentWeekRange, activePeriodBookings, todayStr]);
 
   // Save changes (Berlaku untuk semua laporan bagi hasil)
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     if (!isAdmin) return;
-    updateFinancialSettings({
-      partner1Name,
-      partner1Percentage: partner1Pct,
-      partner2Name,
-      partner2Percentage: 100 - partner1Pct,
-      maintenanceBudgetPercentage: maintPct,
-      maintenanceBudgetNominal: maintenanceBudgetNominal > 0 ? maintenanceBudgetNominal : 0,
-      maintenanceMode,
-      contentBudgetAmount: contentBudgetNominal,
-      contentBudgetPercentage: gross > 0 ? Math.round((contentBudgetNominal / gross) * 100) : 0,
-      operationalBudgetPercentage: opsPct,
-    });
-    setIsSavedNotice(true);
-    setTimeout(() => setIsSavedNotice(false), 3000);
+    try {
+      await updateFinancialSettings({
+        partner1Name,
+        partner1Percentage: partner1Pct,
+        partner2Name,
+        partner2Percentage: 100 - partner1Pct,
+        maintenanceBudgetPercentage: maintPct,
+        maintenanceBudgetNominal: maintenanceBudgetNominal > 0 ? maintenanceBudgetNominal : 0,
+        maintenanceMode,
+        contentBudgetAmount: contentBudgetNominal,
+        contentBudgetPercentage: gross > 0 ? Math.round((contentBudgetNominal / gross) * 100) : 0,
+        operationalBudgetPercentage: opsPct,
+      });
+      setIsSavedNotice(true);
+      setTimeout(() => setIsSavedNotice(false), 3000);
+    } catch (error) {
+      alert(`Gagal menyimpan pengaturan keuangan: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleSaveMonthlyCapital = async () => {
+    if (!isAdmin) return;
+    const amount = Number(monthlyCapitalDraft);
+    if (!Number.isFinite(amount) || amount < 0) {
+      alert('Mohon isi nominal modal yang valid (minimal Rp 0).');
+      return;
+    }
+
+    try {
+      await updateFinancialSettings({
+        monthlyCapitalByMonth: {
+          ...(financialSettings.monthlyCapitalByMonth ?? {}),
+          [selectedMonthlyMonth]: amount,
+        },
+      });
+      setIsSavedNotice(true);
+      setTimeout(() => setIsSavedNotice(false), 3000);
+    } catch (error) {
+      alert(`Gagal menyimpan modal bulan ini: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const handlePartner1Slider = (val: number) => {
@@ -249,9 +286,10 @@ export const FinanceManager: React.FC = () => {
   const contentAmount = Number(contentBudgetNominal || 0);
   const opsAmount = Math.round((gross * opsPct) / 100);
   const totalAlloc = maintAmount + contentAmount + opsAmount;
-  const netProfitPreview = Math.max(0, gross - totalAlloc);
-  const p1SharePreview = Math.round((netProfitPreview * partner1Pct) / 100);
-  const p2SharePreview = Math.max(0, netProfitPreview - p1SharePreview);
+  const monthlyCapitalAmount = selectedPeriod === 'bulanan' ? Number(monthlyCapitalDraft) || 0 : 0;
+  const netProfitPreview = gross + monthlyCapitalAmount - totalAlloc;
+  const p1SharePreview = Math.round((Math.max(0, netProfitPreview) * partner1Pct) / 100);
+  const p2SharePreview = Math.max(0, netProfitPreview) - p1SharePreview;
 
   return (
     <div className="space-y-6">
@@ -473,44 +511,76 @@ export const FinanceManager: React.FC = () => {
 
           {/* 3. Mode Bulanan */}
           {selectedPeriod === 'bulanan' && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <CalendarDays className="w-4 h-4 text-emerald-600" />
-                  Pilihan Bulan:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMonthlyMonth(todayStr.slice(0, 7))}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    selectedMonthlyMonth === todayStr.slice(0, 7)
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  ⚡ Bulan Ini ({formatMonthName(todayStr.slice(0, 7))})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMonthlyMonth(getLastMonthStr(todayStr.slice(0, 7)))}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    selectedMonthlyMonth === getLastMonthStr(todayStr.slice(0, 7))
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  📅 Bulan Kemarin ({formatMonthName(getLastMonthStr(todayStr.slice(0, 7)))})
-                </button>
-              </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <CalendarDays className="w-4 h-4 text-emerald-600" />
+                    Pilihan Bulan:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMonthlyMonth(todayStr.slice(0, 7))}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      selectedMonthlyMonth === todayStr.slice(0, 7)
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    ⚡ Bulan Ini ({formatMonthName(todayStr.slice(0, 7))})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMonthlyMonth(getLastMonthStr(todayStr.slice(0, 7)))}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      selectedMonthlyMonth === getLastMonthStr(todayStr.slice(0, 7))
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    📅 Bulan Kemarin ({formatMonthName(getLastMonthStr(todayStr.slice(0, 7)))})
+                  </button>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium">Pilih Bulan:</span>
-                <input
-                  type="month"
-                  value={selectedMonthlyMonth}
-                  onChange={e => setSelectedMonthlyMonth(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-bold focus:outline-emerald-500 shadow-2xs"
-                />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">Pilih Bulan:</span>
+                  <input
+                    type="month"
+                    value={selectedMonthlyMonth}
+                    onChange={e => setSelectedMonthlyMonth(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-bold focus:outline-emerald-500 shadow-2xs"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+                <div>
+                  <label htmlFor="monthly-capital" className="block text-xs font-bold text-slate-800">
+                    Modal Tambahan {formatMonthName(selectedMonthlyMonth)}
+                  </label>
+                  <input
+                    id="monthly-capital"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={monthlyCapitalDraft}
+                    onChange={e => setMonthlyCapitalDraft(e.target.value)}
+                    disabled={!isAdmin}
+                    className="mt-1 w-full sm:w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:outline-emerald-500 disabled:bg-slate-100"
+                    placeholder="Masukkan nominal modal"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-600">
+                    Laba bersih = modal + pendapatan sewa - Maintenance - Gaji Konten - Operasional Toko.
+                  </p>
+                </div>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleSaveMonthlyCapital}
+                    className="rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-400"
+                  >
+                    Simpan Modal {formatMonthName(selectedMonthlyMonth)}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -605,6 +675,19 @@ export const FinanceManager: React.FC = () => {
               </span>
               <span className="text-[10px] text-slate-400 block">Maintenance + Gaji Konten + Toko</span>
             </div>
+
+            {selectedPeriod === 'bulanan' && (
+              <>
+                <div className="h-10 w-px bg-slate-700"></div>
+                <div>
+                  <span className="text-[11px] text-slate-400 block font-medium">Modal Tambahan</span>
+                  <span className="text-lg font-bold text-amber-300">
+                    + {formatRupiah(monthlyCapitalAmount)}
+                  </span>
+                </div>
+              </>
+            )}
+
             <div className="h-10 w-px bg-slate-700"></div>
             <div>
               <span className="text-[11px] text-slate-400 block font-medium">Laba Bersih Siap Bagi</span>

@@ -105,6 +105,7 @@ export interface Expense {
 }
 
 export interface FinancialSettings {
+  monthlyCapitalByMonth?: Record<string, number>;
   partner1Name: string;
   partner1Percentage: number; // e.g. 60
   partner2Name: string;

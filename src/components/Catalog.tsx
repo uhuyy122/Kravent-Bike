@@ -284,7 +284,7 @@ export const Catalog: React.FC = () => {
               className="flex items-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs sm:text-sm font-bold border border-white/20 transition-all cursor-pointer backdrop-blur-xs shadow-md"
             >
               <Eye className="w-4 h-4 text-amber-300" />
-              <span>Lihat Brosur / Poster Resmi (4 Lembar)</span>
+              <span>Lihat Katalog Sepeda (4 Foto)</span>
             </button>
           </div>
         </div>
@@ -1070,10 +1070,10 @@ export const Catalog: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base sm:text-lg text-white tracking-tight">
-                    Brosur &amp; Poster Resmi Kravent Bike
+                    Katalog Sepeda Kravent Bike
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Katalog asli toko (3 Seri Model Sepeda)
+                    Lihat 4 foto katalog: City 1, City 2, Vintage, dan MTB.
                   </p>
                 </div>
               </div>
@@ -1097,7 +1097,7 @@ export const Catalog: React.FC = () => {
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                <span>🚲 Katalog Sepeda 1 (Sky, Noah, Arlo, Hana, Rose, Blue)</span>
+                <span>1. City 1 (6 Sepeda)</span>
               </button>
 
               <button
@@ -1109,7 +1109,7 @@ export const Catalog: React.FC = () => {
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                <span>🚲 Katalog Sepeda 2 (Sopia, Lucy, Lime, Nina, Leo, Jose)</span>
+                <span>2. City 2 (6 Sepeda)</span>
               </button>
 
               <button
@@ -1121,7 +1121,7 @@ export const Catalog: React.FC = () => {
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                <span>⭐ Commuter Bike - Vintage / Federal (7 Model)</span>
+                <span>3. Vintage / Federal (7 Sepeda)</span>
               </button>
 
               <button
@@ -1133,7 +1133,7 @@ export const Catalog: React.FC = () => {
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                <span>⛰️ Katalog MTB (6 Model)</span>
+                <span>4. MTB (6 Sepeda)</span>
               </button>
             </div>
 

@@ -32,6 +32,7 @@ interface PrintReportModalProps {
     maintenanceAllocation: number;
     contentAllocation: number;
     operationalAllocation: number;
+    capitalAmount: number;
     netProfit: number;
     partner1Share: number;
     partner2Share: number;
@@ -202,20 +203,25 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
         : Math.round((gross * (financialSettings.contentBudgetPercentage || 0)) / 100);
     const ops = Math.round((gross * financialSettings.operationalBudgetPercentage) / 100);
     const totalAlloc = maint + content + ops;
-    const net = Math.max(0, gross - totalAlloc);
-    const p1 = Math.round((net * financialSettings.partner1Percentage) / 100);
-    const p2 = Math.max(0, net - p1);
+    const capitalAmount = selectedPeriodType === 'monthly'
+      ? Number(financialSettings.monthlyCapitalByMonth?.[monthlyMonth] ?? 0)
+      : 0;
+    const net = gross + capitalAmount - totalAlloc;
+    const distributableProfit = Math.max(0, net);
+    const p1 = Math.round((distributableProfit * financialSettings.partner1Percentage) / 100);
+    const p2 = distributableProfit - p1;
 
     return {
       grossRevenue: gross,
       maintenanceAllocation: maint,
       contentAllocation: content,
       operationalAllocation: ops,
+      capitalAmount,
       netProfit: net,
       partner1Share: p1,
       partner2Share: p2,
     };
-  }, [activeGrossRevenue, financialSettings]);
+  }, [activeGrossRevenue, financialSettings, selectedPeriodType, monthlyMonth]);
 
   const activePeriodTitle = useMemo(() => {
     if (selectedPeriodType === 'daily') {
@@ -505,6 +511,11 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   {formatRupiah(activeGrossRevenue)}
                 </span>
                 <span className="text-[10px] text-slate-400 block">{completedBookings.length} transaksi selesai</span>
+                {selectedPeriodType === 'monthly' && (
+                  <span className="text-[10px] text-amber-700 font-semibold block mt-1">
+                    Modal Tambahan: {formatRupiah(dynamicBreakdown.capitalAmount)}
+                  </span>
+                )}
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">

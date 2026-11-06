@@ -7,6 +7,7 @@ interface ExportFinancialData {
   maintenanceAllocation: number;
   contentAllocation: number;
   operationalAllocation: number;
+  capitalAmount: number;
   netProfit: number;
   partner1Share: number;
   partner2Share: number;
@@ -110,10 +111,15 @@ export const exportBookingsToExcel = (
           <td style="text-align: right; color: #7e22ce;">${financialData.operationalAllocation}</td>
           <td>${settings.operationalBudgetPercentage}% dari Omzet</td>
         </tr>
+        <tr>
+          <td>Modal Tambahan</td>
+          <td style="text-align: right; color: #b45309;">${financialData.capitalAmount}</td>
+          <td>Input manual bulan terpilih</td>
+        </tr>
         <tr class="total-row">
           <td><strong>Laba Bersih Siap Bagi</strong></td>
           <td style="text-align: right; font-weight: bold; color: #059669;">${financialData.netProfit}</td>
-          <td>Sisa Omzet setelah 3 Pos Biaya</td>
+          <td>Modal + omzet setelah dikurangi 3 pos biaya</td>
         </tr>
         <tr>
           <td><strong>${settings.partner1Name}</strong></td>

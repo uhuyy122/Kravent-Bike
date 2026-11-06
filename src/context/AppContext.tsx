@@ -185,7 +185,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_FINANCIAL_SETTINGS;
   });
 
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => getTodayDateStr().slice(0, 7));
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>('Baru saja');
@@ -849,6 +849,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await setDoc(doc(db, 'financial_settings', 'default'), cleanForFirestore(settings), { merge: true });
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, 'financial_settings/default');
+      throw err;
     }
   };
 
@@ -858,7 +859,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExpenses(INITIAL_EXPENSES);
     setFinancialSettings(INITIAL_FINANCIAL_SETTINGS);
     setCurrentRoleState('admin');
-    setSelectedMonth('2026-10');
+    setSelectedMonth(getTodayDateStr().slice(0, 7));
 
     try {
       // Reset Firestore
@@ -1016,6 +1017,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Financial Breakdown calculations
   const financialBreakdown = useMemo<FinancialBreakdown>(() => {
     const grossRevenue = thisMonthRevenue;
+    const monthlyCapital = Number(financialSettings.monthlyCapitalByMonth?.[selectedMonth] ?? 0);
 
     const maintenanceMode = financialSettings.maintenanceMode ?? 'percentage';
     const maintenanceAllocation =
@@ -1034,12 +1036,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     const totalAllocations =
       maintenanceAllocation + contentAllocation + operationalAllocation;
-    const netProfit = Math.max(0, grossRevenue - totalAllocations);
+    const netProfit = monthlyCapital + grossRevenue - totalAllocations;
 
     const partner1Share = Math.round(
-      (netProfit * financialSettings.partner1Percentage) / 100
+      (Math.max(0, netProfit) * financialSettings.partner1Percentage) / 100
     );
-    const partner2Share = Math.max(0, netProfit - partner1Share);
+    const partner2Share = Math.max(0, netProfit) - partner1Share;
 
     const monthExpenses = expenses.filter(e => e.date.startsWith(selectedMonth));
     const actualMaintenanceSpent = monthExpenses
@@ -1054,12 +1056,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const totalActualExpenses =
       actualMaintenanceSpent + actualContentSpent + actualOperationalSpent;
-    const actualNetProfit = Math.max(0, grossRevenue - totalActualExpenses);
-
-    const actualPartner1Share = Math.round(
-      (actualNetProfit * financialSettings.partner1Percentage) / 100
-    );
-    const actualPartner2Share = Math.max(0, actualNetProfit - actualPartner1Share);
+    const actualNetProfit = netProfit;
+    const actualPartner1Share = partner1Share;
+    const actualPartner2Share = partner2Share;
 
     return {
       grossRevenue,
