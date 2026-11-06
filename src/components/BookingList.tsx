@@ -27,11 +27,11 @@ import { BookingModal } from './BookingModal';
 import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
 import { EditBookingModal } from './EditBookingModal';
-import { getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
+import { checkBikeBookingConflict, getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
 import { getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 
 export const BookingList: React.FC = () => {
-  const { bookings, updateBookingStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
+  const { bookings, addBooking, updateBooking, updateBookingStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -45,6 +45,9 @@ export const BookingList: React.FC = () => {
   const [returningBooking, setReturningBooking] = useState<Booking | null>(null);
   const [returningGroupBooking, setReturningGroupBooking] = useState<Booking[] | null>(null);
   const [selectedGroupDetail, setSelectedGroupDetail] = useState<Booking[] | null>(null);
+  const [showAddBikeForm, setShowAddBikeForm] = useState(false);
+  const [selectedBikeToAdd, setSelectedBikeToAdd] = useState('');
+  const [isAddingBike, setIsAddingBike] = useState(false);
 
   const isAdmin = currentRole === 'admin';
 
@@ -296,6 +299,102 @@ export const BookingList: React.FC = () => {
 
   const handleSwapBike = (booking: Booking) => {
     setEditingBooking(booking);
+  };
+
+  const activeGroupBookings = selectedGroupDetail?.filter(item =>
+    item.status === 'pending' ||
+    item.status === 'booking' ||
+    item.status === 'sedang di luar' ||
+    item.status === 'aktif'
+  ) ?? [];
+  const addBikeTemplate = activeGroupBookings.find(item =>
+    item.status === 'sedang di luar' || item.status === 'aktif'
+  ) || activeGroupBookings.find(item => item.status === 'booking') || activeGroupBookings[0];
+  const isAddingToActiveRental =
+    addBikeTemplate?.status === 'sedang di luar' || addBikeTemplate?.status === 'aktif';
+  const addBikeStartDate = isAddingToActiveRental ? getTodayDateStr() : addBikeTemplate?.startDate;
+  const addBikeStartTime = isAddingToActiveRental ? getCurrentTimeStr() : addBikeTemplate?.startTime;
+  const availableBikesToAdd = selectedGroupDetail && addBikeTemplate && addBikeStartDate && addBikeStartTime
+    ? bikes.filter(bike => {
+        if (selectedGroupDetail.some(item => item.bikeId === bike.id && item.status !== 'dibatalkan')) return false;
+        return !checkBikeBookingConflict(
+          bike.id,
+          addBikeStartDate,
+          addBikeStartTime,
+          isAddingToActiveRental ? '' : addBikeTemplate.endTime,
+          bookings,
+          bike,
+          undefined,
+          true
+        ).hasConflict;
+      })
+    : [];
+
+  const handleAddBikeToBooking = async () => {
+    if (!isAdmin || !selectedGroupDetail || !addBikeTemplate || !selectedBikeToAdd || isAddingBike) return;
+    const bike = bikes.find(item => item.id === selectedBikeToAdd);
+    if (!bike || !availableBikesToAdd.some(item => item.id === bike.id)) {
+      alert('Sepeda sudah tidak tersedia pada jadwal tersebut. Silakan pilih unit lain.');
+      return;
+    }
+
+    const groupCode = addBikeTemplate.groupBookingCode ||
+      `GRP-${addBikeTemplate.startDate.replace(/-/g, '').slice(4)}-${Math.floor(100 + Math.random() * 900)}`;
+    const nextGroupCount = selectedGroupDetail.length + 1;
+    const newStatus: BookingStatus = isAddingToActiveRental ? 'sedang di luar' : addBikeTemplate.status;
+
+    setIsAddingBike(true);
+    try {
+      const newBooking = await addBooking({
+        bikeId: bike.id,
+        bikeName: bike.name,
+        bikeImage: bike.imageUrl,
+        customerName: addBikeTemplate.customerName,
+        customerPhone: addBikeTemplate.customerPhone,
+        customerEmail: addBikeTemplate.customerEmail,
+        idCardNumber: addBikeTemplate.idCardNumber,
+        startDate: addBikeStartDate!,
+        startTime: addBikeStartTime!,
+        endDate: addBikeStartDate!,
+        endTime: '',
+        actualStartDate: isAddingToActiveRental ? addBikeStartDate : undefined,
+        actualStartTime: isAddingToActiveRental ? addBikeStartTime : undefined,
+        durationType: addBikeTemplate.durationType,
+        bookingSession: isAddingToActiveRental ? undefined : addBikeTemplate.bookingSession,
+        totalPrice: 0,
+        depositAmount: bike.depositRequired || 0,
+        status: newStatus,
+        paymentMethod: addBikeTemplate.paymentMethod,
+        paymentStatus: addBikeTemplate.paymentStatus,
+        notes: addBikeTemplate.notes?.replace(/\s*\(Rombongan \d+\/\d+ - [^)]+\)$/, ''),
+        handoverBy: isAddingToActiveRental
+          ? (isAdmin ? 'Admin Owner' : 'Karyawan Shift')
+          : addBikeTemplate.handoverBy,
+        groupBookingCode: groupCode,
+        groupItemIndex: nextGroupCount,
+        groupItemTotal: nextGroupCount,
+        addons: [],
+        addonTotalCost: 0,
+        approvedAt: addBikeTemplate.approvedAt,
+        approvedBy: addBikeTemplate.approvedBy,
+      });
+
+      await Promise.all(selectedGroupDetail.map((item, index) =>
+        updateBooking(item.id, {
+          groupBookingCode: groupCode,
+          groupItemIndex: index + 1,
+          groupItemTotal: nextGroupCount,
+        })
+      ));
+
+      setSelectedGroupDetail(current => current ? [...current, newBooking] : current);
+      setSelectedBikeToAdd('');
+      setShowAddBikeForm(false);
+    } catch (error) {
+      alert(`Gagal menambahkan sepeda ke booking: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsAddingBike(false);
+    }
   };
 
   return (
@@ -736,7 +835,11 @@ export const BookingList: React.FC = () => {
                 </span>
               </div>
               <button
-                onClick={() => setSelectedGroupDetail(null)}
+                onClick={() => {
+                  setSelectedGroupDetail(null);
+                  setShowAddBikeForm(false);
+                  setSelectedBikeToAdd('');
+                }}
                 className="text-slate-400 hover:text-slate-700 text-sm font-bold"
               >
                 ✕
@@ -744,6 +847,19 @@ export const BookingList: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-end mb-2">
+              {isAdmin && addBikeTemplate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddBikeForm(value => !value);
+                    setSelectedBikeToAdd(availableBikesToAdd[0]?.id || '');
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Tambah Sepeda
+                </button>
+              )}
               {selectedGroupDetail.length > 1 && isAdmin && selectedGroupDetail.some(item => item.status === 'sedang di luar' || item.status === 'aktif') && (
                 <button
                   onClick={() => {
@@ -758,6 +874,53 @@ export const BookingList: React.FC = () => {
                 </button>
               )}
             </div>
+
+            {showAddBikeForm && isAdmin && addBikeTemplate && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <h4 className="text-xs font-extrabold uppercase tracking-wide text-emerald-900">
+                  Tambahkan Sepeda ke Booking Ini
+                </h4>
+                <p className="mt-1 text-[11px] text-slate-600">
+                  {isAddingToActiveRental
+                    ? 'Sepeda tambahan akan mulai disewa sekarang dan dihitung saat dikembalikan.'
+                    : 'Sepeda tambahan mengikuti tanggal, jam, dan metode pembayaran booking ini.'}
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <select
+                    value={selectedBikeToAdd}
+                    onChange={event => setSelectedBikeToAdd(event.target.value)}
+                    disabled={isAddingBike || availableBikesToAdd.length === 0}
+                    className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 disabled:bg-slate-100"
+                  >
+                    {availableBikesToAdd.length === 0 ? (
+                      <option value="">Tidak ada sepeda yang tersedia untuk jadwal ini</option>
+                    ) : (
+                      availableBikesToAdd.map(bike => (
+                        <option key={bike.id} value={bike.id}>
+                          {bike.name} ({bike.licenseNumber})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddBikeToBooking}
+                    disabled={isAddingBike || !selectedBikeToAdd}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isAddingBike ? 'Menyimpan...' : 'Simpan Sepeda'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddBikeForm(false)}
+                    disabled={isAddingBike}
+                    className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               {selectedGroupDetail.map(item => (
