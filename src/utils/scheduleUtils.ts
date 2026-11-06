@@ -182,7 +182,9 @@ export const BOOKING_SESSIONS: BookingSessionDef[] = [
 
 /**
  * Booking hanya saling membatasi pada tanggal yang sama.
- * Pada hari yang sama, unit yang sedang di luar memblokir booking lain.
+ * Booking terjadwal membatasi jam mulai yang sama dan setelahnya karena
+ * waktu pengembalian belum diketahui; unit yang sedang di luar memblokir
+ * booking lain sepanjang hari.
  */
 export const checkBikeBookingConflict = (
   bikeId: string,
@@ -254,7 +256,7 @@ export const checkBikeBookingConflict = (
       (
         b.status === 'sedang di luar' ||
         b.status === 'aktif' ||
-        b.startTime === startTime
+        b.startTime <= startTime
       )
   );
 
