@@ -83,9 +83,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
     const unavailableBikeIds = new Set(bookedBikeIds);
 
     if (selectedFleetDate === today) {
-      bikes
-        .filter(bike => bike.status === 'disewa')
-        .forEach(bike => unavailableBikeIds.add(bike.id));
+      bookings
+        .filter(booking =>
+          (booking.status === 'sedang di luar' || booking.status === 'aktif') &&
+          bikeIds.has(booking.bikeId) &&
+          (booking.actualStartDate || booking.startDate) <= selectedFleetDate
+        )
+        .forEach(booking => unavailableBikeIds.add(booking.bikeId));
     }
 
     const busyBikeIds = [...unavailableBikeIds].filter(id => !maintenanceBikeIds.has(id));
