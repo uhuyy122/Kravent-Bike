@@ -463,7 +463,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bookingData.startTime,
       bookingData.endTime,
       bookings,
-      targetBike
+      targetBike,
+      undefined,
+      currentRole === 'admin'
     );
 
     if (conflict.hasConflict) {

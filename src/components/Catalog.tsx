@@ -189,7 +189,9 @@ export const Catalog: React.FC = () => {
           selectedCatalogStartTime,
           selectedCatalogStartTime,
           bookings,
-          bike
+          bike,
+          undefined,
+          isAdmin
         ).hasConflict) ||
       (selectedStatus === 'rented' && bike.status === 'disewa');
 
@@ -491,7 +493,9 @@ export const Catalog: React.FC = () => {
               selectedCatalogStartTime,
               selectedCatalogStartTime,
               bookings,
-              bike
+              bike,
+              undefined,
+              isAdmin
             );
             const badge = getBikeStatusBadge(
               bike.status === 'maintenance'

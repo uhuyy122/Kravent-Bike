@@ -193,7 +193,8 @@ export const checkBikeBookingConflict = (
   endTime: string,
   bookings: Booking[],
   bike?: Bike,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  allowBeforeNextBooking: boolean = true
 ): {
   hasConflict: boolean;
   reason?: 'already_booked' | 'on_road' | 'past_time' | 'maintenance' | 'outside_hours';
@@ -281,6 +282,16 @@ export const checkBikeBookingConflict = (
       b.startTime > startTime
     )
     .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+
+  if (nextBooking && !allowBeforeNextBooking) {
+    return {
+      hasConflict: true,
+      reason: 'already_booked',
+      message: 'Sepeda sudah memiliki booking lain pada tanggal tersebut dan hanya dapat dipilih melalui admin.',
+      conflictingBooking: nextBooking,
+      nextBooking,
+    };
+  }
 
   return {
     hasConflict: false,

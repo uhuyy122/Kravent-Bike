@@ -227,7 +227,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         startTime,
         startTime,
         bookings,
-        b
+        b,
+        undefined,
+        currentRole === 'admin'
       );
       map.set(b.id, {
         isAvailable: !conflict.hasConflict,
@@ -236,7 +238,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       });
     });
     return map;
-  }, [bikes, startDate, startTime, bookings]);
+  }, [bikes, startDate, startTime, bookings, currentRole]);
 
   // Cek bentrok khusus untuk unit sepeda yang telah dicentang
   const selectedBikeConflicts = useMemo(() => {
