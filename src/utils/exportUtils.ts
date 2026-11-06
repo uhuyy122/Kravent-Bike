@@ -8,6 +8,7 @@ interface ExportFinancialData {
   contentAllocation: number;
   operationalAllocation: number;
   capitalAmount: number;
+  afterStoreExpenses: number;
   netProfit: number;
   partner1Share: number;
   partner2Share: number;
@@ -92,42 +93,52 @@ export const exportBookingsToExcel = (
           <th style="text-align: left;">Keterangan Persentase</th>
         </tr>
         <tr>
-          <td><strong>Total Omzet Kotor</strong></td>
-          <td style="text-align: right; font-weight: bold; color: #047857;">${totalOmzet}</td>
-          <td>100% dari transaksi berjalan</td>
-        </tr>
-        <tr>
-          <td>Alokasi Pos Maintenance (Servis & Armada)</td>
-          <td style="text-align: right; color: #b45309;">${financialData.maintenanceAllocation}</td>
-          <td>${settings.maintenanceBudgetPercentage}% dari Omzet</td>
-        </tr>
-        <tr>
-          <td>Alokasi Pos Konten (Gaji Konten Kreator & Ads)</td>
-          <td style="text-align: right; color: #0369a1;">${financialData.contentAllocation}</td>
-          <td>Nominal Uang Gaji Kreator</td>
-        </tr>
-        <tr>
-          <td>Alokasi Pos Pengeluaran (Operasional Toko)</td>
-          <td style="text-align: right; color: #7e22ce;">${financialData.operationalAllocation}</td>
-          <td>${settings.operationalBudgetPercentage}% dari Omzet</td>
+          <td>Pendapatan Sewa</td>
+          <td style="text-align: right; font-weight: bold; color: #047857;">${financialData.grossRevenue}</td>
+          <td>Dari transaksi pada periode terpilih</td>
         </tr>
         <tr>
           <td>Modal Tambahan</td>
           <td style="text-align: right; color: #b45309;">${financialData.capitalAmount}</td>
           <td>Input manual bulan terpilih</td>
         </tr>
+        <tr>
+          <td><strong>Pendapatan + Modal</strong></td>
+          <td style="text-align: right; font-weight: bold; color: #047857;">${financialData.grossRevenue + financialData.capitalAmount}</td>
+          <td>Hasil penjumlahan pendapatan dan modal</td>
+        </tr>
+        <tr>
+          <td>Pengeluaran Toko</td>
+          <td style="text-align: right; color: #7e22ce;">${financialData.operationalAllocation}</td>
+          <td>${settings.operationalBudgetPercentage}% dari omzet</td>
+        </tr>
+        <tr>
+          <td>Hasil 1 (Pendapatan + Modal - Pengeluaran Toko)</td>
+          <td style="text-align: right; color: #7e22ce;">${financialData.afterStoreExpenses}</td>
+          <td>${financialData.grossRevenue + financialData.capitalAmount} - ${financialData.operationalAllocation}</td>
+        </tr>
+        <tr>
+          <td>Maintenance (Servis & Armada)</td>
+          <td style="text-align: right; color: #b45309;">${financialData.maintenanceAllocation}</td>
+          <td>${settings.maintenanceMode === 'nominal' ? 'Nominal tetap' : `${settings.maintenanceBudgetPercentage}% dari omzet`}</td>
+        </tr>
+        <tr>
+          <td>Gaji Konten Kreator & Ads</td>
+          <td style="text-align: right; color: #0369a1;">${financialData.contentAllocation}</td>
+          <td>Nominal uang gaji</td>
+        </tr>
         <tr class="total-row">
           <td><strong>Laba Bersih Siap Bagi</strong></td>
           <td style="text-align: right; font-weight: bold; color: #059669;">${financialData.netProfit}</td>
-          <td>Modal + omzet setelah dikurangi 3 pos biaya</td>
+          <td>Hasil 1 - Maintenance - Gaji</td>
         </tr>
         <tr>
-          <td><strong>${settings.partner1Name}</strong></td>
+          <td><strong>Owner</strong></td>
           <td style="text-align: right; font-weight: bold; color: #047857;">${financialData.partner1Share}</td>
           <td>Bagi Hasil ${settings.partner1Percentage}%</td>
         </tr>
         <tr>
-          <td><strong>${settings.partner2Name}</strong></td>
+          <td><strong>Investor</strong></td>
           <td style="text-align: right; font-weight: bold; color: #b45309;">${financialData.partner2Share}</td>
           <td>Bagi Hasil ${settings.partner2Percentage}%</td>
         </tr>

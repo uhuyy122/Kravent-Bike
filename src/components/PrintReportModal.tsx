@@ -22,6 +22,7 @@ import {
 } from '../utils/scheduleUtils';
 import { exportBookingsToExcel } from '../utils/exportUtils';
 import { getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
+import { calculateFinancialBreakdown } from '../utils/financeUtils';
 import kraventLogo from '../assets/kravent-logo.svg';
 import { ADMIN_WHATSAPP_DISPLAY } from '../utils/whatsapp';
 
@@ -192,34 +193,15 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   // Kalkulasi Bagi Hasil dinamis untuk periode yang dipilih
   const dynamicBreakdown = useMemo(() => {
     const gross = activeGrossRevenue;
-    const maint =
-      (financialSettings.maintenanceMode ?? 'percentage') === 'nominal'
-        ? Number(financialSettings.maintenanceBudgetNominal ?? 0)
-        : Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
-    // Gaji Konten Kreator & Ads berupa input nominal uang tetap
-    const content =
-      financialSettings.contentBudgetAmount !== undefined
-        ? Number(financialSettings.contentBudgetAmount)
-        : Math.round((gross * (financialSettings.contentBudgetPercentage || 0)) / 100);
-    const ops = Math.round((gross * financialSettings.operationalBudgetPercentage) / 100);
-    const totalAlloc = maint + content + ops;
     const capitalAmount = selectedPeriodType === 'monthly'
       ? Number(financialSettings.monthlyCapitalByMonth?.[monthlyMonth] ?? 0)
       : 0;
-    const net = gross + capitalAmount - totalAlloc;
-    const distributableProfit = Math.max(0, net);
-    const p1 = Math.round((distributableProfit * financialSettings.partner1Percentage) / 100);
-    const p2 = distributableProfit - p1;
+    const calculated = calculateFinancialBreakdown(gross, financialSettings, capitalAmount);
 
     return {
       grossRevenue: gross,
-      maintenanceAllocation: maint,
-      contentAllocation: content,
-      operationalAllocation: ops,
+      ...calculated,
       capitalAmount,
-      netProfit: net,
-      partner1Share: p1,
-      partner2Share: p2,
     };
   }, [activeGrossRevenue, financialSettings, selectedPeriodType, monthlyMonth]);
 
@@ -506,30 +488,56 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 block text-[10px]">Total Omzet Selesai:</span>
+                <span className="text-slate-500 block text-[10px]">1. Pendapatan + Modal:</span>
                 <span className="text-base font-extrabold text-emerald-700">
-                  {formatRupiah(activeGrossRevenue)}
+                  {formatRupiah(activeGrossRevenue + dynamicBreakdown.capitalAmount)}
+                </span>
+                <span className="text-[10px] text-slate-400 block">
+                  Pendapatan {formatRupiah(activeGrossRevenue)} + modal {formatRupiah(dynamicBreakdown.capitalAmount)}
                 </span>
                 <span className="text-[10px] text-slate-400 block">{completedBookings.length} transaksi selesai</span>
-                {selectedPeriodType === 'monthly' && (
-                  <span className="text-[10px] text-amber-700 font-semibold block mt-1">
-                    Modal Tambahan: {formatRupiah(dynamicBreakdown.capitalAmount)}
-                  </span>
-                )}
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 block text-[10px]">Alokasi 3 Pos Biaya:</span>
-                <span className="text-sm font-bold text-rose-700">
-                  {formatRupiah(
-                    dynamicBreakdown.maintenanceAllocation +
-                    dynamicBreakdown.contentAllocation +
-                    dynamicBreakdown.operationalAllocation
-                  )}
+                <span className="text-slate-500 block text-[10px]">2. Pengeluaran Toko:</span>
+                <span className="text-sm font-bold text-rose-700 block">
+                  − {formatRupiah(dynamicBreakdown.operationalAllocation)}
                 </span>
                 <span className="text-[10px] text-slate-400 block">
-                  Maintenance + Konten + Toko
+                  {financialSettings.operationalBudgetPercentage}% dari omzet
                 </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block text-[10px]">3. Hasil 1:</span>
+                <span className="text-sm font-bold text-rose-700 block">
+                  {formatRupiah(dynamicBreakdown.afterStoreExpenses)}
+                </span>
+                <span className="text-[10px] text-slate-400 block">
+                  {formatRupiah(activeGrossRevenue + dynamicBreakdown.capitalAmount)} − {formatRupiah(dynamicBreakdown.operationalAllocation)}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block text-[10px]">4. Maintenance:</span>
+                <span className="text-sm font-bold text-amber-700">
+                  − {formatRupiah(dynamicBreakdown.maintenanceAllocation)}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block text-[10px]">5. Gaji Konten:</span>
+                <span className="text-sm font-bold text-sky-700">
+                  − {formatRupiah(dynamicBreakdown.contentAllocation)}
+                </span>
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                <span className="text-slate-500 block text-[10px]">6. Laba Bersih:</span>
+                <span className="text-sm font-bold text-emerald-700">
+                  {formatRupiah(dynamicBreakdown.netProfit)}
+                </span>
+                <span className="text-[10px] text-slate-400 block">Hasil 1 − Maintenance − Gaji</span>
               </div>
 
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
@@ -539,7 +547,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 <span className="text-sm font-extrabold text-emerald-800">
                   {formatRupiah(dynamicBreakdown.partner1Share)}
                 </span>
-                <span className="text-[10px] text-emerald-600 block">Bagian Mitra 1</span>
+                <span className="text-[10px] text-emerald-600 block">Bagian sesuai rasio yang diatur</span>
               </div>
 
               <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
@@ -549,7 +557,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 <span className="text-sm font-extrabold text-amber-800">
                   {formatRupiah(dynamicBreakdown.partner2Share)}
                 </span>
-                <span className="text-[10px] text-amber-600 block">Bagian Mitra 2</span>
+                <span className="text-[10px] text-amber-600 block">Bagian sesuai rasio yang diatur</span>
               </div>
             </div>
           </div>
@@ -659,7 +667,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
             <div>
               <p className="text-slate-500 mb-14">Disetujui & Ditetapkan Oleh:</p>
               <div className="w-40 border-b border-slate-400 mx-auto"></div>
-              <p className="font-bold text-slate-900 mt-1">{financialSettings.partner1Name}</p>
+              <p className="font-bold text-slate-900 mt-1">Owner</p>
               <p className="text-[10px] text-slate-400">Owner & Founder Kravent Bike</p>
             </div>
           </div>

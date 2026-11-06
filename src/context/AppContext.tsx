@@ -22,6 +22,7 @@ import {
 } from '../utils/scheduleUtils';
 import { db, handleFirestoreError, cleanForFirestore, OperationType } from '../firebase';
 import { getBookingTotalPrice } from '../utils/bookingUtils';
+import { calculateFinancialBreakdown } from '../utils/financeUtils';
 import {
   collection,
   doc,
@@ -1020,30 +1021,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const financialBreakdown = useMemo<FinancialBreakdown>(() => {
     const grossRevenue = thisMonthRevenue;
     const monthlyCapital = Number(financialSettings.monthlyCapitalByMonth?.[selectedMonth] ?? 0);
-
-    const maintenanceMode = financialSettings.maintenanceMode ?? 'percentage';
-    const maintenanceAllocation =
-      maintenanceMode === 'nominal'
-        ? Number(financialSettings.maintenanceBudgetNominal ?? 0)
-        : Math.round(
-            (grossRevenue * financialSettings.maintenanceBudgetPercentage) / 100
-          );
-    // Pos Konten & Ads: Nominal uang untuk gaji konten kreator
-    const contentAllocation =
-      financialSettings.contentBudgetAmount !== undefined
-        ? Number(financialSettings.contentBudgetAmount)
-        : Math.round((grossRevenue * (financialSettings.contentBudgetPercentage || 0)) / 100);
-    const operationalAllocation = Math.round(
-      (grossRevenue * financialSettings.operationalBudgetPercentage) / 100
-    );
+    const calculated = calculateFinancialBreakdown(grossRevenue, financialSettings, monthlyCapital);
+    const {
+      maintenanceAllocation,
+      contentAllocation,
+      operationalAllocation,
+      netProfit,
+      partner1Share,
+      partner2Share,
+    } = calculated;
     const totalAllocations =
       maintenanceAllocation + contentAllocation + operationalAllocation;
-    const netProfit = monthlyCapital + grossRevenue - totalAllocations;
-
-    const partner1Share = Math.round(
-      (Math.max(0, netProfit) * financialSettings.partner1Percentage) / 100
-    );
-    const partner2Share = Math.max(0, netProfit) - partner1Share;
 
     const monthExpenses = expenses.filter(e => e.date.startsWith(selectedMonth));
     const actualMaintenanceSpent = monthExpenses

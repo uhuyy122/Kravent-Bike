@@ -448,9 +448,9 @@ export const INITIAL_BOOKINGS: Booking[] = [];
 export const INITIAL_EXPENSES: Expense[] = [];
 
 export const INITIAL_FINANCIAL_SETTINGS: FinancialSettings = {
-  partner1Name: 'Owner 1 (Founder/Investor)',
+  partner1Name: 'Owner',
   partner1Percentage: 60,
-  partner2Name: 'Owner 2 (Co-Founder/Operasional)',
+  partner2Name: 'Investor',
   partner2Percentage: 40,
   maintenanceBudgetPercentage: 15,
   maintenanceBudgetNominal: 0,

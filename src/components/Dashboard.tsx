@@ -27,6 +27,7 @@ import {
   getSessionForTime
 } from '../utils/scheduleUtils';
 import { getBookingTotalPrice } from '../utils/bookingUtils';
+import { calculateFinancialBreakdown } from '../utils/financeUtils';
 import { Booking } from '../types';
 
 interface DashboardProps {
@@ -105,28 +106,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
   // Kalkulasi Alokasi & Bagi Hasil Omzet Harian (Khusus Harian Hari Ini)
   const dailyFinancial = React.useMemo(() => {
     const gross = todayRevenue;
-    const maint =
-      (financialSettings.maintenanceMode ?? 'percentage') === 'nominal'
-        ? Number(financialSettings.maintenanceBudgetNominal ?? 0)
-        : Math.round((gross * financialSettings.maintenanceBudgetPercentage) / 100);
-    const content =
-      financialSettings.contentBudgetAmount !== undefined
-        ? Number(financialSettings.contentBudgetAmount)
-        : Math.round((gross * (financialSettings.contentBudgetPercentage || 0)) / 100);
-    const ops = Math.round((gross * financialSettings.operationalBudgetPercentage) / 100);
-    const totalAlloc = maint + content + ops;
-    const net = Math.max(0, gross - totalAlloc);
-    const p1 = Math.round((net * financialSettings.partner1Percentage) / 100);
-    const p2 = Math.max(0, net - p1);
+    const calculated = calculateFinancialBreakdown(gross, financialSettings);
+    const totalAlloc =
+      calculated.maintenanceAllocation +
+      calculated.contentAllocation +
+      calculated.operationalAllocation;
     return {
       gross,
-      maintenanceAllocation: maint,
-      contentAllocation: content,
-      operationalAllocation: ops,
+      ...calculated,
       totalAllocations: totalAlloc,
-      netProfit: net,
-      partner1Share: p1,
-      partner2Share: p2,
     };
   }, [todayRevenue, financialSettings]);
 
@@ -504,28 +492,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                   onClick={() => onNavigateTab('finance')}
                   className="text-xs text-amber-300 hover:text-amber-200 font-semibold flex items-center gap-1 hover:underline"
                 >
-                  Setting Bagi Hasil & Periode <ChevronRight className="w-3.5 h-3.5" />
+                  Atur Biaya & Periode <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               ) : (
                 <span className="text-[11px] text-slate-400">Khusus Akses Pemilik</span>
               )}
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 text-[11px]">
+              <div className="rounded-lg border border-white/10 bg-white/10 p-2.5">
+                <span className="block text-slate-300">1. Pendapatan</span>
+                <strong className="text-white">{formatRupiah(dailyFinancial.gross)}</strong>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/10 p-2.5">
+                <span className="block text-slate-300">2. Hasil 1 − Pengeluaran Toko</span>
+                <strong className="text-white">{formatRupiah(dailyFinancial.afterStoreExpenses)}</strong>
+                <span className="block text-slate-400">
+                  {formatRupiah(dailyFinancial.gross)} − {formatRupiah(dailyFinancial.operationalAllocation)}
+                </span>
+              </div>
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-2.5">
+                <span className="block text-slate-300">3. Laba Bersih</span>
+                <strong className="text-emerald-300">{formatRupiah(dailyFinancial.netProfit)}</strong>
+                <span className="block text-slate-400">Hasil 1 − Maintenance − Gaji</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-              <div className="bg-white/10 rounded-xl p-3 border border-white/10">
-                <span className="text-xs text-slate-300 block mb-1">🔧 Maintenance ({financialSettings.maintenanceBudgetPercentage}%)</span>
+              <div className="order-2 bg-white/10 rounded-xl p-3 border border-white/10">
+                <span className="text-xs text-slate-300 block mb-1">Maintenance</span>
                 <span className="text-sm font-bold text-white">
                   {formatRupiah(dailyFinancial.maintenanceAllocation)}
                 </span>
               </div>
-              <div className="bg-white/10 rounded-xl p-3 border border-white/10">
-                <span className="text-xs text-slate-300 block mb-1">🎬 Konten ({financialSettings.contentBudgetPercentage}%)</span>
+              <div className="order-3 bg-white/10 rounded-xl p-3 border border-white/10">
+                <span className="text-xs text-slate-300 block mb-1">Gaji Konten & Ads</span>
                 <span className="text-sm font-bold text-white">
                   {formatRupiah(dailyFinancial.contentAllocation)}
                 </span>
               </div>
-              <div className="bg-white/10 rounded-xl p-3 border border-white/10">
-                <span className="text-xs text-slate-300 block mb-1">📦 Pengeluaran ({financialSettings.operationalBudgetPercentage}%)</span>
+              <div className="order-1 bg-white/10 rounded-xl p-3 border border-white/10">
+                <span className="text-xs text-slate-300 block mb-1">Pengeluaran Toko</span>
                 <span className="text-sm font-bold text-white">
                   {formatRupiah(dailyFinancial.operationalAllocation)}
                 </span>

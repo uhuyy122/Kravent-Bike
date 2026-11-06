@@ -107,9 +107,9 @@ export interface Expense {
 export interface FinancialSettings {
   monthlyCapitalByMonth?: Record<string, number>;
   partner1Name: string;
-  partner1Percentage: number; // e.g. 60
+  partner1Percentage: number; // legacy setting; profit is split 50/50
   partner2Name: string;
-  partner2Percentage: number; // e.g. 40
+  partner2Percentage: number; // legacy setting; profit is split 50/50
   maintenanceBudgetPercentage: number; // e.g. 15% dari omset dialokasikan ke pos maintenance
   maintenanceBudgetNominal?: number; // override nominal untuk maintenance, jika diisi akan dipakai sebagai nilai tetap
   maintenanceMode?: 'percentage' | 'nominal'; // mode aktif perhitungan maintenance

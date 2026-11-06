@@ -40,6 +40,7 @@ import {
 import { ExpenseCategory, Booking } from '../types';
 import { PrintReportModal } from './PrintReportModal';
 import { getBookingTotalPrice } from '../utils/bookingUtils';
+import { calculateFinancialBreakdown } from '../utils/financeUtils';
 
 export const FinanceManager: React.FC = () => {
   const {
@@ -70,6 +71,9 @@ export const FinanceManager: React.FC = () => {
   const [selectedMonthlyMonth, setSelectedMonthlyMonth] = useState<string>(() => todayStr.slice(0, 7));
   const [monthlyCapitalDraft, setMonthlyCapitalDraft] = useState('0');
   const savedMonthlyCapital = financialSettings.monthlyCapitalByMonth?.[selectedMonthlyMonth] ?? 0;
+  const [partner1Pct, setPartner1Pct] = useState(financialSettings.partner1Percentage);
+  const [partner1Name, setPartner1Name] = useState(financialSettings.partner1Name);
+  const [partner2Name, setPartner2Name] = useState(financialSettings.partner2Name);
 
   useEffect(() => {
     setSelectedMonth(selectedMonthlyMonth);
@@ -78,11 +82,6 @@ export const FinanceManager: React.FC = () => {
   useEffect(() => {
     setMonthlyCapitalDraft(String(savedMonthlyCapital));
   }, [selectedMonthlyMonth, savedMonthlyCapital]);
-
-  // Local state for editing percentage allocations
-  const [partner1Pct, setPartner1Pct] = useState(financialSettings.partner1Percentage);
-  const [partner1Name, setPartner1Name] = useState(financialSettings.partner1Name);
-  const [partner2Name, setPartner2Name] = useState(financialSettings.partner2Name);
 
   const [maintPct, setMaintPct] = useState(financialSettings.maintenanceBudgetPercentage);
   const [maintenanceMode, setMaintenanceMode] = useState<'percentage' | 'nominal'>(
@@ -243,14 +242,8 @@ export const FinanceManager: React.FC = () => {
     }
   };
 
-  const handlePartner1Slider = (val: number) => {
-    if (!isAdmin || selectedPeriod !== 'bulanan') return;
-    setPartner1Pct(val);
-  };
-
-  const handleApplyPreset = (p1: number) => {
-    if (!isAdmin || selectedPeriod !== 'bulanan') return;
-    setPartner1Pct(p1);
+  const handlePartner1Slider = (value: number) => {
+    if (isAdmin) setPartner1Pct(value);
   };
 
   const handleCreateExpense = (e: React.FormEvent) => {
@@ -284,12 +277,22 @@ export const FinanceManager: React.FC = () => {
       : Math.round((gross * maintPct) / 100);
   // Konten & Ads: Nominal uang langsung (Gaji Konten Kreator & Ads)
   const contentAmount = Number(contentBudgetNominal || 0);
-  const opsAmount = Math.round((gross * opsPct) / 100);
-  const totalAlloc = maintAmount + contentAmount + opsAmount;
   const monthlyCapitalAmount = selectedPeriod === 'bulanan' ? Number(monthlyCapitalDraft) || 0 : 0;
-  const netProfitPreview = gross + monthlyCapitalAmount - totalAlloc;
-  const p1SharePreview = Math.round((Math.max(0, netProfitPreview) * partner1Pct) / 100);
-  const p2SharePreview = Math.max(0, netProfitPreview) - p1SharePreview;
+  const calculatedBreakdown = calculateFinancialBreakdown(gross, {
+    ...financialSettings,
+    maintenanceBudgetPercentage: maintPct,
+    maintenanceBudgetNominal,
+    maintenanceMode,
+    contentBudgetAmount: contentAmount,
+    operationalBudgetPercentage: opsPct,
+    partner1Percentage: partner1Pct,
+  }, monthlyCapitalAmount);
+  const opsAmount = calculatedBreakdown.operationalAllocation;
+  const totalAlloc = maintAmount + contentAmount + opsAmount;
+  const resultAfterStoreExpenses = calculatedBreakdown.afterStoreExpenses;
+  const netProfitPreview = calculatedBreakdown.netProfit;
+  const p1SharePreview = calculatedBreakdown.partner1Share;
+  const p2SharePreview = calculatedBreakdown.partner2Share;
 
   return (
     <div className="space-y-6">
@@ -305,7 +308,7 @@ export const FinanceManager: React.FC = () => {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Setting pembagian penghasilan bulanan untuk Maintenance, Konten, Pengeluaran Operasional, serta bagi hasil 2 mitra yang fleksibel.
+            Atur rasio Owner/Investor dan biaya di bawah. Perhitungan berjalan berurutan: pendapatan + modal, kurangi pengeluaran toko, maintenance, dan gaji.
           </p>
         </div>
 
@@ -569,7 +572,7 @@ export const FinanceManager: React.FC = () => {
                     placeholder="Masukkan nominal modal"
                   />
                   <p className="mt-1 text-[11px] text-slate-600">
-                    Laba bersih = modal + pendapatan sewa - Maintenance - Gaji Konten - Operasional Toko.
+                    Urutan: pendapatan + modal − pengeluaran toko = hasil 1; hasil 1 − maintenance − gaji = laba bersih.
                   </p>
                 </div>
                 {isAdmin && (
@@ -660,53 +663,50 @@ export const FinanceManager: React.FC = () => {
             <p className="text-xs text-slate-400 mt-1">
               Menghitung transaksi sewa yang berstatus selesai atau lunas pada periode ini.
               {selectedPeriod !== 'bulanan' && (
-                <span className="text-amber-300 ml-1">
-                  (Dihitung mengacu persentase rasio bulanan: {partner1Pct}% / {100 - partner1Pct}%)
-                </span>
+                <span className="text-amber-300 ml-1">(Pembagian mengikuti rasio Owner dan Investor yang diatur.)</span>
               )}
             </p>
           </div>
 
-          <div className="flex items-center gap-6 bg-slate-800/80 px-5 py-3 rounded-2xl border border-slate-700">
-            <div>
-              <span className="text-[11px] text-slate-400 block font-medium">Alokasi Beban & Biaya</span>
-              <span className="text-lg font-bold text-rose-300">
-                - {formatRupiah(totalAlloc)}
+          <div className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-slate-700 bg-slate-800/80 p-4 sm:grid-cols-3 lg:max-w-3xl">
+            <div className="rounded-xl border border-slate-700/80 bg-slate-900/40 p-3">
+              <span className="text-[11px] font-medium text-slate-400 block">1. Pendapatan + Modal</span>
+              <span className="text-lg font-bold text-amber-300 block mt-1">
+                {formatRupiah(gross + monthlyCapitalAmount)}
               </span>
-              <span className="text-[10px] text-slate-400 block">Maintenance + Gaji Konten + Toko</span>
+              <span className="text-[10px] text-slate-400 block">
+                {formatRupiah(gross)} + {formatRupiah(monthlyCapitalAmount)}
+              </span>
             </div>
-
-            {selectedPeriod === 'bulanan' && (
-              <>
-                <div className="h-10 w-px bg-slate-700"></div>
-                <div>
-                  <span className="text-[11px] text-slate-400 block font-medium">Modal Tambahan</span>
-                  <span className="text-lg font-bold text-amber-300">
-                    + {formatRupiah(monthlyCapitalAmount)}
-                  </span>
-                </div>
-              </>
-            )}
-
-            <div className="h-10 w-px bg-slate-700"></div>
-            <div>
-              <span className="text-[11px] text-slate-400 block font-medium">Laba Bersih Siap Bagi</span>
-              <span className="text-lg font-extrabold text-emerald-300">
-                = {formatRupiah(netProfitPreview)}
+            <div className="rounded-xl border border-slate-700/80 bg-slate-900/40 p-3">
+              <span className="text-[11px] font-medium text-slate-400 block">2. Hasil 1 − Pengeluaran Toko</span>
+              <span className="text-lg font-bold text-rose-300 block mt-1">
+                {formatRupiah(resultAfterStoreExpenses)}
               </span>
-              <span className="text-[10px] text-emerald-400/80 block">100% Laba Bersih</span>
+              <span className="text-[10px] text-slate-400 block">
+                {formatRupiah(gross + monthlyCapitalAmount)} − {formatRupiah(opsAmount)}
+              </span>
+            </div>
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-3">
+              <span className="text-[11px] font-medium text-slate-400 block">3. Laba Bersih Siap Dibagi</span>
+              <span className="text-lg font-extrabold text-emerald-300 block mt-1">
+                {formatRupiah(netProfitPreview)}
+              </span>
+              <span className="text-[10px] text-slate-400 block">
+                Hasil 1 − Maintenance − Gaji
+              </span>
             </div>
           </div>
         </div>
 
-        {/* 3 Wajib Pos Potongan: Maintenance, Konten, Pengeluaran */}
+        {/* Pos biaya ditampilkan sesuai urutan pengurangannya */}
         <div className="py-6 border-b border-slate-700/80">
           <span className="text-xs uppercase tracking-wider text-slate-300 font-bold block mb-3">
-            Rincian Alokasi Dana 3 Pos Operasional
+            Rincian Biaya (Urutan Pengurangan)
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Maintenance */}
-            <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
+            <div className="order-2 bg-slate-800/60 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
                   <span className="font-semibold flex items-center gap-1.5 text-amber-300">
@@ -726,7 +726,7 @@ export const FinanceManager: React.FC = () => {
             </div>
 
             {/* Konten */}
-            <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
+            <div className="order-3 bg-slate-800/60 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
                   <span className="font-semibold flex items-center gap-1.5 text-sky-300">
@@ -746,7 +746,7 @@ export const FinanceManager: React.FC = () => {
             </div>
 
             {/* Pengeluaran Operasional */}
-            <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
+            <div className="order-1 bg-slate-800/60 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
                   <span className="font-semibold flex items-center gap-1.5 text-purple-300">
@@ -767,24 +767,24 @@ export const FinanceManager: React.FC = () => {
           </div>
         </div>
 
-        {/* HASIL BAGI HASIL 2 PIHAK (60 / 40 ATAU BISA DIATUR) */}
+        {/* Pembagian laba bersih mengikuti rasio yang dapat diatur */}
         <div className="pt-6">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs uppercase tracking-wider text-slate-300 font-bold block">
-              Hasil Pembagian Keuntungan Bersih (Net Profit)
+              Pembagian Laba Bersih ({partner1Pct}% : {100 - partner1Pct}%)
             </span>
             <span className="text-xs text-slate-400">
-              Skema Rasio: <strong className="text-amber-400">{partner1Pct}% : {100 - partner1Pct}%</strong>
+              Skema: <strong className="text-amber-400">{partner1Name} {partner1Pct}% : {partner2Name} {100 - partner1Pct}%</strong>
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Pihak 1 (e.g. 60%) */}
+            {/* Owner */}
             <div className="bg-emerald-950/40 border-2 border-emerald-500/40 rounded-2xl p-5 relative overflow-hidden">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                    Penerima 1 ({partner1Pct}%)
+                    {partner1Name} ({partner1Pct}%)
                   </span>
                   <h4 className="text-base font-bold text-white mt-0.5">Owner</h4>
                 </div>
@@ -799,16 +799,16 @@ export const FinanceManager: React.FC = () => {
                 </span>
               </div>
               <div className="mt-3 text-[11px] text-slate-400">
-                Formula: ({partner1Pct}% × {formatRupiah(netProfitPreview)})
+                Formula: {partner1Pct}% × {formatRupiah(Math.max(0, netProfitPreview))}
               </div>
             </div>
 
-            {/* Pihak 2 (e.g. 40%) */}
+            {/* Investor */}
             <div className="bg-amber-950/40 border-2 border-amber-500/40 rounded-2xl p-5 relative overflow-hidden">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                    Penerima 2 ({100 - partner1Pct}%)
+                    {partner2Name} ({100 - partner1Pct}%)
                   </span>
                   <h4 className="text-base font-bold text-white mt-0.5">Investor</h4>
                 </div>
@@ -823,7 +823,7 @@ export const FinanceManager: React.FC = () => {
                 </span>
               </div>
               <div className="mt-3 text-[11px] text-slate-400">
-                Formula: ({100 - partner1Pct}% × {formatRupiah(netProfitPreview)})
+                Formula: {100 - partner1Pct}% × {formatRupiah(Math.max(0, netProfitPreview))}
               </div>
             </div>
           </div>
@@ -934,14 +934,14 @@ export const FinanceManager: React.FC = () => {
             <div className="flex items-center gap-2">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-emerald-600" />
-                Pengaturan Rasio Bagi Hasil & Nama Mitra Bisnis
+                Pengaturan Rasio Bagi Hasil & Biaya
               </h3>
               <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                ✓ Bebas Diedit Kapan Saja
+                Rasio {partner1Pct}:{100 - partner1Pct}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Rasio persentase bagi hasil dan nama pengelola di bawah ini berlaku untuk semua ringkasan laporan keuangan (Harian, Mingguan, & Bulanan).
+              Atur nama penerima, rasio pembagian, dan biaya. Semua hasil di atas langsung mengikuti pengaturan ini.
             </p>
           </div>
 
@@ -957,7 +957,7 @@ export const FinanceManager: React.FC = () => {
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
-                <span>Simpan Nama & Rasio</span>
+                <span>Simpan Pengaturan</span>
               </button>
             ) : (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold">
@@ -968,52 +968,41 @@ export const FinanceManager: React.FC = () => {
           </div>
         </div>
 
-        {/* 1. Pengaturan Bagi Hasil 2 Pihak & Nama Penerima */}
-        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-                1. Rasio Pembagian Hasil 2 Mitra ({partner1Pct} / {100 - partner1Pct})
+              <span className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                1. Atur Nama dan Rasio Pembagian Laba
               </span>
               <span className="text-xs text-slate-500">
-                {isAdmin
-                  ? 'Pilih preset cepat atau sesuaikan nama mitra & persentase di bawah'
-                  : 'Rasio bagi hasil kemitraan yang berlaku'}
+                Laba bersih dibagi sesuai persentase yang diatur di sini.
               </span>
             </div>
-
-            {/* Preset Buttons */}
             {isAdmin && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs text-slate-400 font-medium mr-1">Preset:</span>
-                {[
-                  { label: '60 / 40', p1: 60 },
-                  { label: '50 / 50', p1: 50 },
-                  { label: '70 / 30', p1: 70 },
-                  { label: '80 / 20', p1: 80 },
-                ].map(preset => (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-xs font-medium text-slate-400">Preset:</span>
+                {[50, 60, 70, 80].map(value => (
                   <button
-                    key={preset.label}
+                    key={value}
                     type="button"
-                    onClick={() => handleApplyPreset(preset.p1)}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                      partner1Pct === preset.p1
-                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    onClick={() => setPartner1Pct(value)}
+                    className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
+                      partner1Pct === value
+                        ? 'border-amber-500 bg-amber-500 text-white'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >
-                    {preset.label}
+                    {value} / {100 - value}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Slider */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-semibold text-slate-700">
-              <span>{partner1Name}: <strong>{partner1Pct}%</strong></span>
-              <span>{partner2Name}: <strong>{100 - partner1Pct}%</strong></span>
+              <span>{partner1Name}: {partner1Pct}%</span>
+              <span>{partner2Name}: {100 - partner1Pct}%</span>
             </div>
             <input
               type="range"
@@ -1022,59 +1011,42 @@ export const FinanceManager: React.FC = () => {
               step="5"
               value={partner1Pct}
               disabled={!isAdmin}
-              onChange={e => handlePartner1Slider(parseInt(e.target.value, 10))}
-              className={`w-full accent-amber-500 h-2 bg-slate-200 rounded-lg ${
+              onChange={event => handlePartner1Slider(Number(event.target.value))}
+              className={`h-2 w-full rounded-lg bg-slate-200 accent-amber-500 ${
                 isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'
               }`}
             />
           </div>
 
-          {/* Name Customization */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Nama Penerima 1 ({partner1Pct}%): *
-              </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="text-xs font-bold text-slate-700">
+              Nama penerima bagian pertama ({partner1Pct}%)
               <input
                 type="text"
                 value={partner1Name}
                 disabled={!isAdmin}
-                readOnly={!isAdmin}
-                onChange={e => setPartner1Name(e.target.value)}
-                placeholder="Contoh: Pengelola Toko"
-                className={`w-full text-xs font-semibold px-3 py-2.5 border rounded-xl shadow-2xs ${
-                  isAdmin
-                    ? 'border-slate-300 bg-white focus:outline-emerald-500'
-                    : 'border-slate-200 bg-slate-100/70 text-slate-700 cursor-not-allowed'
-                }`}
+                onChange={event => setPartner1Name(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold disabled:bg-slate-100"
               />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Nama Penerima 2 ({100 - partner1Pct}%): *
-              </label>
+            </label>
+            <label className="text-xs font-bold text-slate-700">
+              Nama penerima bagian kedua ({100 - partner1Pct}%)
               <input
                 type="text"
                 value={partner2Name}
                 disabled={!isAdmin}
-                readOnly={!isAdmin}
-                onChange={e => setPartner2Name(e.target.value)}
-                placeholder="Contoh: Investor / Mitra Sepeda"
-                className={`w-full text-xs font-semibold px-3 py-2.5 border rounded-xl shadow-2xs ${
-                  isAdmin
-                    ? 'border-slate-300 bg-white focus:outline-emerald-500'
-                    : 'border-slate-200 bg-slate-100/70 text-slate-700 cursor-not-allowed'
-                }`}
+                onChange={event => setPartner2Name(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold disabled:bg-slate-100"
               />
-            </div>
+            </label>
           </div>
         </div>
 
-        {/* 2. Pengaturan 3 Pos Alokasi */}
+        {/* Pengaturan biaya yang dipakai dalam urutan perhitungan */}
         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-              2. Alokasi 3 Pos Wajib (Maintenance, Gaji Konten Kreator & Operasional)
+              2. Atur Biaya Pengurang Laba (Toko, Maintenance, Gaji)
             </span>
             <span className="text-xs text-slate-500">
               Total disisihkan: {formatRupiah(totalAlloc)} (Maintenance: {maintenanceMode === 'nominal' ? formatRupiah(maintAmount) : `${maintPct}%`}, Gaji Konten: {formatRupiah(contentAmount)}, Toko: {opsPct}%)
@@ -1083,7 +1055,7 @@ export const FinanceManager: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Maintenance */}
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="order-2 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
               <div className="flex justify-between items-center text-xs mb-2">
                 <span className="font-bold text-slate-800 flex items-center gap-1">
                   <Wrench className="w-3.5 h-3.5 text-amber-500" /> Maintenance
@@ -1170,7 +1142,7 @@ export const FinanceManager: React.FC = () => {
             </div>
 
             {/* Konten & Ads - INPUTAN DALAM BENTUK UANG / NOMINAL */}
-            <div className="bg-white p-3.5 rounded-xl border border-sky-200 shadow-2xs flex flex-col justify-between">
+            <div className="order-3 bg-white p-3.5 rounded-xl border border-sky-200 shadow-2xs flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-center text-xs mb-1">
                   <span className="font-bold text-slate-800 flex items-center gap-1">
@@ -1204,7 +1176,7 @@ export const FinanceManager: React.FC = () => {
             </div>
 
             {/* Pengeluaran */}
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="order-1 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
               <div className="flex justify-between items-center text-xs mb-1">
                 <span className="font-bold text-slate-800 flex items-center gap-1">
                   <Receipt className="w-3.5 h-3.5 text-purple-500" /> Operasional Toko
