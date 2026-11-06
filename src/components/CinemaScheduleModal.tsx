@@ -146,7 +146,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
         customerPhone ? `• No WhatsApp: ${customerPhone}` : '',
         `• Pembayaran: *Bayar di Akhir (Saat Pengembalian Sepeda)*`,
         ``,
-        `⚠️ Pesanan sudah otomatis masuk ke sistem Kravent Bike dengan kode *${newBook.bookingCode}*. Mohon untuk di-ACC oleh Admin. Terima kasih!`
+        `Pesanan sudah otomatis masuk ke sistem Kravent Bike dengan kode *${newBook.bookingCode}*. Mohon untuk di-ACC oleh Admin. Terima kasih!`
       ].filter(Boolean).join('\n');
 
       const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;

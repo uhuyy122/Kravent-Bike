@@ -245,7 +245,7 @@ export const BookingList: React.FC = () => {
       const cleanPhone = normalizePhone(primaryBooking.customerPhone);
       const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
       const textMsg = [
-        `Halo Kak! 👋😊`,
+        `Halo Kak!`,
         ``,
         `Terima kasih sudah melakukan booking sepeda. Booking Kakak sudah kami ACC dan dikonfirmasi ya.`,
         ``,
@@ -255,8 +255,8 @@ export const BookingList: React.FC = () => {
         `* Pembayaran dilakukan di akhir setelah selesai bermain dan akan dihitung berdasarkan durasi pemakaian sepeda.`,
         `* Tersedia parkir untuk motor dan mobil di lokasi.`,
         ``,
-        `Terima kasih atas pengertiannya, Kak 🙏`,
-        `Sampai ketemu dan selamat bermain! 🚲✨`
+        `Terima kasih atas pengertiannya, Kak.`,
+        `Sampai ketemu dan selamat bermain!`
       ].join('\n');
       const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(textMsg)}`;
       window.open(waUrl, '_blank');
