@@ -78,11 +78,7 @@ export const BookingList: React.FC = () => {
       return bookings.filter(b => b.groupBookingCode === booking.groupBookingCode);
     }
 
-    return bookings.filter(b => {
-      const sameName = (b.customerName || '').trim().toLowerCase() === (booking.customerName || '').trim().toLowerCase();
-      const samePhone = normalizePhone(b.customerPhone) === normalizePhone(booking.customerPhone);
-      return sameName && samePhone;
-    });
+    return [booking];
   };
 
   const getNextBooking = (booking: Booking) =>
@@ -98,7 +94,7 @@ export const BookingList: React.FC = () => {
       .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
 
   const groupedBookings = bookings.reduce<Array<{ key: string; items: Booking[]; primary: Booking }>>((acc, booking) => {
-    const key = booking.groupBookingCode || `${(booking.customerName || '').trim().toLowerCase()}|${normalizePhone(booking.customerPhone)}`;
+    const key = booking.groupBookingCode || booking.id;
     const group = acc.find(item => item.key === key);
 
     if (group) {
