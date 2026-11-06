@@ -1151,7 +1151,7 @@ export const Catalog: React.FC = () => {
                   </div>
                   <div className="max-w-2xl w-full rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-white">
                     <img
-                      src="/catalog/katalog-sepeda-city.jpeg"
+                      src="/catalog/katalog-sepeda-city.png"
                       alt="Poster Brosur Sepeda City Kravent Bike 1"
                       className="w-full h-auto object-contain"
                     />
@@ -1171,7 +1171,7 @@ export const Catalog: React.FC = () => {
                   </div>
                   <div className="max-w-2xl w-full rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-white">
                     <img
-                      src="/catalog/katalog-sepeda-city-2.jpeg"
+                      src="/catalog/katalog-sepeda-city-2.png"
                       alt="Poster Brosur Sepeda City Kravent Bike 2"
                       className="w-full h-auto object-contain"
                     />
@@ -1191,7 +1191,7 @@ export const Catalog: React.FC = () => {
                   </div>
                   <div className="max-w-2xl w-full rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-white">
                     <img
-                      src="/catalog/katalog-sepeda-vintage.jpeg"
+                      src="/catalog/katalog-sepeda-vintage.png"
                       alt="Poster Brosur Sepeda Vintage Kravent Bike"
                       className="w-full h-auto object-contain"
                     />
@@ -1211,7 +1211,7 @@ export const Catalog: React.FC = () => {
                   </div>
                   <div className="max-w-2xl w-full rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-white">
                     <img
-                      src="/catalog/katalog-sepeda-mtb.jpeg"
+                      src="/catalog/katalog-sepeda-mtb.png"
                       alt="Poster Brosur Sepeda MTB Kravent Bike"
                       className="w-full h-auto object-contain"
                     />
@@ -1225,12 +1225,12 @@ export const Catalog: React.FC = () => {
               <a
                 href={
                   activePosterTab === 'city1'
-                    ? '/catalog/katalog-sepeda-city.jpeg'
+                    ? '/catalog/katalog-sepeda-city.png'
                     : activePosterTab === 'city2'
-                    ? '/catalog/katalog-sepeda-city-2.jpeg'
+                    ? '/catalog/katalog-sepeda-city-2.png'
                     : activePosterTab === 'vintage'
-                    ? '/catalog/katalog-sepeda-vintage.jpeg'
-                    : '/catalog/katalog-sepeda-mtb.jpeg'
+                    ? '/catalog/katalog-sepeda-vintage.png'
+                    : '/catalog/katalog-sepeda-mtb.png'
                 }
                 target="_blank"
                 rel="noreferrer"
