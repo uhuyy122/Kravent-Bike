@@ -15,6 +15,7 @@ export const calculateFinancialBreakdown = (
   financialSettings: FinancialSettings,
   capitalAmount = 0
 ): CalculatedFinancialBreakdown => {
+  const revenueAndCapital = grossRevenue + capitalAmount;
   const maintenanceAllocation =
     (financialSettings.maintenanceMode ?? 'percentage') === 'nominal'
       ? Number(financialSettings.maintenanceBudgetNominal ?? 0)
@@ -24,9 +25,9 @@ export const calculateFinancialBreakdown = (
       ? Number(financialSettings.contentBudgetAmount)
       : Math.round((grossRevenue * (financialSettings.contentBudgetPercentage || 0)) / 100);
   const operationalAllocation = Math.round(
-    (grossRevenue * financialSettings.operationalBudgetPercentage) / 100
+    (revenueAndCapital * financialSettings.operationalBudgetPercentage) / 100
   );
-  const afterStoreExpenses = grossRevenue + capitalAmount - operationalAllocation;
+  const afterStoreExpenses = revenueAndCapital - operationalAllocation;
   const netProfit = afterStoreExpenses - maintenanceAllocation - contentAllocation;
   const distributableProfit = Math.max(0, netProfit);
   const partner1Share = Math.round(

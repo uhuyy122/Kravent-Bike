@@ -668,7 +668,7 @@ export const FinanceManager: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-slate-700 bg-slate-800/80 p-4 sm:grid-cols-3 lg:max-w-3xl">
+          <div className="grid w-full grid-cols-1 gap-3 rounded-2xl border border-slate-700 bg-slate-800/80 p-4 sm:grid-cols-3 lg:max-w-4xl">
             <div className="rounded-xl border border-slate-700/80 bg-slate-900/40 p-3">
               <span className="text-[11px] font-medium text-slate-400 block">1. Pendapatan + Modal</span>
               <span className="text-lg font-bold text-amber-300 block mt-1">
@@ -679,21 +679,21 @@ export const FinanceManager: React.FC = () => {
               </span>
             </div>
             <div className="rounded-xl border border-slate-700/80 bg-slate-900/40 p-3">
-              <span className="text-[11px] font-medium text-slate-400 block">2. Hasil 1 − Pengeluaran Toko</span>
+              <span className="text-[11px] font-medium text-slate-400 block">2. Pengeluaran Toko ({opsPct}%)</span>
               <span className="text-lg font-bold text-rose-300 block mt-1">
+                − {formatRupiah(opsAmount)}
+              </span>
+              <span className="text-[10px] text-slate-400 block">
+                {formatRupiah(gross + monthlyCapitalAmount)} × {opsPct}% = {formatRupiah(opsAmount)}
+              </span>
+            </div>
+            <div className="rounded-xl border border-slate-700/80 bg-slate-900/40 p-3">
+              <span className="text-[11px] font-medium text-slate-400 block">3. Hasil 1</span>
+              <span className="text-lg font-bold text-white block mt-1">
                 {formatRupiah(resultAfterStoreExpenses)}
               </span>
               <span className="text-[10px] text-slate-400 block">
                 {formatRupiah(gross + monthlyCapitalAmount)} − {formatRupiah(opsAmount)}
-              </span>
-            </div>
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-3">
-              <span className="text-[11px] font-medium text-slate-400 block">3. Laba Bersih Siap Dibagi</span>
-              <span className="text-lg font-extrabold text-emerald-300 block mt-1">
-                {formatRupiah(netProfitPreview)}
-              </span>
-              <span className="text-[10px] text-slate-400 block">
-                Hasil 1 − Maintenance − Gaji
               </span>
             </div>
           </div>
@@ -761,10 +761,22 @@ export const FinanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="mt-3 text-[11px] text-slate-400 pt-2 border-t border-slate-700/50">
-                Listrik basecamp, air minum gratis penyewa, wifi kasir
+                {formatRupiah(gross + monthlyCapitalAmount)} × {opsPct}% = {formatRupiah(opsAmount)}
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/40 p-4">
+          <span className="block text-xs font-bold uppercase tracking-wider text-emerald-200">
+            4. Laba Bersih Siap Dibagi
+          </span>
+          <span className="mt-1 block text-2xl font-extrabold text-emerald-300">
+            {formatRupiah(netProfitPreview)}
+          </span>
+          <span className="mt-1 block text-[11px] text-slate-300">
+            {formatRupiah(resultAfterStoreExpenses)} − {formatRupiah(maintAmount)} maintenance − {formatRupiah(contentAmount)} gaji
+          </span>
         </div>
 
         {/* Pembagian laba bersih mengikuti rasio yang dapat diatur */}

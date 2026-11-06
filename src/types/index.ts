@@ -107,14 +107,14 @@ export interface Expense {
 export interface FinancialSettings {
   monthlyCapitalByMonth?: Record<string, number>;
   partner1Name: string;
-  partner1Percentage: number; // legacy setting; profit is split 50/50
+  partner1Percentage: number; // e.g. 60
   partner2Name: string;
-  partner2Percentage: number; // legacy setting; profit is split 50/50
+  partner2Percentage: number; // e.g. 40
   maintenanceBudgetPercentage: number; // e.g. 15% dari omset dialokasikan ke pos maintenance
   maintenanceBudgetNominal?: number; // override nominal untuk maintenance, jika diisi akan dipakai sebagai nilai tetap
   maintenanceMode?: 'percentage' | 'nominal'; // mode aktif perhitungan maintenance
   contentBudgetAmount: number; // Nominal uang (Rp) untuk Gaji Konten Kreator & Budget Ads
   contentBudgetPercentage?: number; // Opsional kompatibilitas jika dibutuhkan
-  operationalBudgetPercentage: number; // e.g. 15% dari omset dialokasikan ke operasional
+  operationalBudgetPercentage: number; // e.g. 15% dari pendapatan + modal dialokasikan ke operasional
   calculationMode: 'percentage_from_gross' | 'actual_expense_deduction'; // apakah bagi hasil dihitung dari omset bersih setelah pengeluaran riil atau potongan pos persentase
 }

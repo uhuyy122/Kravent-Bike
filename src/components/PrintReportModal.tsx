@@ -504,7 +504,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   − {formatRupiah(dynamicBreakdown.operationalAllocation)}
                 </span>
                 <span className="text-[10px] text-slate-400 block">
-                  {financialSettings.operationalBudgetPercentage}% dari omzet
+                  {formatRupiah(activeGrossRevenue + dynamicBreakdown.capitalAmount)} × {financialSettings.operationalBudgetPercentage}% = {formatRupiah(dynamicBreakdown.operationalAllocation)}
                 </span>
               </div>
 
@@ -537,7 +537,9 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 <span className="text-sm font-bold text-emerald-700">
                   {formatRupiah(dynamicBreakdown.netProfit)}
                 </span>
-                <span className="text-[10px] text-slate-400 block">Hasil 1 − Maintenance − Gaji</span>
+                <span className="text-[10px] text-slate-400 block">
+                  {formatRupiah(dynamicBreakdown.afterStoreExpenses)} − {formatRupiah(dynamicBreakdown.maintenanceAllocation)} − {formatRupiah(dynamicBreakdown.contentAllocation)}
+                </span>
               </div>
 
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">

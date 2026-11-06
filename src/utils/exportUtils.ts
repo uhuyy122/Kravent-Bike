@@ -110,7 +110,7 @@ export const exportBookingsToExcel = (
         <tr>
           <td>Pengeluaran Toko</td>
           <td style="text-align: right; color: #7e22ce;">${financialData.operationalAllocation}</td>
-          <td>${settings.operationalBudgetPercentage}% dari omzet</td>
+          <td>${financialData.grossRevenue + financialData.capitalAmount} x ${settings.operationalBudgetPercentage}% (Pendapatan + Modal)</td>
         </tr>
         <tr>
           <td>Hasil 1 (Pendapatan + Modal - Pengeluaran Toko)</td>
@@ -133,12 +133,12 @@ export const exportBookingsToExcel = (
           <td>Hasil 1 - Maintenance - Gaji</td>
         </tr>
         <tr>
-          <td><strong>Owner</strong></td>
+          <td><strong>${settings.partner1Name}</strong></td>
           <td style="text-align: right; font-weight: bold; color: #047857;">${financialData.partner1Share}</td>
           <td>Bagi Hasil ${settings.partner1Percentage}%</td>
         </tr>
         <tr>
-          <td><strong>Investor</strong></td>
+          <td><strong>${settings.partner2Name}</strong></td>
           <td style="text-align: right; font-weight: bold; color: #b45309;">${financialData.partner2Share}</td>
           <td>Bagi Hasil ${settings.partner2Percentage}%</td>
         </tr>

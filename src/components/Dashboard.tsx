@@ -501,20 +501,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 text-[11px]">
               <div className="rounded-lg border border-white/10 bg-white/10 p-2.5">
-                <span className="block text-slate-300">1. Pendapatan</span>
+                <span className="block text-slate-300">1. Pendapatan + Modal</span>
                 <strong className="text-white">{formatRupiah(dailyFinancial.gross)}</strong>
+                <span className="block text-slate-400">
+                  {formatRupiah(dailyFinancial.gross)} + {formatRupiah(0)} modal harian
+                </span>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/10 p-2.5">
-                <span className="block text-slate-300">2. Hasil 1 − Pengeluaran Toko</span>
+                <span className="block text-slate-300">2. Pengeluaran Toko ({financialSettings.operationalBudgetPercentage}%)</span>
+                <strong className="text-white">− {formatRupiah(dailyFinancial.operationalAllocation)}</strong>
+                <span className="block text-slate-400">
+                  {formatRupiah(dailyFinancial.gross)} × {financialSettings.operationalBudgetPercentage}% = {formatRupiah(dailyFinancial.operationalAllocation)}
+                </span>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/10 p-2.5">
+                <span className="block text-slate-300">3. Hasil 1</span>
                 <strong className="text-white">{formatRupiah(dailyFinancial.afterStoreExpenses)}</strong>
                 <span className="block text-slate-400">
                   {formatRupiah(dailyFinancial.gross)} − {formatRupiah(dailyFinancial.operationalAllocation)}
                 </span>
-              </div>
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-2.5">
-                <span className="block text-slate-300">3. Laba Bersih</span>
-                <strong className="text-emerald-300">{formatRupiah(dailyFinancial.netProfit)}</strong>
-                <span className="block text-slate-400">Hasil 1 − Maintenance − Gaji</span>
               </div>
             </div>
 
@@ -538,6 +543,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
                 </span>
               </div>
             </div>
+
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-3">
+              <span className="block text-xs font-bold text-emerald-200">4. Laba Bersih Siap Dibagi</span>
+              <strong className="mt-1 block text-lg text-emerald-300">{formatRupiah(dailyFinancial.netProfit)}</strong>
+              <span className="block text-[11px] text-slate-400">
+                Hasil 1 {formatRupiah(dailyFinancial.afterStoreExpenses)} − Maintenance {formatRupiah(dailyFinancial.maintenanceAllocation)} − Gaji {formatRupiah(dailyFinancial.contentAllocation)}
+              </span>
+            </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -557,10 +570,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
               </div>
             </div>
 
-            <div className="text-right">
-              <span className="text-slate-400 block text-[10px]">Laba Bersih Harian Siap Bagi:</span>
-              <span className="font-bold text-emerald-300 text-xs">{formatRupiah(dailyFinancial.netProfit)}</span>
-            </div>
           </div>
         </div>
       </div>
