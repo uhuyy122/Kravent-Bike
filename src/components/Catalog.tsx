@@ -631,11 +631,6 @@ export const Catalog: React.FC = () => {
                               Mulai {selectedCatalogStartTime} WIB
                             </span>
                           </div>
-                          {conflict.nextBooking && (
-                            <p className="mt-1 text-[10px] font-semibold text-amber-700">
-                              Harus kembali sebelum {conflict.nextBooking.startTime} WIB.
-                            </p>
-                          )}
                         </div>
                       );
                     })()}

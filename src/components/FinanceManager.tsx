@@ -59,6 +59,7 @@ export const FinanceManager: React.FC = () => {
 
   const todayStr = getTodayDateStr();
   const isAdmin = currentRole === 'admin';
+  const totalRecordedExpenses = expenses.reduce((total, expense) => total + expense.amount, 0);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'harian' | 'mingguan' | 'bulanan'>('bulanan');
 
@@ -1157,6 +1158,9 @@ export const FinanceManager: React.FC = () => {
             </h3>
             <p className="text-xs text-slate-500">
               Log pengeluaran riil aktual toko (Maintenance sepeda, produksi Konten, dan Biaya Operasional)
+            </p>
+            <p className="mt-1 text-sm font-extrabold text-rose-700">
+              Total Pengeluaran: {formatRupiah(totalRecordedExpenses)}
             </p>
           </div>
 

@@ -1267,11 +1267,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             )}
                           </div>
                         )}
-                        {isAvailable && avail?.nextBooking && (
-                          <p className="mt-1 text-[10px] font-semibold text-amber-700">
-                            Harus kembali sebelum {avail.nextBooking.startTime} WIB
-                          </p>
-                        )}
                       </div>
                     </div>
                   );
