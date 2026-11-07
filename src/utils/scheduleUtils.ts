@@ -181,10 +181,9 @@ export const BOOKING_SESSIONS: BookingSessionDef[] = [
 ];
 
 /**
- * Booking hanya saling membatasi pada tanggal yang sama.
- * Booking terjadwal membatasi jam mulai yang sama dan setelahnya karena
- * waktu pengembalian belum diketahui; unit yang sedang di luar memblokir
- * booking lain sepanjang hari.
+ * Booking terjadwal membatasi sesi yang sama pada tanggal yang sama.
+ * Sesi pagi dan sore terpisah; unit yang sedang di luar tetap memblokir
+ * booking sesi mana pun sampai pengembaliannya dicatat.
  */
 export const checkBikeBookingConflict = (
   bikeId: string,
@@ -257,7 +256,10 @@ export const checkBikeBookingConflict = (
       (
         b.status === 'sedang di luar' ||
         b.status === 'aktif' ||
-        b.startTime <= startTime
+        (
+          getSessionForTime(b.startTime) === getSessionForTime(startTime) &&
+          b.startTime <= startTime
+        )
       )
   );
 
@@ -279,6 +281,7 @@ export const checkBikeBookingConflict = (
       b.bikeId === bikeId &&
       isBookingBlockingAvailability(b) &&
       b.startDate === date &&
+      getSessionForTime(b.startTime) === getSessionForTime(startTime) &&
       b.startTime > startTime
     )
     .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
@@ -314,7 +317,9 @@ export const checkSlotAvailability = (
     if (!isBookingBlockingAvailability(b)) return false;
     if (b.startDate !== date) return false;
 
-    return true;
+    return b.status === 'sedang di luar' ||
+      b.status === 'aktif' ||
+      getSessionForTime(b.startTime) === getSessionForTime(slotStart);
   });
 
   return {
@@ -341,7 +346,15 @@ export const checkCustomTimeCollision = (
   bookedList: Array<{ startDate: string; startTime: string; endTime: string; customerName: string; bookingCode: string }>;
 } => {
   const dayBookings = bookings.filter(
-    b => b.bikeId === bikeId && b.startDate === date && isBookingBlockingAvailability(b)
+    b =>
+      b.bikeId === bikeId &&
+      b.startDate === date &&
+      isBookingBlockingAvailability(b) &&
+      (
+        b.status === 'sedang di luar' ||
+        b.status === 'aktif' ||
+        getSessionForTime(b.startTime) === getSessionForTime(startTime)
+      )
   );
 
   const bookedList = dayBookings.map(b => ({

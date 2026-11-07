@@ -410,6 +410,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           startTime,
           endDate: startDate,
           endTime: '',
+          bookingSession: getSessionForTime(startTime) === 'pagi' ? 'pagi' : 'siang',
           totalPrice: 0,
           depositAmount: selectedBike.depositRequired || 0,
           status: 'booking',
@@ -483,6 +484,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           startTime,
           endDate: startDate,
           endTime: '',
+          bookingSession: getSessionForTime(startTime) === 'pagi' ? 'pagi' : 'siang',
           totalPrice: 0,
           depositAmount: selectedBike.depositRequired || 0,
           status: 'pending', // Menunggu ACC Admin

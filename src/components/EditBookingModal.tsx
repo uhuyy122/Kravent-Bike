@@ -20,7 +20,7 @@ import { Booking, BookingStatus, Bike, PaymentMethod } from '../types';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo, calculateRentalCharge } from '../utils/pricingUtils';
-import { checkBikeBookingConflict, getTodayDateStr } from '../utils/scheduleUtils';
+import { checkBikeBookingConflict, getSessionForTime, getTodayDateStr } from '../utils/scheduleUtils';
 import { WhatsAppOtpVerification } from './WhatsAppOtpVerification';
 
 interface EditBookingModalProps {
@@ -180,6 +180,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
         bikeImage: selectedBike.imageUrl,
         startDate,
         startTime,
+        bookingSession: getSessionForTime(startTime) === 'pagi' ? 'pagi' : 'siang',
         endDate: status === 'selesai' ? actualReturnDate : startDate,
         endTime: status === 'selesai' ? actualReturnTime : '',
         durationType: 'jam',

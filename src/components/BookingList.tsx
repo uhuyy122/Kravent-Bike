@@ -27,7 +27,7 @@ import { BookingModal } from './BookingModal';
 import { PrintReportModal } from './PrintReportModal';
 import { ReturnBookingModal } from './ReturnBookingModal';
 import { EditBookingModal } from './EditBookingModal';
-import { checkBikeBookingConflict, getCurrentTimeStr, getTodayDateStr } from '../utils/scheduleUtils';
+import { checkBikeBookingConflict, getCurrentTimeStr, getSessionForTime, getTodayDateStr } from '../utils/scheduleUtils';
 import { getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 
 export const BookingList: React.FC = () => {
@@ -360,7 +360,9 @@ export const BookingList: React.FC = () => {
         actualStartDate: isAddingToActiveRental ? addBikeStartDate : undefined,
         actualStartTime: isAddingToActiveRental ? addBikeStartTime : undefined,
         durationType: addBikeTemplate.durationType,
-        bookingSession: isAddingToActiveRental ? undefined : addBikeTemplate.bookingSession,
+        bookingSession: isAddingToActiveRental
+          ? undefined
+          : (getSessionForTime(addBikeStartTime!) === 'pagi' ? 'pagi' : 'siang'),
         totalPrice: 0,
         depositAmount: bike.depositRequired || 0,
         status: newStatus,

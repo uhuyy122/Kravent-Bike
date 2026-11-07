@@ -126,6 +126,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
         startTime,
         endDate: selectedDate,
         endTime: '',
+        bookingSession: getSessionForTime(startTime) === 'pagi' ? 'pagi' : 'siang',
         totalPrice: 0,
         depositAmount: bike.depositRequired || 0,
         status: 'pending', // Menunggu ACC Admin (Admin tinggal klik ACC, tidak perlu input manual!)
@@ -442,7 +443,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
                 <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  Jadwal Booking pada {formatDateIndo(selectedDate)}:
+                  Jadwal Booking Sesi {selectedTimeSession === 'pagi' ? 'Pagi' : 'Sore'} pada {formatDateIndo(selectedDate)}:
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {bookedList.map((b, idx) => (
@@ -457,7 +458,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                   ))}
                 </div>
                 <p className="text-[11px] text-amber-800">
-                  💡 Booking baru hanya dapat dimulai sebelum jadwal berikutnya. Sepeda wajib dikembalikan sebelum waktu booking selanjutnya.
+                  Booking di sesi berbeda dihitung terpisah. Booking yang lebih awal dalam sesi ini membatasi jam mulai setelahnya.
                 </p>
               </div>
             ) : (
@@ -543,6 +544,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                       disabled={isHourUnavailable}
                       onClick={() => {
                         setStartTime(hourStr);
+                        setSelectedTimeSession(getSessionForTime(hourStr));
                       }}
                       className={`p-1.5 rounded-xl flex flex-col items-center justify-center transition-all ${
                         isHourPast
