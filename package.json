@@ -7,6 +7,8 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
+    "export:tidb-sql": "tsx scripts/export-firestore-to-tidb-sql.ts",
+    "migrate:tidb": "tsx scripts/migrate-firestore-to-tidb.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },

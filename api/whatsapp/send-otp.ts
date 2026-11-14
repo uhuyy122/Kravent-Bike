@@ -8,7 +8,7 @@ import {
   respondToMethodNotAllowed,
   sendWhatsAppOtp,
   timestampFromMillis,
-} from '../../src/server/whatsappOtp';
+} from '../../src/server/whatsappOtp.js';
 
 interface ApiRequest {
   method?: string;

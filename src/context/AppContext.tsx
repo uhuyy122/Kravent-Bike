@@ -233,17 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           list.push({ ...data, id: docSnap.id, category } as Bike);
         });
 
-        // Jika kosong, berisi sepeda placeholder lama, atau berisi unit dobel (Unit 01/02), sinkronkan 25 sepeda asli sesuai 4 lembar brosur
-        const hasOldPlaceholder = list.some(b => b.name.includes('Polygon') || b.imageUrl?.includes('unsplash') || b.imageUrl?.includes('images.unsplash.com'));
-        const hasDoubleUnits = list.some(b => b.name.includes('(Unit') || b.name.includes('Unit 0'));
-        const isNot25 = list.length !== 25;
-
-        if (snapshot.empty || hasOldPlaceholder || hasDoubleUnits || isNot25) {
-          snapshot.forEach(docSnap => {
-            if (!INITIAL_BIKES.some(ib => ib.id === docSnap.id)) {
-              deleteDoc(doc(db, 'bikes', docSnap.id)).catch(() => {});
-            }
-          });
+        if (snapshot.empty) {
           INITIAL_BIKES.forEach(b => {
             setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b)).catch(err =>
               handleFirestoreError(err, OperationType.WRITE, `bikes/${b.id}`)
@@ -273,10 +263,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const list: Booking[] = [];
           snapshot.forEach(docSnap => {
             const data = { ...docSnap.data(), id: docSnap.id } as Booking;
-            if (docSnap.id === 'book-1793009088589' || data.customerName === 'Tata' || data.bookingCode === 'BOK-1026-599') {
-              deleteDoc(doc(db, 'bookings', docSnap.id)).catch(() => {});
-              return;
-            }
             list.push(data);
           });
           list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -370,10 +356,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const list: Booking[] = [];
         bookingsSnap.forEach(d => {
           const data = d.data() as Booking;
-          if (d.id === 'book-1793009088589' || data.customerName === 'Tata' || data.bookingCode === 'BOK-1026-599') {
-            deleteDoc(doc(db, 'bookings', d.id)).catch(() => {});
-            return;
-          }
           list.push(data);
         });
         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));

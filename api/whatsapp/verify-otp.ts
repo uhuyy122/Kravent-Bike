@@ -4,7 +4,7 @@ import {
   isOtpHashMatch,
   respondToMethodNotAllowed,
   timestampFromMillis,
-} from '../../src/server/whatsappOtp';
+} from '../../src/server/whatsappOtp.js';
 
 interface ApiRequest {
   method?: string;

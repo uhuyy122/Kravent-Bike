@@ -1,5 +1,5 @@
-import { getVerifiedUid, getAdminDb } from '../src/server/whatsappOtp';
-import { getTiDBPool } from '../src/server/tidb';
+import { getVerifiedUid, getAdminDb } from '../src/server/whatsappOtp.js';
+import { getTiDBPool } from '../src/server/tidb.js';
 
 type TableName = 'bikes' | 'bookings' | 'expenses' | 'financial_settings';
 
