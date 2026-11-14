@@ -20,7 +20,7 @@ import {
   checkBikeBookingConflict,
   getMondaySundayWeekRange
 } from '../utils/scheduleUtils';
-import { db, handleFirestoreError, cleanForFirestore, OperationType } from '../firebase';
+import { db, handleFirestoreError, cleanForFirestore, OperationType } from '../tidb';
 import { getBookingTotalPrice } from '../utils/bookingUtils';
 import { calculateFinancialBreakdown } from '../utils/financeUtils';
 import {
@@ -32,7 +32,7 @@ import {
   onSnapshot,
   getDocs,
   getDoc
-} from 'firebase/firestore';
+} from '../tidb';
 
 interface FinancialBreakdown {
   grossRevenue: number;
@@ -213,7 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [financialSettings]);
 
   // =========================================================================
-  // REAL-TIME FIRESTORE SYNCHRONIZATION
+  // TiDB synchronization (polled by the data adapter)
   // =========================================================================
   useEffect(() => {
     // 1. Sync Bikes
@@ -488,7 +488,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBookings(prev => [newBooking, ...prev]);
 
     try {
-      // Simpan booking ke Firestore dengan membersihkan field undefined
+      // Simpan booking ke TiDB dengan membersihkan field undefined
       await setDoc(doc(db, 'bookings', newBooking.id), cleanForFirestore(newBooking));
 
       if (isRentalBikeReserved(newBooking.status)) {
@@ -723,7 +723,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
-    // Sync Firestore
+    // Sync TiDB
     for (const b of targetBookings) {
       updateDoc(doc(db, 'bookings', b.id), {
         status: 'booking',
@@ -795,7 +795,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    // Sync Firestore
+    // Sync TiDB
     try {
       if (oldBike) {
         await updateDoc(doc(db, 'bikes', oldBike.id), { status: 'tersedia' });
@@ -865,7 +865,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSelectedMonth(getTodayDateStr().slice(0, 7));
 
     try {
-      // Reset Firestore
+      // Reset TiDB
       for (const b of INITIAL_BIKES) {
         await setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b));
       }
@@ -880,14 +880,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearAllProductionData = async () => {
     try {
-      // 1. Hapus semua data booking di Firestore
+      // 1. Hapus semua data booking di TiDB
       const snapB = await getDocs(collection(db, 'bookings'));
       for (const d of snapB.docs) {
         await deleteDoc(doc(db, 'bookings', d.id));
       }
       setBookings([]);
 
-      // 2. Hapus semua data pengeluaran di Firestore
+      // 2. Hapus semua data pengeluaran di TiDB
       const snapE = await getDocs(collection(db, 'expenses'));
       for (const d of snapE.docs) {
         await deleteDoc(doc(db, 'expenses', d.id));
