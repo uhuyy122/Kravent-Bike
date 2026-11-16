@@ -7,6 +7,7 @@ interface DocumentReference {
 
 interface CollectionReference {
   collectionName: string;
+  id?: never;
 }
 
 interface DocumentSnapshot<T> {
@@ -22,6 +23,9 @@ interface QuerySnapshot<T> {
 }
 
 type DataReference = DocumentReference | CollectionReference;
+type SnapshotHandler<T> = {
+  bivarianceHack(snapshot: T): void;
+}['bivarianceHack'];
 
 const apiUrl = '/api/data';
 
@@ -139,9 +143,9 @@ export function onSnapshot<T = Record<string, unknown>>(
   onNext: (snapshot: DocumentSnapshot<T>) => void,
   onError?: (error: Error) => void
 ): () => void;
-export function onSnapshot(
+export function onSnapshot<T = Record<string, unknown>>(
   reference: DataReference,
-  onNext: (snapshot: QuerySnapshot<unknown> | DocumentSnapshot<unknown>) => void,
+  onNext: SnapshotHandler<QuerySnapshot<T>> | SnapshotHandler<DocumentSnapshot<T>>,
   onError?: (error: Error) => void
 ) {
   let stopped = false;
@@ -149,10 +153,10 @@ export function onSnapshot(
 
   const poll = async () => {
     try {
-      if ('id' in reference) {
-        onNext(await getDoc(reference));
+      if (reference.id !== undefined) {
+        (onNext as SnapshotHandler<DocumentSnapshot<T>>)(await getDoc(reference));
       } else {
-        onNext(await getDocs(reference));
+        (onNext as SnapshotHandler<QuerySnapshot<T>>)(await getDocs(reference));
       }
     } catch (error) {
       onError?.(error instanceof Error ? error : new Error(String(error)));

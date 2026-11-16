@@ -77,7 +77,6 @@ export interface Booking {
   lateFee?: number; // nominal denda keterlambatan (Rp)
   finalTotalPrice?: number; // Total tagihan setelah addon, denda, dan diskon
   returnNotes?: string; // catatan kondisi sepeda saat dikembalikan
-  paymentNotes?: string; // catatan pembayaran khusus (cash / qris / transfer dalam satu nama)
   discountPercent?: number; // diskon persentase yang dipakai saat pengembalian
   discountNominal?: number; // potongan nominal yang dipakai saat pengembalian
   groupBookingCode?: string; // e.g. "GRP-2610-123" for group rentals

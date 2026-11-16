@@ -1055,14 +1055,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
                   <button
                     onClick={() => handleRoleButtonClick('customer')}
-                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
-                      currentRole === 'customer'
-                        ? 'bg-[#2f80ed] text-white font-bold'
-                        : 'text-zinc-300 hover:bg-white/10'
-                    }`}
+                    className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors text-zinc-300 hover:bg-white/10"
                   >
                     <span>Mode Pelanggan (Publik)</span>
-                    {currentRole === 'customer' && <Check className="w-3.5 h-3.5" />}
                   </button>
 
                   <button

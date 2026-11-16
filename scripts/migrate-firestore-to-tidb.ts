@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { FieldPath, getFirestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import type { ExecuteValues } from 'mysql2';
 import { getTiDBPool } from '../src/server/tidb.js';
 
 const tables = ['bikes', 'bookings', 'expenses', 'financial_settings'] as const;
@@ -42,6 +43,21 @@ const datetimeColumns = new Set(['created_at', 'returned_at', 'swapped_at', 'app
 const dateColumns = new Set([
   'start_date', 'end_date', 'actual_start_date', 'actual_return_date', 'expense_date',
 ]);
+
+const toExecuteValue = (value: unknown): ExecuteValues => {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'boolean' ||
+    value instanceof Date ||
+    value instanceof Uint8Array
+  ) {
+    return value;
+  }
+  throw new Error('Nilai kolom tidak dapat disimpan ke TiDB.');
+};
 
 const toColumn = (key: string) => {
   if (key === 'date') return 'expense_date';
@@ -135,7 +151,7 @@ const migrateCollection = async (
         : '';
       await pool.execute(
         `INSERT INTO \`${table}\` (${fields.map(field => `\`${field}\``).join(', ')}) VALUES (${fields.map(() => '?').join(', ')})${updateClause}`,
-        fields.map(field => row[field])
+        fields.map(field => toExecuteValue(row[field]))
       );
       migrated += 1;
     }
@@ -161,9 +177,11 @@ const main = async () => {
   const pool = getTiDBPool();
 
   try {
+    const databaseName = process.env.TIDB_DATABASE;
+    if (!databaseName) throw new Error('TIDB_DATABASE belum dikonfigurasi.');
     const [existingTables] = await pool.execute(
       'SELECT TABLE_NAME AS table_name FROM information_schema.tables WHERE table_schema = ?',
-      [process.env.TIDB_DATABASE]
+      [databaseName]
     );
     const availableTables = new Set(
       (existingTables as { table_name: string }[]).map(row => row.table_name)

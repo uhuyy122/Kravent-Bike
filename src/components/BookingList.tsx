@@ -722,7 +722,7 @@ export const BookingList: React.FC = () => {
                       </td>
 
                       <td className="py-3.5">
-                        {(groupStatus === 'sedang di luar' || groupStatus === 'aktif') && (
+                        {groupStatus === 'sedang di luar' && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                             {getStatusLabel(groupStatus)}
@@ -784,7 +784,7 @@ export const BookingList: React.FC = () => {
                             Detail
                           </button>
 
-                          {isAdmin && (groupStatus === 'sedang di luar' || groupStatus === 'aktif') && (
+                          {isAdmin && groupStatus === 'sedang di luar' && (
                             <button
                               onClick={() => handleReturnGroupBooking(primary)}
                               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"

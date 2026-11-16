@@ -36,6 +36,7 @@ import {
 
 interface FinancialBreakdown {
   grossRevenue: number;
+  capitalAmount: number;
   maintenanceAllocation: number;
   contentAllocation: number;
   operationalAllocation: number;
@@ -217,7 +218,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // =========================================================================
   useEffect(() => {
     // 1. Sync Bikes
-    const unsubBikes = onSnapshot(
+    const unsubBikes = onSnapshot<Bike>(
       collection(db, 'bikes'),
       snapshot => {
         setIsCloudConnected(true);
@@ -230,7 +231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               handleFirestoreError(err, OperationType.UPDATE, `bikes/${docSnap.id}`)
             );
           }
-          list.push({ ...data, id: docSnap.id, category } as Bike);
+          list.push({ ...data, id: docSnap.id, category });
         });
 
         if (snapshot.empty) {
@@ -248,7 +249,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     // 2. Sync Bookings
-    const unsubBookings = onSnapshot(
+    const unsubBookings = onSnapshot<Booking>(
       collection(db, 'bookings'),
       snapshot => {
         setIsCloudConnected(true);
@@ -257,7 +258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else {
           const list: Booking[] = [];
           snapshot.forEach(docSnap => {
-            const data = { ...docSnap.data(), id: docSnap.id } as Booking;
+            const data = { ...docSnap.data(), id: docSnap.id };
             list.push(data);
           });
           list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -272,7 +273,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     // 3. Sync Expenses
-    const unsubExpenses = onSnapshot(
+    const unsubExpenses = onSnapshot<Expense>(
       collection(db, 'expenses'),
       snapshot => {
         setIsCloudConnected(true);
@@ -281,7 +282,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else {
           const list: Expense[] = [];
           snapshot.forEach(docSnap => {
-            list.push(docSnap.data() as Expense);
+            list.push(docSnap.data());
           });
           list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
           setExpenses(list);
@@ -295,12 +296,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     // 4. Sync Financial Settings
-    const unsubSettings = onSnapshot(
+    const unsubSettings = onSnapshot<FinancialSettings>(
       doc(db, 'financial_settings', 'default'),
       docSnap => {
         setIsCloudConnected(true);
         if (docSnap.exists()) {
-          setFinancialSettings(docSnap.data() as FinancialSettings);
+          setFinancialSettings(docSnap.data());
         } else {
           setDoc(doc(db, 'financial_settings', 'default'), cleanForFirestore(INITIAL_FINANCIAL_SETTINGS)).catch(err =>
             handleFirestoreError(err, OperationType.WRITE, 'financial_settings/default')
@@ -328,10 +329,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsCloudSyncing(true);
     try {
       // 1. Ambil Bikes
-      const bikesSnap = await getDocs(collection(db, 'bikes'));
+      const bikesSnap = await getDocs<Bike>(collection(db, 'bikes'));
       if (!bikesSnap.empty) {
         const list: Bike[] = [];
-        bikesSnap.forEach(d => list.push(d.data() as Bike));
+        bikesSnap.forEach(d => list.push(d.data()));
         list.sort((a, b) => a.licenseNumber.localeCompare(b.licenseNumber));
         setBikes(list);
       } else {
@@ -339,11 +340,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 2. Ambil Bookings
-      const bookingsSnap = await getDocs(collection(db, 'bookings'));
+      const bookingsSnap = await getDocs<Booking>(collection(db, 'bookings'));
       if (!bookingsSnap.empty) {
         const list: Booking[] = [];
         bookingsSnap.forEach(d => {
-          const data = d.data() as Booking;
+          const data = d.data();
           list.push(data);
         });
         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -353,10 +354,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 3. Ambil Expenses
-      const expSnap = await getDocs(collection(db, 'expenses'));
+      const expSnap = await getDocs<Expense>(collection(db, 'expenses'));
       if (!expSnap.empty) {
         const list: Expense[] = [];
-        expSnap.forEach(d => list.push(d.data() as Expense));
+        expSnap.forEach(d => list.push(d.data()));
         list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         setExpenses(list);
       } else {
@@ -364,9 +365,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 4. Ambil Settings
-      const setSnap = await getDoc(doc(db, 'financial_settings', 'default'));
+      const setSnap = await getDoc<FinancialSettings>(doc(db, 'financial_settings', 'default'));
       if (setSnap.exists()) {
-        setFinancialSettings(setSnap.data() as FinancialSettings);
+        setFinancialSettings(setSnap.data());
       }
 
       setIsCloudConnected(true);
@@ -1022,6 +1023,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       grossRevenue,
+      capitalAmount: monthlyCapital,
       maintenanceAllocation,
       contentAllocation,
       operationalAllocation,

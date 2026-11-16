@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { FieldPath, getFirestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
-import { escape as escapeSql } from 'mysql2';
+import { escape as escapeSql, type SqlValue } from 'mysql2';
 
 const tables = ['bikes', 'bookings', 'expenses', 'financial_settings'] as const;
 type TableName = (typeof tables)[number];
@@ -44,6 +44,21 @@ const datetimeColumns = new Set(['created_at', 'returned_at', 'swapped_at', 'app
 const dateColumns = new Set([
   'start_date', 'end_date', 'actual_start_date', 'actual_return_date', 'expense_date',
 ]);
+
+const toSqlValue = (value: unknown): SqlValue => {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'boolean' ||
+    value instanceof Date ||
+    value instanceof Uint8Array
+  ) {
+    return value;
+  }
+  throw new Error('Nilai kolom tidak dapat diekspor sebagai SQL.');
+};
 
 const toColumn = (key: string) => {
   if (key === 'date') return 'expense_date';
@@ -106,7 +121,7 @@ const insertStatement = (table: TableName, row: Record<string, unknown>) => {
   const updateClause = updates.length
     ? ` ON DUPLICATE KEY UPDATE ${updates.map(field => `\`${field}\` = VALUES(\`${field}\`)`).join(', ')}`
     : '';
-  return `INSERT INTO \`${table}\` (${fields.map(field => `\`${field}\``).join(', ')}) VALUES (${fields.map(field => escapeSql(row[field])).join(', ')})${updateClause};`;
+  return `INSERT INTO \`${table}\` (${fields.map(field => `\`${field}\``).join(', ')}) VALUES (${fields.map(field => escapeSql(toSqlValue(row[field]))).join(', ')})${updateClause};`;
 };
 
 const exportCollection = async (

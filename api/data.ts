@@ -2,6 +2,8 @@ import { getVerifiedUid } from '../src/server/whatsappOtp.js';
 import { getTiDBPool } from '../src/server/tidb.js';
 import { isWhatsAppPhoneVerified } from '../src/server/whatsappOtpStore.js';
 
+type SqlParameter = string | number | bigint | boolean | Date | Buffer | Uint8Array | null;
+
 type TableName = 'bikes' | 'bookings' | 'expenses' | 'financial_settings';
 
 interface ApiRequest {
@@ -73,6 +75,21 @@ const normalizeValue = (column: string, value: unknown) => {
   }
   if (dateColumns.has(column) && typeof value === 'string') return value.slice(0, 10);
   return value;
+};
+
+const toSqlParameter = (value: unknown): SqlParameter => {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'boolean' ||
+    value instanceof Date ||
+    value instanceof Uint8Array
+  ) {
+    return value;
+  }
+  throw new Error('Tipe nilai kolom tidak didukung.');
 };
 
 const fromRow = (row: Record<string, unknown>) => Object.fromEntries(
@@ -180,7 +197,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       }
 
       const entries = Object.entries(values);
-      const row = { id, ...Object.fromEntries(entries) };
+      const row: Record<string, unknown> = { id, ...Object.fromEntries(entries) };
       const fields = Object.keys(row);
       const updates = fields.filter(field => field !== 'id');
       const updateClause = updates.length
@@ -188,7 +205,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         : '';
       await pool.execute(
         `INSERT INTO \`${table}\` (${fields.map(field => `\`${field}\``).join(', ')}) VALUES (${fields.map(() => '?').join(', ')})${updateClause}`,
-        fields.map(field => row[field])
+        fields.map(field => toSqlParameter(row[field]))
       );
       return response.status(200).json({ ok: true });
     }
@@ -209,7 +226,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       if (!entries.length) return response.status(400).json({ error: 'Tidak ada kolom untuk diperbarui.' });
       await pool.execute(
         `UPDATE \`${table}\` SET ${entries.map(([column]) => `\`${column}\` = ?`).join(', ')} WHERE id = ?`,
-        [...entries.map(([, value]) => value), id]
+        [...entries.map(([, value]) => toSqlParameter(value)), id]
       );
       return response.status(200).json({ ok: true });
     }
