@@ -148,6 +148,15 @@
     'percentage_from_gross'
   );
 
+  CREATE TABLE IF NOT EXISTS app_sessions (
+    uid CHAR(36) NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    expires_at_ms BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (uid),
+    UNIQUE KEY idx_app_sessions_token_hash (token_hash),
+    KEY idx_app_sessions_expiry (expires_at_ms)
+  );
+
   CREATE TABLE IF NOT EXISTS whatsapp_otp_challenges (
     uid VARCHAR(128) NOT NULL,
     phone VARCHAR(32) NOT NULL,

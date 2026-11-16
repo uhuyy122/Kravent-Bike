@@ -1,7 +1,5 @@
-import { signInAnonymously } from 'firebase/auth';
-import { auth } from '../firebase';
+import { getSessionToken } from '../session';
 
-export const getWhatsAppVerificationIdToken = async (): Promise<string> => {
-  const user = auth.currentUser || (await signInAnonymously(auth)).user;
-  return user.getIdToken();
+export const getWhatsAppVerificationToken = async (): Promise<string> => {
+  return getSessionToken();
 };

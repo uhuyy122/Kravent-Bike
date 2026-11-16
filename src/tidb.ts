@@ -1,5 +1,4 @@
-import { auth } from './firebase';
-import { signInAnonymously } from 'firebase/auth';
+import { getSessionToken } from './session';
 
 interface DocumentReference {
   collectionName: string;
@@ -26,17 +25,12 @@ type DataReference = DocumentReference | CollectionReference;
 
 const apiUrl = '/api/data';
 
-const getIdToken = async () => {
-  const user = auth.currentUser || (await signInAnonymously(auth)).user;
-  return user.getIdToken();
-};
-
 const request = async <T>(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   params: Record<string, string>,
   body?: Record<string, unknown>
 ): Promise<T> => {
-  const token = await getIdToken();
+  const token = await getSessionToken();
   const url = new URL(apiUrl, window.location.origin);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 

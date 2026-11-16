@@ -1,7 +1,6 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import process from 'node:process';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import { getSessionUid } from './session.js';
 
 interface ServiceAccount {
   project_id: string;
@@ -18,38 +17,15 @@ interface ApiResponse {
   json: (body: Record<string, unknown>) => void;
 }
 
-const getAdminApp = () => {
-  const existingApp = getApps()[0];
-  if (existingApp) return existingApp;
-
-  const serviceAccountJson = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON;
-  if (!serviceAccountJson) {
-    throw new Error('FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON belum dikonfigurasi.');
-  }
-
-  const serviceAccount = JSON.parse(serviceAccountJson) as ServiceAccount;
-  return initializeApp({
-    credential: cert({
-      projectId: serviceAccount.project_id,
-      clientEmail: serviceAccount.client_email,
-      privateKey: serviceAccount.private_key,
-    }),
-    projectId: serviceAccount.project_id,
-  });
-};
-
 export const getVerifiedUid = async (request: ApiRequest): Promise<string> => {
   const authorization = request.headers.authorization;
   const token = (Array.isArray(authorization) ? authorization[0] : authorization)
     ?.replace(/^Bearer\s+/i, '');
-  if (!token) throw new Error('Autentikasi Firebase dibutuhkan.');
+  if (!token) throw new Error('Autentikasi database dibutuhkan.');
 
-  try {
-    const decodedToken = await getAuth(getAdminApp()).verifyIdToken(token);
-    return decodedToken.uid;
-  } catch {
-    throw new Error('Autentikasi Firebase tidak valid.');
-  }
+  const uid = await getSessionUid(token);
+  if (!uid) throw new Error('Autentikasi database tidak valid.');
+  return uid;
 };
 
 export const getOtpHash = (uid: string, phone: string, code: string): string => {
