@@ -10,12 +10,24 @@ interface StoredSession {
 }
 
 let sessionRequest: Promise<StoredSession> | undefined;
+let legacySessionMigrated = false;
+let sessionMigratedFromSharedStorage = false;
 
 const isSessionRole = (role: unknown): role is AppSessionRole =>
   role === 'customer' || role === 'karyawan' || role === 'admin';
 
 const getStoredSession = (): StoredSession | null => {
-  const stored = localStorage.getItem(sessionStorageKey);
+  let stored = sessionStorage.getItem(sessionStorageKey);
+  if (!legacySessionMigrated) {
+    const legacySession = localStorage.getItem(sessionStorageKey);
+    if (!stored && legacySession) {
+      stored = legacySession;
+      sessionMigratedFromSharedStorage = true;
+      sessionStorage.setItem(sessionStorageKey, legacySession);
+    }
+    localStorage.removeItem(sessionStorageKey);
+    legacySessionMigrated = true;
+  }
   if (!stored) return null;
 
   try {
@@ -35,21 +47,10 @@ const getStoredSession = (): StoredSession | null => {
 };
 
 const storeSession = (session: StoredSession) => {
-  localStorage.setItem(sessionStorageKey, JSON.stringify(session));
+  sessionStorage.setItem(sessionStorageKey, JSON.stringify(session));
 };
 
-const createOrRefreshSession = async (forceRefresh = false): Promise<StoredSession> => {
-  const current = getStoredSession();
-  if (!forceRefresh && current && current.expiresAt - Date.now() > 24 * 60 * 60_000) {
-    return current;
-  }
-
-  const response = await fetch('/api/auth/session', {
-    method: 'POST',
-    headers: {
-      ...(current ? { Authorization: `Bearer ${current.token}` } : {}),
-    },
-  });
+const parseSessionResponse = async (response: Response): Promise<StoredSession> => {
   const result = await response.json() as {
     token?: unknown;
     expiresAt?: unknown;
@@ -73,17 +74,40 @@ const createOrRefreshSession = async (forceRefresh = false): Promise<StoredSessi
     expiresAt: result.expiresAt,
     role: result.role,
   };
+  return session;
+};
+
+const createOrRefreshSession = async (forceRefresh = false): Promise<StoredSession> => {
+  const current = getStoredSession();
+  if (!forceRefresh && current && current.expiresAt - Date.now() > 24 * 60 * 60_000) {
+    return current;
+  }
+
+  const response = await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: {
+      ...(current ? { Authorization: `Bearer ${current.token}` } : {}),
+    },
+  });
+  const session = await parseSessionResponse(response);
   storeSession(session);
   return session;
 };
 
 const getSession = (forceRefresh = false): Promise<StoredSession> => {
-  if (!sessionRequest) {
-    sessionRequest = createOrRefreshSession(forceRefresh).finally(() => {
-      sessionRequest = undefined;
-    });
-  }
-  return sessionRequest;
+  if (sessionRequest && !forceRefresh) return sessionRequest;
+
+  const request = createOrRefreshSession(forceRefresh);
+  sessionRequest = request;
+  void request.then(
+    () => {
+      if (sessionRequest === request) sessionRequest = undefined;
+    },
+    () => {
+      if (sessionRequest === request) sessionRequest = undefined;
+    }
+  );
+  return request;
 };
 
 export const getSessionToken = async (): Promise<string> =>
@@ -113,17 +137,14 @@ export const authenticateStaff = async (role: StaffRole, pin: string): Promise<v
 };
 
 export const switchToCustomerSession = async (): Promise<void> => {
-  const session = await getSession();
-  const response = await fetch('/api/auth/staff-session', {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${session.token}` },
-  });
-  const result = await response.json() as { role?: unknown; error?: string };
-  if (!response.ok) {
-    throw new Error(result.error || `Gagal keluar dari akses staf (${response.status}).`);
+  const session = await getSession(true);
+  if (session.role === 'customer' && !sessionMigratedFromSharedStorage) return;
+
+  const response = await fetch('/api/auth/session', { method: 'POST' });
+  const customerSession = await parseSessionResponse(response);
+  if (customerSession.role !== 'customer') {
+    throw new Error('Sesi pelanggan baru tidak valid.');
   }
-  if (result.role !== 'customer') {
-    throw new Error('Respons keluar dari akses staf tidak valid.');
-  }
-  storeSession({ ...session, role: 'customer' });
+  storeSession(customerSession);
+  sessionMigratedFromSharedStorage = false;
 };

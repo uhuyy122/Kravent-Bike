@@ -262,7 +262,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         return response.status(405).json({ error: 'Metode request tidak didukung.' });
       }
       if (role !== 'admin') {
-        return response.status(403).json({ error: 'Hanya admin yang dapat mengubah status rombongan.' });
+        return response.status(403).json({ error: 'Sesi admin tidak aktif. Masuk kembali menggunakan PIN admin.' });
       }
 
       const body = getBody(request.body);
@@ -407,7 +407,11 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
     if (request.method === 'POST') {
       if (!canManageTable(role, table) && table !== 'bookings') {
-        return response.status(403).json({ error: 'Akses untuk mengubah data ini ditolak.' });
+        return response.status(403).json({
+          error: role === 'customer'
+            ? 'Sesi staf tidak aktif. Masuk kembali menggunakan PIN admin.'
+            : 'Akses untuk mengubah data ini ditolak.',
+        });
       }
       const body = getBody(request.body);
       const id = getId(body.id);
@@ -523,7 +527,11 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
     if (request.method === 'PATCH') {
       if (!canManageTable(role, table)) {
-        return response.status(403).json({ error: 'Akses untuk mengubah data ini ditolak.' });
+        return response.status(403).json({
+          error: role === 'customer'
+            ? 'Sesi staf tidak aktif. Masuk kembali menggunakan PIN admin.'
+            : 'Akses untuk mengubah data ini ditolak.',
+        });
       }
       if (!idParam) throw new Error('ID data wajib diisi.');
       const id = getId(idParam);

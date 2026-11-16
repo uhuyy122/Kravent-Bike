@@ -152,7 +152,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const modeParam = params.get('mode');
         if (roleParam === 'customer' || modeParam === 'customer' || modeParam === 'sewa') return 'customer';
       }
-      const saved = localStorage.getItem(STORAGE_KEYS.ROLE);
+      const saved = sessionStorage.getItem(STORAGE_KEYS.ROLE);
       if (saved === 'admin' || saved === 'karyawan' || saved === 'customer') {
         return saved;
       }
@@ -213,9 +213,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFinancialSettings(INITIAL_FINANCIAL_SETTINGS);
   }, []);
 
-  // Simpan ke LocalStorage sebagai cadangan offline
+  // Simpan role per tab agar perubahan sesi tidak memengaruhi tab lain.
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ROLE, currentRole);
+    sessionStorage.setItem(STORAGE_KEYS.ROLE, currentRole);
   }, [currentRole]);
 
   useEffect(() => {
