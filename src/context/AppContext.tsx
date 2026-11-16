@@ -153,7 +153,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return INITIAL_BIKES;
+    return [];
   });
 
   const [bookings, setBookings] = useState<Booking[]>(() => {
@@ -234,12 +234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         if (snapshot.empty) {
-          INITIAL_BIKES.forEach(b => {
-            setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b)).catch(err =>
-              handleFirestoreError(err, OperationType.WRITE, `bikes/${b.id}`)
-            );
-          });
-          setBikes(INITIAL_BIKES);
+          setBikes([]);
         } else {
           list.sort((a, b) => a.licenseNumber.localeCompare(b.licenseNumber, undefined, { numeric: true }));
           setBikes(list);
@@ -282,12 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       snapshot => {
         setIsCloudConnected(true);
         if (snapshot.empty) {
-          INITIAL_EXPENSES.forEach(e => {
-            setDoc(doc(db, 'expenses', e.id), cleanForFirestore(e)).catch(err =>
-              handleFirestoreError(err, OperationType.WRITE, `expenses/${e.id}`)
-            );
-          });
-          setExpenses(INITIAL_EXPENSES);
+          setExpenses([]);
         } else {
           const list: Expense[] = [];
           snapshot.forEach(docSnap => {
@@ -345,9 +335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         list.sort((a, b) => a.licenseNumber.localeCompare(b.licenseNumber));
         setBikes(list);
       } else {
-        INITIAL_BIKES.forEach(b => {
-          setDoc(doc(db, 'bikes', b.id), cleanForFirestore(b));
-        });
+        setBikes([]);
       }
 
       // 2. Ambil Bookings
