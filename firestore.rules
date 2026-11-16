@@ -11,14 +11,6 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function hasVerifiedWhatsAppPhone() {
-      let verifiedPhonePath = /databases/$(database)/documents/verifiedWhatsAppPhones/$(request.auth.uid);
-      return request.auth != null
-        && exists(verifiedPhonePath)
-        && get(verifiedPhonePath).data.phone == request.resource.data.customerPhone
-        && get(verifiedPhonePath).data.expiresAt > request.time;
-    }
-
     // Bikes collection
     match /bikes/{bikeId} {
       allow get: if isValidId(bikeId);
@@ -31,14 +23,9 @@ service cloud.firestore {
       allow get: if isValidId(bookingId);
       allow list: if true;
       allow create: if isValidId(bookingId)
-        && bookingId != 'book-1793009088589'
-        && hasVerifiedWhatsAppPhone();
+        && bookingId != 'book-1793009088589';
       allow update: if isValidId(bookingId)
-        && bookingId != 'book-1793009088589'
-        && (
-          request.resource.data.customerPhone == resource.data.customerPhone
-          || hasVerifiedWhatsAppPhone()
-        );
+        && bookingId != 'book-1793009088589';
       allow delete: if isValidId(bookingId);
     }
 

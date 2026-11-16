@@ -29,7 +29,6 @@ import {
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo } from '../utils/pricingUtils';
 import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
-import { WhatsAppOtpVerification } from './WhatsAppOtpVerification';
 
 interface CinemaScheduleModalProps {
   bike: Bike;
@@ -80,8 +79,6 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
   // Customer info for quick WhatsApp booking
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [verifiedPhone, setVerifiedPhone] = useState('');
-  const isPhoneVerified = verifiedPhone === customerPhone.trim();
 
   const upcomingDates = getUpcomingDates(todayStr, 7);
 
@@ -113,11 +110,6 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
       alert('Masukkan nomor WhatsApp aktif pelanggan sebelum memesan.');
       return;
     }
-    if (!isPhoneVerified) {
-      alert('Verifikasi nomor WhatsApp sebelum memesan.');
-      return;
-    }
-
     try {
       // Otomatis simpan pesanan customer ke TiDB dengan status 'pending' (Menunggu ACC Admin)
       const newBook = await addBooking({
@@ -650,11 +642,6 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                       setCustomerPhone(nextValue);
                     }}
                     className="w-full text-base sm:text-xs px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-medium"
-                  />
-                  <WhatsAppOtpVerification
-                    phone={customerPhone}
-                    verified={isPhoneVerified}
-                    onVerified={setVerifiedPhone}
                   />
                 </div>
               </div>

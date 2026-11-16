@@ -13,7 +13,24 @@ interface SessionRow extends RowDataPacket {
 export type SessionRole = 'customer' | 'karyawan' | 'admin';
 const staffRoleLifetimeMs = 12 * 60 * 60_000;
 
+interface SessionRequest {
+  headers: Record<string, string | string[] | undefined>;
+}
+
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+export const getVerifiedSession = async (
+  request: SessionRequest
+): Promise<{ uid: string; role: SessionRole }> => {
+  const authorization = request.headers.authorization;
+  const token = (Array.isArray(authorization) ? authorization[0] : authorization)
+    ?.replace(/^Bearer\s+/i, '');
+  if (!token) throw new Error('Autentikasi database dibutuhkan.');
+
+  const session = await getSession(token);
+  if (!session) throw new Error('Autentikasi database tidak valid.');
+  return session;
+};
 
 export const getSession = async (
   token: string

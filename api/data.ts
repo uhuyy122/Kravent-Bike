@@ -1,7 +1,6 @@
-import { getVerifiedSession } from '../src/server/whatsappOtp.js';
+import { getVerifiedSession } from '../src/server/session.js';
 import type { SessionRole } from '../src/server/session.js';
 import { getTiDBPool } from '../src/server/tidb.js';
-import { isWhatsAppPhoneVerified } from '../src/server/whatsappOtpStore.js';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 
 type SqlParameter = string | number | bigint | boolean | Date | Buffer | Uint8Array | null;
@@ -227,7 +226,7 @@ const hasScheduleConflict = async (
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   try {
     const session = await getVerifiedSession(request);
-    const { uid, role } = session;
+    const { role } = session;
     const url = new URL(request.url || '/api/data', 'http://localhost');
     const table = getTable(url.searchParams.get('collection'));
     const idParam = url.searchParams.get('id');
@@ -275,12 +274,6 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         const existing = (existingRows as Record<string, unknown>[])[0];
         if (existing && role === 'customer') {
           return response.status(403).json({ error: 'Pelanggan tidak dapat mengubah booking yang sudah dibuat.' });
-        }
-        const phone = values.customer_phone ?? existing?.customer_phone;
-        if (role === 'customer' &&
-          (!existing || values.customer_phone !== undefined && values.customer_phone !== existing.customer_phone) &&
-          !await isWhatsAppPhoneVerified(uid, phone)) {
-          return response.status(403).json({ error: 'Verifikasi WhatsApp diperlukan sebelum menyimpan booking.' });
         }
         if (!existing && role === 'customer') {
           values.status = 'pending';

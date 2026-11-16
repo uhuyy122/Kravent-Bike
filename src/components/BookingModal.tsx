@@ -38,7 +38,6 @@ import {
 } from '../utils/scheduleUtils';
 import { OFFICIAL_ADDONS } from '../data/addons';
 import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
-import { WhatsAppOtpVerification } from './WhatsAppOtpVerification';
 
 interface BookingModalProps {
   bike?: Bike;
@@ -99,8 +98,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // LANGKAH 1: DATA DIRI & FASILITAS PENITIPAN
   const [customerName, setCustomerName] = useState(initialCustomerName || '');
   const [customerPhone, setCustomerPhone] = useState(initialCustomerPhone || '');
-  const [verifiedPhone, setVerifiedPhone] = useState('');
-  const isPhoneVerified = verifiedPhone === customerPhone.trim();
   // Catatan penitipan default KOSONG sesuai instruksi owner
   const [notes, setNotes] = useState('');
 
@@ -449,11 +446,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     if (selectedBikes.length === 0) {
       alert('Silakan pilih minimal 1 sepeda terlebih dahulu.');
-      return;
-    }
-
-    if (!isPhoneVerified) {
-      alert('Verifikasi nomor WhatsApp sebelum mengirim pesanan.');
       return;
     }
 
@@ -875,13 +867,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <span className="text-[11px] text-slate-400 mt-1 block">
                     Pastikan nomor yang diisi sesuai dengan nomor WhatsApp aktif pelanggan. Hanya angka yang diizinkan, dan nomor yang salah akan menghambat konfirmasi booking.
                   </span>
-                  {isCustomer && (
-                    <WhatsAppOtpVerification
-                      phone={customerPhone}
-                      verified={isPhoneVerified}
-                      onVerified={setVerifiedPhone}
-                    />
-                  )}
                 </div>
 
                 {/* FASILITAS PENITIPAN BARANG DI OUTLET & CATATAN */}
