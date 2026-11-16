@@ -382,9 +382,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [bookings]);
 
-  const setCurrentRole = (role: UserRole) => {
+  const setCurrentRole = useCallback((role: UserRole) => {
     setCurrentRoleState(role);
-  };
+  }, []);
 
   const addBike = async (bikeData: Omit<Bike, 'id' | 'totalRentedCount'>) => {
     const newBike: Bike = {
