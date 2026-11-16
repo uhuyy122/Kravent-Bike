@@ -39,6 +39,7 @@ import {
 } from '../utils/scheduleUtils';
 import { OFFICIAL_ADDONS } from '../data/addons';
 import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
+import { getBookingAddonTotal } from '../utils/bookingUtils';
 
 interface BookingModalProps {
   bike?: Bike;
@@ -707,56 +708,41 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
               </div>
 
-              {/* Unit Sepeda Terpilih */}
               <div className="space-y-2">
                 <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
-                  Unit Sepeda ({confirmedBookings.length} Unit):
+                  Rincian per Unit ({confirmedBookings.length} Unit):
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {confirmedBookings.map((b, idx) => (
-                    <div key={b.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+                    <div key={b.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3">
                       <img src={b.bikeImage} alt={b.bikeName} className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0" />
-                      <div className="min-w-0 flex-1 text-xs">
+                      <div className="min-w-0 flex-1 text-xs space-y-0.5">
                         <span className="font-mono text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-bold">
                           Unit #{idx + 1}: {b.bookingCode}
                         </span>
                         <h5 className="font-bold text-slate-900 truncate mt-0.5">{b.bikeName}</h5>
                         <p className="text-[11px] text-slate-500">Mulai {b.startTime} WIB • durasi hingga pengembalian</p>
+                        {b.addons?.length ? (
+                          <div className="mt-1 border-t border-slate-200 pt-1.5">
+                            {b.addons.map(addon => (
+                              <div key={addon.id} className="flex justify-between gap-2 text-[10px] text-amber-800">
+                                <span>{addon.name} x{addon.quantity}</span>
+                                <span>{formatRupiah(addon.price * addon.quantity)}</span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between gap-2 border-t border-slate-200 mt-1 pt-1 text-[10px] font-bold text-amber-900">
+                              <span>Total tambahan unit</span>
+                              <span>{formatRupiah(getBookingAddonTotal(b))}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-[10px] text-slate-400">Tanpa biaya tambahan</p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
-              {/* Addons List */}
-              {selectedAddonList.length > 0 && (
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs space-y-1">
-                  <span className="font-bold text-amber-950 block text-[11px] uppercase">
-                    Tambahan per Unit:
-                  </span>
-                  <div className="space-y-2">
-                    {confirmedBookings.map(booking => {
-                      const bookingAddons = booking.addons || [];
-                      if (bookingAddons.length === 0) return null;
-                      return (
-                        <div key={booking.id} className="rounded-lg bg-white border border-amber-100 px-2.5 py-2">
-                          <span className="font-bold text-slate-800">{booking.bikeName}</span>
-                          {bookingAddons.map(addon => (
-                            <div key={addon.id} className="flex justify-between gap-2 text-slate-600 mt-1">
-                              <span>{addon.name} x{addon.quantity}</span>
-                              <span>{formatRupiah(addon.price * addon.quantity)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-between border-t border-amber-200 pt-2 mt-2 font-extrabold text-amber-950">
-                    <span>Total tambahan (sekali sewa)</span>
-                    <span>{formatRupiah(grandTotalAddonCost)}</span>
-                  </div>
-                </div>
-              )}
 
               {/* Catatan Titip Barang */}
               {notes.trim() && (
