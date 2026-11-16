@@ -34,7 +34,8 @@ import {
   getSessionForTime,
   getOperatingHoursForSession,
   isPastHourToday,
-  BookingTimeSession
+  BookingTimeSession,
+  MAX_BOOKING_START_TIME
 } from '../utils/scheduleUtils';
 import { OFFICIAL_ADDONS } from '../data/addons';
 import { ADMIN_WHATSAPP_NUMBER } from '../utils/whatsapp';
@@ -335,8 +336,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const handleProceedToStep3 = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (startTime < '06:00' || startTime > '21:00') {
-      alert('Jam order sewa adalah mulai pukul 06:00 hingga 21:00 WIB.');
+    if (startTime < '06:00' || startTime > MAX_BOOKING_START_TIME) {
+      alert(`Jam order sewa adalah mulai pukul 06:00 hingga ${MAX_BOOKING_START_TIME} WIB.`);
       return;
     }
 

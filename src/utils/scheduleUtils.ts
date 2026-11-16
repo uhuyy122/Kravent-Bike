@@ -1,6 +1,8 @@
 import { Booking, Bike } from '../types';
 
 export type BookingTimeSession = 'pagi' | 'sore';
+export const MAX_BOOKING_START_TIME = '21:00';
+export const MAX_RETURN_TIME = '23:00';
 
 export interface TimeSlot {
   id: string;
@@ -91,7 +93,6 @@ export const CINEMA_1HR_SLOTS: TimeSlot[] = [
   { id: 'slot-1h-19', startTime: '19:00', endTime: '20:00', label: '19:00 - 20:00', durationHours: 1, session: 'sore' },
   { id: 'slot-1h-20', startTime: '20:00', endTime: '21:00', label: '20:00 - 21:00', durationHours: 1, session: 'sore' },
   { id: 'slot-1h-21', startTime: '21:00', endTime: '22:00', label: '21:00 - 22:00', durationHours: 1, session: 'sore' },
-  { id: 'slot-1h-22', startTime: '22:00', endTime: '23:00', label: '22:00 - 23:00', durationHours: 1, session: 'sore' },
 ];
 
 export const VALID_OPERATING_START_HOURS = [
@@ -229,7 +230,7 @@ export const checkBikeBookingConflict = (
         b.startTime === startTime
       )
     : false;
-  if (startTime > '21:00' && !isUnchangedExistingTime) {
+  if (startTime > MAX_BOOKING_START_TIME && !isUnchangedExistingTime) {
     return {
       hasConflict: true,
       reason: 'outside_hours',

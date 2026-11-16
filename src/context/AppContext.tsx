@@ -20,7 +20,13 @@ import {
   checkBikeBookingConflict,
   getMondaySundayWeekRange
 } from '../utils/scheduleUtils';
-import { db, handleFirestoreError, cleanForFirestore, OperationType } from '../tidb';
+import {
+  db,
+  handleFirestoreError,
+  cleanForFirestore,
+  clearProductionData,
+  OperationType,
+} from '../tidb';
 import { getBookingTotalPrice } from '../utils/bookingUtils';
 import { calculateFinancialBreakdown } from '../utils/financeUtils';
 import {
@@ -964,31 +970,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearAllProductionData = async () => {
     try {
-      // 1. Hapus semua data booking di TiDB
-      const snapB = await getDocs(collection(db, 'bookings'));
-      for (const d of snapB.docs) {
-        await deleteDoc(doc(db, 'bookings', d.id));
-      }
+      await clearProductionData();
       setBookings([]);
-
-      // 2. Hapus semua data pengeluaran di TiDB
-      const snapE = await getDocs(collection(db, 'expenses'));
-      for (const d of snapE.docs) {
-        await deleteDoc(doc(db, 'expenses', d.id));
-      }
       setExpenses([]);
-
-      // 3. Reset status seluruh sepeda ke 'tersedia' dan total disewa 0
-      const snapBikes = await getDocs(collection(db, 'bikes'));
-      for (const d of snapBikes.docs) {
-        await updateDoc(doc(db, 'bikes', d.id), {
-          status: 'tersedia',
-          totalRentedCount: 0
-        });
-      }
       setBikes(prev => prev.map(b => ({ ...b, status: 'tersedia', totalRentedCount: 0 })));
 
-      // 4. Bersihkan cache storage lokal
+      // Bersihkan cache storage lokal setelah database berhasil dikosongkan.
       if (typeof window !== 'undefined') {
         try {
           const keys = [

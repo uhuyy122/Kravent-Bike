@@ -24,7 +24,8 @@ import {
   getSessionForTime,
   getOperatingHoursForSession,
   isPastHourToday,
-  BookingTimeSession
+  BookingTimeSession,
+  MAX_BOOKING_START_TIME
 } from '../utils/scheduleUtils';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo } from '../utils/pricingUtils';
@@ -345,12 +346,12 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                 <input
                   type="time"
                   min="06:00"
-                  max="21:00"
+                  max={MAX_BOOKING_START_TIME}
                   value={startTime}
                   onChange={e => {
                     let val = e.target.value;
                     if (val && val < '06:00') val = '06:00';
-                    if (val && val > '21:00') val = '21:00';
+                    if (val && val > MAX_BOOKING_START_TIME) val = MAX_BOOKING_START_TIME;
                     setStartTime(val);
                   }}
                   className="w-full text-base sm:text-xs font-bold px-3.5 py-2.5 sm:py-2 border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 font-mono"
@@ -528,7 +529,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                     bookings,
                     bike
                   );
-                  const isHourAfterLastOrder = hourStr > '21:00';
+                  const isHourAfterLastOrder = hourStr > MAX_BOOKING_START_TIME;
                   const isHourBooked = hourAvailability.isAvailable === false && !isHourPast && !isHourAfterLastOrder;
                   const isHourUnavailable = isHourPast || isHourAfterLastOrder || isHourBooked;
                   const isUserSelected = startTime === hourStr;
@@ -557,7 +558,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                         isHourPast
                           ? `Pukul ${hourStr} SUDAH LEWAT HARI INI`
                           : isHourAfterLastOrder
-                          ? 'Jam mulai booking paling akhir adalah 21:00 WIB'
+                          ? `Jam mulai booking paling akhir adalah ${MAX_BOOKING_START_TIME} WIB`
                           : isHourBooked
                           ? hourAvailability.conflictReason || `Pukul ${hourStr} tidak tersedia`
                           : isUserSelected

@@ -2,6 +2,7 @@ import { getVerifiedSession } from '../src/server/session.js';
 import type { SessionRole } from '../src/server/session.js';
 import { getTiDBPool } from '../src/server/tidb.js';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
+import { MAX_BOOKING_START_TIME, MAX_RETURN_TIME } from '../src/utils/scheduleUtils.js';
 
 type SqlParameter = string | number | bigint | boolean | Date | Buffer | Uint8Array | null;
 
@@ -228,9 +229,36 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     const session = await getVerifiedSession(request);
     const { role } = session;
     const url = new URL(request.url || '/api/data', 'http://localhost');
+    const pool = getTiDBPool();
+
+    if (url.searchParams.get('action') === 'clear-production-data') {
+      if (request.method !== 'POST') {
+        return response.status(405).json({ error: 'Metode request tidak didukung.' });
+      }
+      if (role !== 'admin') {
+        return response.status(403).json({ error: 'Hanya admin yang dapat membersihkan data produksi.' });
+      }
+
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        await connection.execute('DELETE FROM bookings');
+        await connection.execute('DELETE FROM expenses');
+        await connection.execute(
+          "UPDATE bikes SET status = 'tersedia', total_rented_count = 0"
+        );
+        await connection.commit();
+        return response.status(200).json({ ok: true });
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    }
+
     const table = getTable(url.searchParams.get('collection'));
     const idParam = url.searchParams.get('id');
-    const pool = getTiDBPool();
 
     if (request.method === 'GET') {
       if (role !== 'admin' && (table === 'expenses' || table === 'financial_settings')) {
@@ -302,8 +330,8 @@ export default async function handler(request: ApiRequest, response: ApiResponse
           ) {
             return response.status(400).json({ error: 'Jadwal booking tidak valid.' });
           }
-          if (startTime < '06:00' || startTime > '21:00') {
-            return response.status(409).json({ error: 'Jam mulai booking harus berada pada pukul 06:00 sampai 21:00 WIB.' });
+          if (startTime < '06:00' || startTime > MAX_BOOKING_START_TIME) {
+            return response.status(409).json({ error: `Jam mulai booking harus berada pada pukul 06:00 sampai ${MAX_BOOKING_START_TIME} WIB.` });
           }
 
           const connection = await pool.getConnection();
@@ -374,6 +402,21 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       if (!entries.length) return response.status(400).json({ error: 'Tidak ada kolom untuk diperbarui.' });
       if (
         table === 'bookings' &&
+        ['actual_return_time', 'end_time'].some(column => {
+          if (!(column in values)) return false;
+          const value = values[column];
+          return value !== null && value !== '' &&
+            (typeof value !== 'string' ||
+              !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value) ||
+              value > MAX_RETURN_TIME);
+        })
+      ) {
+        return response.status(400).json({
+          error: `Jam pengembalian paling lambat pukul ${MAX_RETURN_TIME} WIB.`,
+        });
+      }
+      if (
+        table === 'bookings' &&
         ('bike_id' in values || 'start_date' in values || 'start_time' in values)
       ) {
         const connection = await pool.getConnection();
@@ -415,9 +458,9 @@ export default async function handler(request: ApiRequest, response: ApiResponse
             await connection.rollback();
             return response.status(409).json({ error: 'Sepeda sedang dalam perawatan dan tidak dapat dipesan.' });
           }
-          if (startTime < '06:00' || startTime > '21:00') {
+          if (startTime < '06:00' || startTime > MAX_BOOKING_START_TIME) {
             await connection.rollback();
-            return response.status(409).json({ error: 'Jam mulai booking harus berada pada pukul 06:00 sampai 21:00 WIB.' });
+            return response.status(409).json({ error: `Jam mulai booking harus berada pada pukul 06:00 sampai ${MAX_BOOKING_START_TIME} WIB.` });
           }
           if (await hasScheduleConflict(connection, bikeId, startDate, startTime, role, id)) {
             await connection.rollback();

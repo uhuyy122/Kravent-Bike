@@ -20,7 +20,12 @@ import { Booking, BookingStatus, Bike, PaymentMethod } from '../types';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo, calculateRentalCharge } from '../utils/pricingUtils';
-import { checkBikeBookingConflict, getSessionForTime, getTodayDateStr } from '../utils/scheduleUtils';
+import {
+  checkBikeBookingConflict,
+  getSessionForTime,
+  getTodayDateStr,
+  MAX_BOOKING_START_TIME,
+} from '../utils/scheduleUtils';
 
 interface EditBookingModalProps {
   booking: Booking;
@@ -58,7 +63,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   // Pastikan jam mulai baru berada di rentang operasional 06:00 s/d 21:00.
   const [startTime, setStartTime] = useState(() => {
     if (booking.startTime < '06:00') return '06:00';
-    return booking.startTime;
+    return booking.startTime > MAX_BOOKING_START_TIME ? MAX_BOOKING_START_TIME : booking.startTime;
   });
   const [status, setStatus] = useState<BookingStatus>(
     booking.status === 'aktif' ? 'sedang di luar' : booking.status
@@ -383,12 +388,12 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                 <input
                   type="time"
                   min="06:00"
-                  max="21:00"
+                  max={MAX_BOOKING_START_TIME}
                   value={startTime}
                   onChange={e => {
                     let val = e.target.value;
                     if (val && val < '06:00') val = '06:00';
-                    if (val && val > '21:00') val = '21:00';
+                    if (val && val > MAX_BOOKING_START_TIME) val = MAX_BOOKING_START_TIME;
                     setStartTime(val);
                   }}
                   className="w-full px-3.5 py-2.5 sm:py-2 text-base sm:text-xs font-semibold border border-slate-300 rounded-xl bg-white focus:outline-emerald-500 shadow-2xs font-mono font-bold"

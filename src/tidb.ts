@@ -110,6 +110,9 @@ export const updateDoc = async <T extends object>(reference: DocumentReference, 
 export const deleteDoc = async (reference: DocumentReference) =>
   request('DELETE', { collection: reference.collectionName, id: reference.id });
 
+export const clearProductionData = async () =>
+  request<{ ok: boolean }>('POST', { action: 'clear-production-data' });
+
 export const getDocs = async <T = Record<string, unknown>>(reference: CollectionReference): Promise<QuerySnapshot<T>> => {
   const result = await request<{ items: (T & { id: string })[] }>(
     'GET',
