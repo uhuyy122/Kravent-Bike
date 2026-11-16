@@ -1,9 +1,17 @@
-export const formatRupiah = (amount: number): string => {
+export const toFiniteNumber = (value: unknown): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value !== 'string' || value.trim() === '') return 0;
+
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+export const formatRupiah = (amount: number | string | null | undefined): string => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(toFiniteNumber(amount));
 };
 
 export const formatDateIndo = (dateStr: string): string => {

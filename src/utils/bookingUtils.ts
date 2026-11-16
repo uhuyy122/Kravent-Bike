@@ -1,4 +1,5 @@
 import { Booking, BookingAddonItem } from '../types';
+import { toFiniteNumber } from './formatters';
 
 export interface BookingAddonSummary extends BookingAddonItem {
   totalPrice: number;
@@ -14,12 +15,14 @@ export const getBookingAddonSummary = (
       const key = `${addon.id}:${addon.price}`;
       const existing = addons.get(key);
       if (existing) {
-        existing.quantity += addon.quantity;
-        existing.totalPrice += addon.price * addon.quantity;
+        existing.quantity += toFiniteNumber(addon.quantity);
+        existing.totalPrice += toFiniteNumber(addon.price) * toFiniteNumber(addon.quantity);
       } else {
         addons.set(key, {
           ...addon,
-          totalPrice: addon.price * addon.quantity,
+          quantity: toFiniteNumber(addon.quantity),
+          price: toFiniteNumber(addon.price),
+          totalPrice: toFiniteNumber(addon.price) * toFiniteNumber(addon.quantity),
         });
       }
     });
@@ -32,15 +35,20 @@ export const getBookingAddonTotal = (
   booking: Pick<Booking, 'addonTotalCost' | 'addons'>
 ): number => {
   if (booking.addons?.length) {
-    return booking.addons.reduce((sum, addon) => sum + addon.price * addon.quantity, 0);
+    return booking.addons.reduce(
+      (sum, addon) => sum + toFiniteNumber(addon.price) * toFiniteNumber(addon.quantity),
+      0
+    );
   }
-  return booking.addonTotalCost ?? 0;
+  return toFiniteNumber(booking.addonTotalCost);
 };
 
 export const getBookingTotalPrice = (
   booking: Pick<Booking, 'finalTotalPrice' | 'totalPrice' | 'lateFee' | 'addonTotalCost' | 'addons'>
 ): number => {
-  if (booking.finalTotalPrice !== undefined) return booking.finalTotalPrice;
+  if (booking.finalTotalPrice !== undefined) return toFiniteNumber(booking.finalTotalPrice);
 
-  return booking.totalPrice + getBookingAddonTotal(booking) + (booking.lateFee || 0);
+  return toFiniteNumber(booking.totalPrice) +
+    getBookingAddonTotal(booking) +
+    toFiniteNumber(booking.lateFee);
 };
