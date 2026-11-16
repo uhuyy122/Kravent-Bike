@@ -459,6 +459,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     setIsSubmitting(true);
+    const whatsappWindow = window.open('about:blank', '_blank');
+    let whatsappOpened = false;
 
     try {
       const randomSuffix = Math.floor(100 + Math.random() * 900);
@@ -540,12 +542,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(textLines)}`;
       setLastWhatsAppUrl(whatsappUrl);
-      window.open(whatsappUrl, '_blank');
+      if (whatsappWindow && !whatsappWindow.closed) {
+        whatsappWindow.location.href = whatsappUrl;
+        whatsappOpened = true;
+      }
 
       if (onBookingSuccess) {
         onBookingSuccess(createdList);
       }
     } catch (err) {
+      if (whatsappWindow && !whatsappOpened && !whatsappWindow.closed) {
+        whatsappWindow.close();
+      }
       console.error('Gagal memproses pesanan customer:', err);
       alert('Gagal memproses pesanan: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -792,15 +800,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                 {lastWhatsAppUrl && (
-                  <a
-                    href={lastWhatsAppUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Buka WhatsApp Admin</span>
-                  </a>
+                  <div className="w-full sm:w-auto">
+                    <a
+                      href={lastWhatsAppUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Buka WhatsApp Admin</span>
+                    </a>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Jika WhatsApp tidak terbuka otomatis, klik tombol ini lalu tekan Kirim.
+                    </p>
+                  </div>
                 )}
                 <button
                   type="button"
