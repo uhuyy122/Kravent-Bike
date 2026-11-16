@@ -91,6 +91,7 @@ export const Catalog: React.FC = () => {
 
   // Quick edit bike info directly from catalog for staff/admin
   const [editingBikeInCatalog, setEditingBikeInCatalog] = useState<BikeType | null>(null);
+  const [isSavingCatalogBike, setIsSavingCatalogBike] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBrand, setEditBrand] = useState('');
   const [editPriceHour, setEditPriceHour] = useState('');
@@ -106,34 +107,41 @@ export const Catalog: React.FC = () => {
     setEditDesc(b.description);
   };
 
-  const handleSaveEditBike = (e: React.FormEvent) => {
+  const handleSaveEditBike = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingBikeInCatalog) return;
+    if (!editingBikeInCatalog || isSavingCatalogBike) return;
     const updatedName = editName.trim() || editingBikeInCatalog.name;
     const updatedBrand = editBrand.trim() || editingBikeInCatalog.brand;
     const updatedPriceH = parseInt(editPriceHour, 10) || editingBikeInCatalog.pricePerHour;
     const updatedPriceD = parseInt(editPriceDay, 10) || editingBikeInCatalog.pricePerDay;
     const updatedDesc = editDesc.trim() || editingBikeInCatalog.description;
 
-    updateBike(editingBikeInCatalog.id, {
-      name: updatedName,
-      brand: updatedBrand,
-      pricePerHour: updatedPriceH,
-      pricePerDay: updatedPriceD,
-      description: updatedDesc,
-    });
-
-    if (detailBike && detailBike.id === editingBikeInCatalog.id) {
-      setDetailBike(prev => prev ? {
-        ...prev,
+    setIsSavingCatalogBike(true);
+    try {
+      await updateBike(editingBikeInCatalog.id, {
         name: updatedName,
         brand: updatedBrand,
         pricePerHour: updatedPriceH,
         pricePerDay: updatedPriceD,
         description: updatedDesc,
-      } : null);
+      });
+
+      if (detailBike && detailBike.id === editingBikeInCatalog.id) {
+        setDetailBike(prev => prev ? {
+          ...prev,
+          name: updatedName,
+          brand: updatedBrand,
+          pricePerHour: updatedPriceH,
+          pricePerDay: updatedPriceD,
+          description: updatedDesc,
+        } : null);
+      }
+      setEditingBikeInCatalog(null);
+    } catch (error) {
+      alert(`Gagal memperbarui sepeda: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSavingCatalogBike(false);
     }
-    setEditingBikeInCatalog(null);
   };
 
   // Device upload state on catalog
@@ -156,12 +164,12 @@ export const Catalog: React.FC = () => {
     setUploadingBikeId(targetBikeForUpload);
     try {
       const result = await compressImageFile(file, 900, 700, 0.72);
-      updateBike(targetBikeForUpload, { imageUrl: result.dataUrl });
+      await updateBike(targetBikeForUpload, { imageUrl: result.dataUrl });
       if (detailBike && detailBike.id === targetBikeForUpload) {
         setDetailBike(prev => prev ? { ...prev, imageUrl: result.dataUrl } : null);
       }
     } catch (err) {
-      alert('Gagal mengompresi foto: ' + (err instanceof Error ? err.message : String(err)));
+      alert('Gagal memperbarui foto sepeda: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setUploadingBikeId(null);
       setTargetBikeForUpload(null);

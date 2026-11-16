@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Lock,
   ShieldCheck,
@@ -14,7 +14,7 @@ import kraventLogo from '../assets/kravent-logo.svg';
 
 interface PinAuthModalProps {
   targetRole: 'admin' | 'karyawan';
-  onSuccess: (grantedRole: 'admin' | 'karyawan') => void;
+  onSuccess: (grantedRole: 'admin' | 'karyawan', pin: string) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -27,6 +27,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [successRole, setSuccessRole] = useState<'admin' | 'karyawan'>(initialTargetRole);
 
   const roleTitle = selectedRole === 'admin' ? 'Owner (Pemilik Usaha)' : 'Staff (Operasional Toko)';
@@ -35,32 +36,34 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
       ? 'Akses penuh Owner: Finansial bagi hasil, laba bersih, manajemen armada, dan transaksi.'
       : 'Akses Staff: Kelola transaksi harian, ACC booking, mulai sewa, terima kembali, tukar & batal.';
 
-  const handleVerify = (inputPin: string) => {
-    // PIN 3110 = Owner, PIN 3131 = Staff
-    if (inputPin === '3110') {
+  const handleVerify = useCallback(async (inputPin: string) => {
+    if (isVerifying || isSuccess) return;
+    setIsVerifying(true);
+    try {
+      await onSuccess(selectedRole, inputPin);
       setErrorMsg('');
       setIsSuccess(true);
-      setSuccessRole('admin');
-      setTimeout(() => {
-        onSuccess('admin');
-      }, 450);
-    } else if (inputPin === '3131') {
-      setErrorMsg('');
-      setIsSuccess(true);
-      setSuccessRole('karyawan');
-      setTimeout(() => {
-        onSuccess('karyawan');
-      }, 450);
-    } else {
-      setErrorMsg('PIN salah. Silakan coba lagi.');
+      setSuccessRole(selectedRole);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'PIN salah. Silakan coba lagi.');
       setPin('');
+    } finally {
+      setIsVerifying(false);
     }
-  };
+  }, [isSuccess, isVerifying, onSuccess, selectedRole]);
+
+  const handleKeyPress = useCallback((num: string) => {
+    if (pin.length >= 4 || isVerifying || isSuccess) return;
+    const nextPin = pin + num;
+    setPin(nextPin);
+    setErrorMsg('');
+    if (nextPin.length === 4) void handleVerify(nextPin);
+  }, [handleVerify, isSuccess, isVerifying, pin]);
 
   useEffect(() => {
     // Global keyboard listener untuk desktop/laptop tanpa memicu keyboard bawaan di HP
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isSuccess) return;
+      if (isSuccess || isVerifying) return;
 
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -75,34 +78,13 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
       }
       if (/^[0-9]$/.test(e.key)) {
         e.preventDefault();
-        setPin(prev => {
-          if (prev.length < 4) {
-            const next = prev + e.key;
-            if (next.length === 4) {
-              handleVerify(next);
-            }
-            return next;
-          }
-          return prev;
-        });
-        setErrorMsg('');
+        handleKeyPress(e.key);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSuccess, selectedRole]);
-
-  const handleKeyPress = (num: string) => {
-    if (pin.length < 4) {
-      const nextPin = pin + num;
-      setPin(nextPin);
-      setErrorMsg('');
-      if (nextPin.length === 4) {
-        handleVerify(nextPin);
-      }
-    }
-  };
+  }, [handleKeyPress, isSuccess, isVerifying, onClose]);
 
   const handleDelete = () => {
     setPin(prev => prev.slice(0, -1));
@@ -144,6 +126,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
         <div className="flex items-center bg-slate-800/90 p-0.5 sm:p-1 rounded-xl border border-slate-700 shrink-0">
           <button
             type="button"
+            disabled={isVerifying || isSuccess}
             onClick={() => {
               setSelectedRole('karyawan');
               setPin('');
@@ -160,6 +143,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           </button>
           <button
             type="button"
+            disabled={isVerifying || isSuccess}
             onClick={() => {
               setSelectedRole('admin');
               setPin('');
@@ -266,6 +250,8 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
               PIN Benar! Membuka akses {successRole === 'admin' ? 'Admin' : 'Karyawan'}...
             </span>
           </div>
+        ) : isVerifying ? (
+          <p className="text-[11px] text-sky-300" role="status">Memverifikasi PIN...</p>
         ) : (
           <p className="text-[11px] text-slate-400">
             Ketik 4-digit PIN rahasia Anda melalui tombol numerik di bawah
@@ -278,6 +264,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
             <button
               key={num}
               type="button"
+              disabled={isVerifying || isSuccess}
               onClick={() => handleKeyPress(num)}
               className="py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 text-white font-extrabold text-lg sm:text-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer shadow-sm active:scale-95"
             >
@@ -286,6 +273,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           ))}
           <button
             type="button"
+            disabled={isVerifying || isSuccess}
             onClick={handleClear}
             title="Bersihkan Input"
             className="py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-800 active:bg-slate-700 text-slate-400 hover:text-white font-bold text-xs sm:text-sm border border-slate-800 transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95"
@@ -295,6 +283,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           </button>
           <button
             type="button"
+            disabled={isVerifying || isSuccess}
             onClick={() => handleKeyPress('0')}
             className="py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 text-white font-extrabold text-lg sm:text-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer shadow-sm active:scale-95"
           >
@@ -302,6 +291,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
           </button>
           <button
             type="button"
+            disabled={isVerifying || isSuccess}
             onClick={handleDelete}
             className="py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-800 text-slate-400 font-bold text-xs border border-slate-800 transition-all cursor-pointer flex items-center justify-center active:scale-95"
             title="Hapus Digit"

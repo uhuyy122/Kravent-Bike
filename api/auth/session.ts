@@ -1,4 +1,4 @@
-import { getSessionUid, issueOrRefreshSession } from '../../src/server/session.js';
+import { getSession, issueOrRefreshSession } from '../../src/server/session.js';
 
 interface ApiRequest {
   method?: string;
@@ -56,9 +56,12 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
   try {
     const currentToken = getBearerToken(request);
-    const uid = currentToken ? await getSessionUid(currentToken) : null;
-    const session = await issueOrRefreshSession(uid, currentToken);
-    return response.status(200).json(session);
+    const currentSession = currentToken ? await getSession(currentToken) : null;
+    const session = await issueOrRefreshSession(currentSession?.uid ?? null, currentToken);
+    return response.status(200).json({
+      ...session,
+      role: currentSession?.role ?? 'customer',
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const code = error && typeof error === 'object' && 'code' in error

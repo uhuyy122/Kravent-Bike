@@ -104,7 +104,7 @@ function MainApp() {
                 <button
                   type="button"
                   onClick={() => handleCopyLink('admin', adminLink)}
-                  title="Salin Link Admin & Staf (Kelola Transaksi - PIN 3110 / 3131)"
+                  title="Salin Link Admin & Staf (akses dilindungi PIN server)"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-extrabold text-[11px] border border-amber-400/30 transition-all cursor-pointer shadow-xs"
                 >
                   <span>🔐 Salin Link Admin/Staf:</span>

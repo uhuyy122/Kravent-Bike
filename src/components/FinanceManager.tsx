@@ -105,6 +105,7 @@ export const FinanceManager: React.FC = () => {
   const [newDate, setNewDate] = useState('2026-10-10');
   const [newDesc, setNewDesc] = useState('');
   const [newBikeId, setNewBikeId] = useState('');
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
 
   // Helper format nama bulan
   const formatMonthName = (monthStr: string) => {
@@ -246,29 +247,44 @@ export const FinanceManager: React.FC = () => {
     if (isAdmin) setPartner1Pct(value);
   };
 
-  const handleCreateExpense = (e: React.FormEvent) => {
+  const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!isAdmin || isSavingExpense) return;
     const amountNum = parseFloat(newAmount);
     if (!newTitle.trim() || isNaN(amountNum) || amountNum <= 0) {
       alert('Mohon isi judul dan nominal pengeluaran yang valid');
       return;
     }
 
-    addExpense({
-      title: newTitle.trim(),
-      category: newCategory,
-      amount: amountNum,
-      date: newDate,
-      description: newDesc.trim() || undefined,
-      bikeId: newBikeId || undefined,
-    });
+    setIsSavingExpense(true);
+    try {
+      await addExpense({
+        title: newTitle.trim(),
+        category: newCategory,
+        amount: amountNum,
+        date: newDate,
+        description: newDesc.trim() || undefined,
+        bikeId: newBikeId || undefined,
+      });
 
-    setNewTitle('');
-    setNewAmount('');
-    setNewDesc('');
-    setNewBikeId('');
-    setShowAddExpense(false);
+      setNewTitle('');
+      setNewAmount('');
+      setNewDesc('');
+      setNewBikeId('');
+      setShowAddExpense(false);
+    } catch (error) {
+      alert(`Gagal menyimpan pengeluaran: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSavingExpense(false);
+    }
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      await deleteExpense(id);
+    } catch (error) {
+      alert(`Gagal menghapus pengeluaran: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const maintAmount =
@@ -1361,9 +1377,10 @@ export const FinanceManager: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                disabled={isSavingExpense}
+                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-xs"
               >
-                Simpan Catatan
+                {isSavingExpense ? 'Menyimpan...' : 'Simpan Catatan'}
               </button>
             </div>
           </form>
@@ -1424,7 +1441,7 @@ export const FinanceManager: React.FC = () => {
                   {isAdmin && (
                     <td className="py-3 text-right pr-2">
                       <button
-                        onClick={() => deleteExpense(exp.id)}
+                        onClick={() => void handleDeleteExpense(exp.id)}
                         className="p-1 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50"
                         title="Hapus Catatan"
                       >

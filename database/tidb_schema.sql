@@ -152,9 +152,20 @@
     uid CHAR(36) NOT NULL,
     token_hash CHAR(64) NOT NULL,
     expires_at_ms BIGINT UNSIGNED NOT NULL,
+    role VARCHAR(16) NOT NULL DEFAULT 'customer',
+    role_expires_at_ms BIGINT UNSIGNED NULL,
     PRIMARY KEY (uid),
     UNIQUE KEY idx_app_sessions_token_hash (token_hash),
     KEY idx_app_sessions_expiry (expires_at_ms)
+  );
+
+  CREATE TABLE IF NOT EXISTS app_staff_pin_attempts (
+    subject_hash CHAR(64) NOT NULL,
+    window_started_at_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    locked_until_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (subject_hash),
+    KEY idx_app_staff_pin_attempts_lock (locked_until_ms)
   );
 
   CREATE TABLE IF NOT EXISTS whatsapp_otp_challenges (

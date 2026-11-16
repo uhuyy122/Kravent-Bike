@@ -56,6 +56,7 @@ export const FleetManager: React.FC = () => {
 
   // Device upload state
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [compressionStats, setCompressionStats] = useState<CompressionResult | null>(null);
   const [photoSourceMode, setPhotoSourceMode] = useState<'upload' | 'url'>('upload');
 
@@ -117,9 +118,9 @@ export const FleetManager: React.FC = () => {
     }
   };
 
-  const handleSaveBike = (e: React.FormEvent) => {
+  const handleSaveBike = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!isAdmin || isSaving) return;
 
     if (!name.trim() || !licenseNumber.trim()) {
       alert('Mohon isi nama sepeda dan kode unit');
@@ -142,13 +143,35 @@ export const FleetManager: React.FC = () => {
       status,
     };
 
-    if (editingBike) {
-      updateBike(editingBike.id, payload);
-    } else {
-      addBike(payload);
+    setIsSaving(true);
+    try {
+      if (editingBike) {
+        await updateBike(editingBike.id, payload);
+      } else {
+        await addBike(payload);
+      }
+      setShowModal(false);
+    } catch (error) {
+      alert(`Gagal menyimpan sepeda: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSaving(false);
     }
+  };
 
-    setShowModal(false);
+  const handleUpdateBikeStatus = async (id: string, nextStatus: BikeStatus) => {
+    try {
+      await updateBikeStatus(id, nextStatus);
+    } catch (error) {
+      alert(`Gagal memperbarui status sepeda: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleDeleteBike = async (id: string) => {
+    try {
+      await deleteBike(id);
+    } catch (error) {
+      alert(`Gagal menghapus sepeda: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const filteredBikes = bikes.filter(b => {
@@ -300,7 +323,7 @@ export const FleetManager: React.FC = () => {
                   {isAdmin ? (
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => updateBikeStatus(b.id, 'tersedia')}
+                        onClick={() => void handleUpdateBikeStatus(b.id, 'tersedia')}
                         className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                           b.status === 'tersedia'
                             ? 'bg-emerald-600 text-white'
@@ -310,7 +333,7 @@ export const FleetManager: React.FC = () => {
                         Tersedia
                       </button>
                       <button
-                        onClick={() => updateBikeStatus(b.id, 'disewa')}
+                        onClick={() => void handleUpdateBikeStatus(b.id, 'disewa')}
                         className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                           b.status === 'disewa'
                             ? 'bg-amber-600 text-white'
@@ -320,7 +343,7 @@ export const FleetManager: React.FC = () => {
                         Disewa
                       </button>
                       <button
-                        onClick={() => updateBikeStatus(b.id, 'maintenance')}
+                        onClick={() => void handleUpdateBikeStatus(b.id, 'maintenance')}
                         className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                           b.status === 'maintenance'
                             ? 'bg-rose-600 text-white'
@@ -352,7 +375,7 @@ export const FleetManager: React.FC = () => {
                     <button
                       onClick={() => {
                         if (window.confirm(`Hapus sepeda ${b.name} (${b.licenseNumber}) dari armada?`)) {
-                          deleteBike(b.id);
+                          void handleDeleteBike(b.id);
                         }
                       }}
                       className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition-colors"
@@ -610,7 +633,7 @@ export const FleetManager: React.FC = () => {
                         accept="image/*"
                         onChange={handleDeviceFileUpload}
                         className="hidden"
-                        disabled={isCompressing}
+                        disabled={isCompressing || isSaving}
                       />
                       {isCompressing ? (
                         <div className="flex flex-col items-center gap-2 py-2 text-emerald-700">
@@ -722,7 +745,7 @@ export const FleetManager: React.FC = () => {
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Simpan ke Armada</span>
+                  <span>{isSaving ? 'Menyimpan...' : 'Simpan ke Armada'}</span>
                 </button>
               </div>
             </form>

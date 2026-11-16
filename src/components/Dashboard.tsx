@@ -201,11 +201,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateTab }) => {
     b => b.startDate === todayStr || b.actualStartDate === todayStr || b.status === 'aktif' || b.status === 'sedang di luar'
   );
 
-  const handleStartRental = (booking: Booking) => {
-    updateBookingStatus(booking.id, 'sedang di luar', {
-      actualStartDate: getTodayDateStr(),
-      actualStartTime: getCurrentTimeStr(),
-    });
+  const handleStartRental = async (booking: Booking) => {
+    try {
+      await updateBookingStatus(booking.id, 'sedang di luar', {
+        actualStartDate: getTodayDateStr(),
+        actualStartTime: getCurrentTimeStr(),
+      });
+    } catch (error) {
+      alert(`Gagal memulai penyewaan: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   return (

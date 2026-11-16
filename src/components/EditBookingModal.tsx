@@ -21,7 +21,6 @@ import { useApp } from '../context/AppContext';
 import { formatRupiah, formatDateIndo } from '../utils/formatters';
 import { getDateRateInfo, calculateRentalCharge } from '../utils/pricingUtils';
 import { checkBikeBookingConflict, getSessionForTime, getTodayDateStr } from '../utils/scheduleUtils';
-import { WhatsAppOtpVerification } from './WhatsAppOtpVerification';
 
 interface EditBookingModalProps {
   booking: Booking;
@@ -70,7 +69,6 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   // Customer Data
   const [customerName, setCustomerName] = useState(booking.customerName);
   const [customerPhone, setCustomerPhone] = useState(booking.customerPhone);
-  const [verifiedPhone, setVerifiedPhone] = useState('');
   const [idCardNumber, setIdCardNumber] = useState(booking.idCardNumber || '');
   const [notes, setNotes] = useState(booking.notes || '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(booking.paymentMethod);
@@ -156,8 +154,10 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   }, [bikeId, startDate, startTime, bookings, selectedBike, booking.id]);
 
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
     if (!customerPhone.trim()) {
       setErrorMessage('Nomor WhatsApp pelanggan wajib diisi sebelum menyimpan perubahan.');
       return;
@@ -173,8 +173,9 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
       return;
     }
 
+    setIsSaving(true);
     try {
-      updateBooking(booking.id, {
+      await updateBooking(booking.id, {
         bikeId,
         bikeName: selectedBike.name,
         bikeImage: selectedBike.imageUrl,
@@ -211,8 +212,10 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
       if (onSuccess) onSuccess();
       onClose();
-    } catch (e: any) {
-      setErrorMessage(e?.message || 'Gagal menyimpan perubahan.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Gagal menyimpan perubahan.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -579,13 +582,6 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                 }}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-emerald-500 font-medium"
               />
-              {customerPhone.trim() !== booking.customerPhone.trim() && (
-                <WhatsAppOtpVerification
-                  phone={customerPhone}
-                  verified={Boolean(customerPhone.trim())}
-                  onVerified={() => setVerifiedPhone(customerPhone.trim())}
-                />
-              )}
             </div>
 
             <div>
@@ -659,16 +655,16 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
           </button>
           <button
             type="button"
-            disabled={conflictCheck.hasConflict}
+            disabled={conflictCheck.hasConflict || isSaving}
             onClick={handleSave}
             className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer ${
-              conflictCheck.hasConflict
+              conflictCheck.hasConflict || isSaving
                 ? 'bg-slate-400 text-white cursor-not-allowed'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white'
             }`}
           >
             <Save className="w-4 h-4" />
-            <span>Simpan Perubahan</span>
+            <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
           </button>
         </div>
       </div>

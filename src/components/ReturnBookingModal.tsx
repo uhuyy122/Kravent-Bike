@@ -50,6 +50,7 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
   const [returnNotes, setReturnNotes] = useState(
     primaryBooking.returnNotes || 'Unit sepeda kembali dalam kondisi baik dan lengkap (helm & kunci gembok).'
   );
+  const [isSaving, setIsSaving] = useState(false);
   const [paymentNotes, setPaymentNotes] = useState(primaryBooking.paymentNotes || '');
   const [feePaymentMethod, setFeePaymentMethod] = useState<'cash' | 'qris' | 'transfer'>(
     primaryBooking.paymentMethod === 'qris'
@@ -132,7 +133,8 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
   const rentalTotal = itemRentalDetails.reduce((sum, entry) => sum + entry.rentalCost, 0);
   const addonTotal = itemRentalDetails.reduce((sum, entry) => sum + entry.addonTotal, 0);
 
-  const handleConfirmReturn = () => {
+  const handleConfirmReturn = async () => {
+    if (isSaving) return;
     if (hasInvalidReturnTime) {
       alert('Waktu pengembalian tidak boleh lebih awal dari waktu mulai sewa.');
       return;
@@ -140,35 +142,40 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
 
     const returnIso = `${returnDate}T${returnTime}:00`;
 
-    items.forEach((item, index) => {
-      const rental = itemRentalDetails[index];
-      const finalItemTotal = distributedTotals[index] || 0;
-
-      updateBookingStatus(item.id, 'selesai', {
-        returnedAt: returnIso,
-        actualReturnDate: returnDate,
-        actualReturnTime: returnTime,
-        endDate: returnDate,
-        endTime: returnTime,
-        durationType: 'jam',
-        durationValue: rental.durationHours,
-        totalPrice: rental.rentalCost,
-        lateMinutes: 0,
-        lateExtraHours: 0,
-        lateFee: 0,
-        finalTotalPrice: finalItemTotal,
-        returnNotes,
-        paymentNotes,
-        discountPercent: discountMode === 'percent' ? discountValue : 0,
-        discountNominal: discountMode === 'nominal' ? discountValue : 0,
-        handoverBy: currentRole === 'admin' ? 'Admin Kravent Bike' : 'Karyawan Shift',
-        paymentMethod: feePaymentMethod,
-        paymentStatus: 'lunas',
-      });
-    });
-
-    onSuccess?.();
-    onClose();
+    setIsSaving(true);
+    try {
+      await Promise.all(items.map((item, index) => {
+        const rental = itemRentalDetails[index];
+        const finalItemTotal = distributedTotals[index] || 0;
+        return updateBookingStatus(item.id, 'selesai', {
+          returnedAt: returnIso,
+          actualReturnDate: returnDate,
+          actualReturnTime: returnTime,
+          endDate: returnDate,
+          endTime: returnTime,
+          durationType: 'jam',
+          durationValue: rental.durationHours,
+          totalPrice: rental.rentalCost,
+          lateMinutes: 0,
+          lateExtraHours: 0,
+          lateFee: 0,
+          finalTotalPrice: finalItemTotal,
+          returnNotes,
+          paymentNotes,
+          discountPercent: discountMode === 'percent' ? discountValue : 0,
+          discountNominal: discountMode === 'nominal' ? discountValue : 0,
+          handoverBy: currentRole === 'admin' ? 'Admin Kravent Bike' : 'Karyawan Shift',
+          paymentMethod: feePaymentMethod,
+          paymentStatus: 'lunas',
+        });
+      }));
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      alert(`Gagal menyimpan pengembalian: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const generateWaMessage = () => {
@@ -500,10 +507,10 @@ export const ReturnBookingModal: React.FC<ReturnBookingModalProps> = ({
             <button
               type="button"
               onClick={handleConfirmReturn}
-              disabled={hasInvalidReturnTime}
+              disabled={hasInvalidReturnTime || isSaving}
               className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-sm transition-colors shadow-lg shadow-emerald-600/20"
             >
-              Konfirmasi
+              {isSaving ? 'Menyimpan...' : 'Konfirmasi'}
             </button>
           </div>
         </div>

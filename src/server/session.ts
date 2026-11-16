@@ -6,21 +6,58 @@ const sessionLifetimeMs = 90 * 24 * 60 * 60_000;
 
 interface SessionRow extends RowDataPacket {
   uid: string;
+  role: SessionRole;
+  role_expires_at_ms: number | string | null;
 }
+
+export type SessionRole = 'customer' | 'karyawan' | 'admin';
+const staffRoleLifetimeMs = 12 * 60 * 60_000;
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
-export const getSessionUid = async (token: string): Promise<string | null> => {
+export const getSession = async (
+  token: string
+): Promise<{ uid: string; role: SessionRole } | null> => {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
 
   const [rows] = await getTiDBPool().execute<SessionRow[]>(
-    `SELECT uid
+    `SELECT uid, role, role_expires_at_ms
      FROM app_sessions
      WHERE token_hash = ? AND expires_at_ms > ?
      LIMIT 1`,
     [hashToken(token), Date.now()]
   );
-  return rows[0]?.uid ?? null;
+  const session = rows[0];
+  if (!session) return null;
+  let role: SessionRole = session.role === 'admin' || session.role === 'karyawan'
+    ? session.role
+    : 'customer';
+  if (
+    role !== 'customer' &&
+    (!session.role_expires_at_ms || Number(session.role_expires_at_ms) <= Date.now())
+  ) {
+    role = 'customer';
+    await getTiDBPool().execute(
+      `UPDATE app_sessions
+       SET role = 'customer', role_expires_at_ms = NULL
+       WHERE uid = ?
+         AND role IN ('admin', 'karyawan')
+         AND (role_expires_at_ms IS NULL OR role_expires_at_ms <= ?)`,
+      [session.uid, Date.now()]
+    );
+  }
+  return { uid: session.uid, role };
+};
+
+export const getSessionUid = async (token: string): Promise<string | null> =>
+  (await getSession(token))?.uid ?? null;
+
+export const setSessionRole = async (uid: string, role: SessionRole): Promise<void> => {
+  const roleExpiresAt = role === 'customer' ? null : Date.now() + staffRoleLifetimeMs;
+  await getTiDBPool().execute(
+    'UPDATE app_sessions SET role = ?, role_expires_at_ms = ? WHERE uid = ?',
+    [role, roleExpiresAt, uid]
+  );
 };
 
 export const issueOrRefreshSession = async (
@@ -45,8 +82,8 @@ export const issueOrRefreshSession = async (
     [now]
   );
   await getTiDBPool().execute(
-    `INSERT INTO app_sessions (uid, token_hash, expires_at_ms)
-     VALUES (?, ?, ?)`,
+    `INSERT INTO app_sessions (uid, token_hash, expires_at_ms, role)
+     VALUES (?, ?, ?, 'customer')`,
     [uid, hashToken(token), expiresAt]
   );
   return { token, expiresAt };

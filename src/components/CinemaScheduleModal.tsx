@@ -81,7 +81,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [verifiedPhone, setVerifiedPhone] = useState('');
-  const isPhoneVerified = Boolean(customerPhone.trim());
+  const isPhoneVerified = verifiedPhone === customerPhone.trim();
 
   const upcomingDates = getUpcomingDates(todayStr, 7);
 
@@ -111,6 +111,10 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
     }
     if (!customerPhone.trim()) {
       alert('Masukkan nomor WhatsApp aktif pelanggan sebelum memesan.');
+      return;
+    }
+    if (!isPhoneVerified) {
+      alert('Verifikasi nomor WhatsApp sebelum memesan.');
       return;
     }
 
@@ -650,7 +654,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
                   <WhatsAppOtpVerification
                     phone={customerPhone}
                     verified={isPhoneVerified}
-                    onVerified={() => setVerifiedPhone(customerPhone.trim())}
+                    onVerified={setVerifiedPhone}
                   />
                 </div>
               </div>

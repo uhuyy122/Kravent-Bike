@@ -227,17 +227,22 @@ export const BookingList: React.FC = () => {
     }
   };
 
-  const handleAccBooking = (booking: Booking) => {
+  const handleAccBooking = async (booking: Booking) => {
     const staffName = isAdmin ? 'Admin Owner' : 'Karyawan Shift';
     const groupItems = getGroupItemsForBooking(booking);
 
-    groupItems.filter(item => item.status === 'pending').forEach(item => {
-      updateBookingStatus(item.id, 'booking', {
+    try {
+      await Promise.all(groupItems.filter(item => item.status === 'pending').map(item =>
+        updateBookingStatus(item.id, 'booking', {
         approvedAt: new Date().toISOString(),
         approvedBy: staffName,
         handoverBy: staffName,
-      });
-    });
+        })
+      ));
+    } catch (error) {
+      alert(`Gagal menyetujui booking: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
 
     const primaryBooking = groupItems[0] || booking;
     if (primaryBooking.customerPhone && primaryBooking.customerPhone !== '-') {
@@ -262,27 +267,35 @@ export const BookingList: React.FC = () => {
     }
   };
 
-  const handleStartGroupBooking = (booking: Booking) => {
+  const handleStartGroupBooking = async (booking: Booking) => {
     const actualStartDate = getTodayDateStr();
     const actualStartTime = getCurrentTimeStr();
 
-    getGroupItemsForBooking(booking)
-      .filter(item => item.status === 'booking')
-      .forEach(item => {
-        updateBookingStatus(item.id, 'sedang di luar', {
+    try {
+      await Promise.all(getGroupItemsForBooking(booking)
+        .filter(item => item.status === 'booking')
+        .map(item =>
+          updateBookingStatus(item.id, 'sedang di luar', {
           actualStartDate,
           actualStartTime,
           handoverBy: isAdmin ? 'Admin Owner' : 'Karyawan Shift',
-        });
-      });
+          })
+        ));
+    } catch (error) {
+      alert(`Gagal memulai booking rombongan: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
-  const handleStartSingleBooking = (booking: Booking) => {
-    updateBookingStatus(booking.id, 'sedang di luar', {
-      actualStartDate: getTodayDateStr(),
-      actualStartTime: getCurrentTimeStr(),
-      handoverBy: isAdmin ? 'Admin Owner' : 'Karyawan Shift',
-    });
+  const handleStartSingleBooking = async (booking: Booking) => {
+    try {
+      await updateBookingStatus(booking.id, 'sedang di luar', {
+        actualStartDate: getTodayDateStr(),
+        actualStartTime: getCurrentTimeStr(),
+        handoverBy: isAdmin ? 'Admin Owner' : 'Karyawan Shift',
+      });
+    } catch (error) {
+      alert(`Gagal memulai booking: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const handleReturnGroupBooking = (booking: Booking) => {
@@ -291,9 +304,22 @@ export const BookingList: React.FC = () => {
     setReturningGroupBooking(groupItems);
   };
 
-  const handleCancelSingleUnit = (booking: Booking) => {
+  const handleCancelSingleUnit = async (booking: Booking) => {
     if (window.confirm(`Batalkan satu unit ${booking.bikeName} atas nama ${booking.customerName}?`)) {
-      updateBookingStatus(booking.id, 'dibatalkan');
+      try {
+        await updateBookingStatus(booking.id, 'dibatalkan');
+      } catch (error) {
+        alert(`Gagal membatalkan booking: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  };
+
+  const handleDeleteBooking = async (booking: Booking) => {
+    if (!window.confirm(`Hapus booking ${booking.bookingCode}?`)) return;
+    try {
+      await deleteBooking(booking.id);
+    } catch (error) {
+      alert(`Gagal menghapus booking: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -804,11 +830,7 @@ export const BookingList: React.FC = () => {
 
                           {isAdmin && (
                             <button
-                              onClick={() => {
-                                if (window.confirm(`Hapus booking ${primary.bookingCode}?`)) {
-                                  deleteBooking(primary.id);
-                                }
-                              }}
+                              onClick={() => void handleDeleteBooking(primary)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               title="Hapus Data (Admin)"
                             >

@@ -43,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const {
     currentRole,
     setCurrentRole,
+    authenticateStaff,
     resetToDefaults,
     clearAllProductionData,
     bikesOutToday,
@@ -83,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   };
 
   const applyRoleChange = (role: UserRole) => {
-    setCurrentRole(role);
+    if (role === 'customer') setCurrentRole(role);
     setShowRoleSwitcherPopup(false);
     if (role === 'customer' && (activeTab === 'dashboard' || activeTab === 'bookings' || activeTab === 'fleet' || activeTab === 'finance')) {
       setActiveTab('catalog');
@@ -103,6 +104,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       setShowRoleSwitcherPopup(false);
     }
   };
+
+  useEffect(() => {
+    if (currentRole !== 'customer') setPinModalTarget(null);
+  }, [currentRole]);
 
   // Dengarkan hash URL: #sewa (Pelanggan) dan #admin (Admin & Staf)
   useEffect(() => {
@@ -1278,7 +1283,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                       </button>
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Khusus internal toko. Dilindungi PIN <strong>3110</strong> (Owner) &amp; <strong>3131</strong> (Staff).
+                      Khusus internal toko. Akses Owner dan Staff diverifikasi oleh server.
                     </p>
                     <div className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-mono text-emerald-300 truncate select-all">
                       {adminStaffUrl}
@@ -1307,8 +1312,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       {pinModalTarget && (
         <PinAuthModal
           targetRole={pinModalTarget}
-          onSuccess={(grantedRole) => {
-            applyRoleChange(grantedRole);
+          onSuccess={async (grantedRole, pin) => {
+            await authenticateStaff(grantedRole, pin);
+            setShowRoleSwitcherPopup(false);
+            setActiveTab('bookings');
             setPinModalTarget(null);
           }}
           onClose={() => setPinModalTarget(null)}

@@ -100,7 +100,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [customerName, setCustomerName] = useState(initialCustomerName || '');
   const [customerPhone, setCustomerPhone] = useState(initialCustomerPhone || '');
   const [verifiedPhone, setVerifiedPhone] = useState('');
-  const isPhoneVerified = Boolean(customerPhone.trim());
+  const isPhoneVerified = verifiedPhone === customerPhone.trim();
   // Catatan penitipan default KOSONG sesuai instruksi owner
   const [notes, setNotes] = useState('');
 
@@ -452,6 +452,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
+    if (!isPhoneVerified) {
+      alert('Verifikasi nomor WhatsApp sebelum mengirim pesanan.');
+      return;
+    }
 
     if (hasAnyConflict) {
       const conflictMsg = conflictItems
@@ -871,11 +875,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <span className="text-[11px] text-slate-400 mt-1 block">
                     Pastikan nomor yang diisi sesuai dengan nomor WhatsApp aktif pelanggan. Hanya angka yang diizinkan, dan nomor yang salah akan menghambat konfirmasi booking.
                   </span>
-                  <WhatsAppOtpVerification
-                    phone={customerPhone}
-                    verified={isPhoneVerified}
-                    onVerified={() => setVerifiedPhone(customerPhone.trim())}
-                  />
+                  {isCustomer && (
+                    <WhatsAppOtpVerification
+                      phone={customerPhone}
+                      verified={isPhoneVerified}
+                      onVerified={setVerifiedPhone}
+                    />
+                  )}
                 </div>
 
                 {/* FASILITAS PENITIPAN BARANG DI OUTLET & CATATAN */}

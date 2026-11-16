@@ -1,6 +1,6 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import process from 'node:process';
-import { getSessionUid } from './session.js';
+import { getSession, type SessionRole } from './session.js';
 
 interface ServiceAccount {
   project_id: string;
@@ -23,9 +23,22 @@ export const getVerifiedUid = async (request: ApiRequest): Promise<string> => {
     ?.replace(/^Bearer\s+/i, '');
   if (!token) throw new Error('Autentikasi database dibutuhkan.');
 
-  const uid = await getSessionUid(token);
-  if (!uid) throw new Error('Autentikasi database tidak valid.');
-  return uid;
+  const session = await getSession(token);
+  if (!session) throw new Error('Autentikasi database tidak valid.');
+  return session.uid;
+};
+
+export const getVerifiedSession = async (
+  request: ApiRequest
+): Promise<{ uid: string; role: SessionRole }> => {
+  const authorization = request.headers.authorization;
+  const token = (Array.isArray(authorization) ? authorization[0] : authorization)
+    ?.replace(/^Bearer\s+/i, '');
+  if (!token) throw new Error('Autentikasi database dibutuhkan.');
+
+  const session = await getSession(token);
+  if (!session) throw new Error('Autentikasi database tidak valid.');
+  return session;
 };
 
 export const getOtpHash = (uid: string, phone: string, code: string): string => {
