@@ -1,14 +1,12 @@
-import { createHash } from 'node:crypto';
 import {
   generateOtp,
-  getAdminDb,
   getOtpHash,
   getVerifiedUid,
   normalizeWhatsAppNumber,
   respondToMethodNotAllowed,
   sendWhatsAppOtp,
-  timestampFromMillis,
 } from '../../src/server/whatsappOtp.js';
+import { createWhatsAppOtpChallenge } from '../../src/server/whatsappOtpStore.js';
 
 interface ApiRequest {
   method?: string;
@@ -35,62 +33,17 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
     const normalizedPhone = normalizeWhatsAppNumber(phone);
     const now = Date.now();
-    const db = getAdminDb();
-    const challengeRef = db.collection('whatsappOtpChallenges').doc(uid);
-    const phoneRateLimitRef = db
-      .collection('whatsappOtpRateLimits')
-      .doc(createHash('sha256').update(normalizedPhone).digest('hex'));
     const code = generateOtp();
     const codeHash = getOtpHash(uid, phone.trim(), code);
-
-    const result = await db.runTransaction(async transaction => {
-      const challenge = await transaction.get(challengeRef);
-      const phoneRateLimit = await transaction.get(phoneRateLimitRef);
-      const existing = challenge.data();
-      const lastSentAt = typeof existing?.lastSentAt === 'number' ? existing.lastSentAt : 0;
-      if (now - lastSentAt < 60_000) {
-        return { error: 'Tunggu satu menit sebelum meminta kode baru.' };
-      }
-
-      const phoneRateLimitData = phoneRateLimit.data();
-      const phoneWindowStartedAt = typeof phoneRateLimitData?.windowStartedAt === 'number'
-        ? phoneRateLimitData.windowStartedAt
-        : now;
-      const phoneSendCount = now - phoneWindowStartedAt >= 60 * 60_000
-        ? 0
-        : typeof phoneRateLimitData?.sendCount === 'number' ? phoneRateLimitData.sendCount : 0;
-      if (phoneSendCount >= 3) {
-        return { error: 'Batas pengiriman kode ke nomor ini tercapai. Coba kembali satu jam lagi.' };
-      }
-
-      const userSendCount = typeof existing?.windowStartedAt === 'number' &&
-        now - existing.windowStartedAt < 60 * 60_000 &&
-        typeof existing.sendCount === 'number'
-        ? existing.sendCount
-        : 0;
-      if (userSendCount >= 5) {
-        return { error: 'Batas pengiriman kode tercapai. Coba kembali satu jam lagi.' };
-      }
-
-      transaction.set(challengeRef, {
-        phone: phone.trim(),
-        normalizedPhone,
-        codeHash,
-        expiresAt: timestampFromMillis(now + 5 * 60_000),
-        lastSentAt: now,
-        windowStartedAt: userSendCount === 0 ? now : existing?.windowStartedAt,
-        sendCount: userSendCount + 1,
-        attempts: 0,
-      });
-      transaction.set(phoneRateLimitRef, {
-        windowStartedAt: phoneSendCount === 0 ? now : phoneWindowStartedAt,
-        sendCount: phoneSendCount + 1,
-        lastSentAt: now,
-      });
-      return { error: null };
+    const rateLimitError = await createWhatsAppOtpChallenge({
+      uid,
+      phone: phone.trim(),
+      normalizedPhone,
+      codeHash,
+      now,
     });
 
-    if (result.error) return response.status(429).json({ error: result.error });
+    if (rateLimitError) return response.status(429).json({ error: rateLimitError });
 
     await sendWhatsAppOtp(phone.trim(), code);
     return response.status(200).json({ message: 'Kode verifikasi dikirim. Kode berlaku selama 5 menit.' });

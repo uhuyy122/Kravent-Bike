@@ -1,5 +1,6 @@
-import { getVerifiedUid, getAdminDb } from '../src/server/whatsappOtp.js';
+import { getVerifiedUid } from '../src/server/whatsappOtp.js';
 import { getTiDBPool } from '../src/server/tidb.js';
+import { isWhatsAppPhoneVerified } from '../src/server/whatsappOtpStore.js';
 
 type TableName = 'bikes' | 'bookings' | 'expenses' | 'financial_settings';
 
@@ -138,18 +139,6 @@ const nullableColumns: Record<TableName, string[]> = {
   ],
 };
 
-const hasVerifiedBookingPhone = async (uid: string, phone: unknown) => {
-  if (typeof phone !== 'string') return false;
-  const verification = await getAdminDb()
-    .collection('verifiedWhatsAppPhones')
-    .doc(uid)
-    .get();
-  const data = verification.data();
-  return data?.phone === phone &&
-    typeof data.expiresAt?.toMillis === 'function' &&
-    data.expiresAt.toMillis() > Date.now();
-};
-
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   try {
     const uid = await getVerifiedUid(request);
@@ -185,7 +174,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         const existing = (existingRows as Record<string, unknown>[])[0];
         const phone = values.customer_phone ?? existing?.customer_phone;
         if ((!existing || values.customer_phone !== undefined && values.customer_phone !== existing.customer_phone) &&
-          !await hasVerifiedBookingPhone(uid, phone)) {
+          !await isWhatsAppPhoneVerified(uid, phone)) {
           return response.status(403).json({ error: 'Verifikasi WhatsApp diperlukan sebelum menyimpan booking.' });
         }
       }
@@ -212,7 +201,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         const [rows] = await pool.execute(`SELECT customer_phone FROM bookings WHERE id = ? LIMIT 1`, [id]);
         const existing = (rows as Record<string, unknown>[])[0];
         if (existing && values.customer_phone !== existing.customer_phone &&
-          !await hasVerifiedBookingPhone(uid, values.customer_phone)) {
+          !await isWhatsAppPhoneVerified(uid, values.customer_phone)) {
           return response.status(403).json({ error: 'Verifikasi WhatsApp diperlukan untuk mengganti nomor booking.' });
         }
       }

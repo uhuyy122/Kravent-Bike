@@ -84,23 +84,5 @@
       },
       "required": ["partner1Percentage", "partner2Percentage", "partner1Name", "partner2Name"]
     }
-  },
-  "firestore": {
-    "/bikes/{bikeId}": {
-      "schema": "Bike",
-      "description": "Daftar unit sepeda rental Kravent Bike"
-    },
-    "/bookings/{bookingId}": {
-      "schema": "Booking",
-      "description": "Daftar pemesanan rental sepeda"
-    },
-    "/expenses/{expenseId}": {
-      "schema": "Expense",
-      "description": "Log pengeluaran operasional toko"
-    },
-    "/financial_settings/{settingId}": {
-      "schema": "FinancialSettings",
-      "description": "Pengaturan bagi hasil dan alokasi"
-    }
   }
 }

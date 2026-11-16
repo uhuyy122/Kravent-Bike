@@ -1,4 +1,4 @@
-  -- Skema TiDB untuk data yang saat ini tersimpan di koleksi Firestore.
+  -- Skema TiDB untuk data aplikasi dan status verifikasi OTP.
   -- Jalankan seluruh file ini di TiDB Cloud atau TiDB Server.
 
   CREATE DATABASE IF NOT EXISTS kravent_bike
@@ -146,4 +146,31 @@
     10,
     15,
     'percentage_from_gross'
+  );
+
+  CREATE TABLE IF NOT EXISTS whatsapp_otp_challenges (
+    uid VARCHAR(128) NOT NULL,
+    phone VARCHAR(32) NOT NULL,
+    code_hash CHAR(64) NOT NULL,
+    expires_at_ms BIGINT UNSIGNED NOT NULL,
+    attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (uid),
+    KEY idx_whatsapp_otp_challenges_expiry (expires_at_ms)
+  );
+
+  CREATE TABLE IF NOT EXISTS whatsapp_otp_rate_limits (
+    subject_hash CHAR(64) NOT NULL,
+    window_started_at_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    send_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    last_sent_at_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (subject_hash),
+    KEY idx_whatsapp_otp_rate_limits_window (window_started_at_ms)
+  );
+
+  CREATE TABLE IF NOT EXISTS whatsapp_verified_phones (
+    uid VARCHAR(128) NOT NULL,
+    phone VARCHAR(32) NOT NULL,
+    expires_at_ms BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (uid),
+    KEY idx_whatsapp_verified_phones_expiry (expires_at_ms)
   );

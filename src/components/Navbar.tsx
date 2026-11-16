@@ -1358,7 +1358,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   ⚠️ Perhatian Tindakan Reset:
                 </span>
                 <p className="text-[11px] leading-relaxed">
-                  Tindakan ini akan <strong>menghapus permanen seluruh riwayat transaksi rental/booking dan catatan pengeluaran</strong> dari database cloud Firestore dan penyimpanan lokal perangkat.
+                  Tindakan ini akan <strong>menghapus permanen seluruh riwayat transaksi rental/booking dan catatan pengeluaran</strong> dari database cloud TiDB dan penyimpanan lokal perangkat.
                 </p>
               </div>
 

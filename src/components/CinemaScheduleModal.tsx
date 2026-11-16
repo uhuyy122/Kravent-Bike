@@ -115,7 +115,7 @@ export const CinemaScheduleModal: React.FC<CinemaScheduleModalProps> = ({
     }
 
     try {
-      // Otomatis simpan pesanan customer ke Firestore dengan status 'pending' (Menunggu ACC Admin)
+      // Otomatis simpan pesanan customer ke TiDB dengan status 'pending' (Menunggu ACC Admin)
       const newBook = await addBooking({
         bikeId: bike.id,
         bikeName: bike.name,

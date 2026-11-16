@@ -1,10 +1,9 @@
 import {
-  getAdminDb,
   getVerifiedUid,
   isOtpHashMatch,
   respondToMethodNotAllowed,
-  timestampFromMillis,
 } from '../../src/server/whatsappOtp.js';
+import { verifyWhatsAppOtpChallenge } from '../../src/server/whatsappOtpStore.js';
 
 interface ApiRequest {
   method?: string;
@@ -35,49 +34,19 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     }
 
     const phone = body.phone.trim();
-    const uidRef = getAdminDb().collection('whatsappOtpChallenges').doc(uid);
-    const verifiedPhoneRef = getAdminDb().collection('verifiedWhatsAppPhones').doc(uid);
     const now = Date.now();
+    const result = await verifyWhatsAppOtpChallenge(
+      uid,
+      phone,
+      body.code,
+      now,
+      isOtpHashMatch
+    );
 
-    const result = await getAdminDb().runTransaction(async transaction => {
-      const challenge = await transaction.get(uidRef);
-      const data = challenge.data();
-      if (
-        !data ||
-        data.phone !== phone ||
-        !(data.expiresAt instanceof Date || typeof data.expiresAt?.toMillis === 'function') ||
-        data.expiresAt.toMillis() <= now
-      ) {
-        return { status: 'expired' as const };
-      }
-
-      if (typeof data.attempts === 'number' && data.attempts >= 5) {
-        transaction.delete(uidRef);
-        return { status: 'locked' as const };
-      }
-
-      if (!isOtpHashMatch(String(data.codeHash || ''), uid, phone, body.code as string)) {
-        const attempts = (typeof data.attempts === 'number' ? data.attempts : 0) + 1;
-        if (attempts >= 5) {
-          transaction.delete(uidRef);
-          return { status: 'locked' as const };
-        }
-        transaction.update(uidRef, { attempts });
-        return { status: 'invalid' as const };
-      }
-
-      transaction.set(verifiedPhoneRef, {
-        phone,
-        expiresAt: timestampFromMillis(now + 30 * 60_000),
-      });
-      transaction.delete(uidRef);
-      return { status: 'verified' as const };
-    });
-
-    if (result.status !== 'verified') {
-      const error = result.status === 'expired'
+    if (result !== 'verified') {
+      const error = result === 'expired'
         ? 'Kode verifikasi salah atau sudah kedaluwarsa. Minta kode baru.'
-        : result.status === 'locked'
+        : result === 'locked'
           ? 'Terlalu banyak percobaan. Minta kode verifikasi baru.'
           : 'Kode verifikasi salah. Periksa kembali kode yang diterima.';
       return response.status(400).json({ error });

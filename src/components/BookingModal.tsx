@@ -443,7 +443,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   };
 
-  // Submit Customer ➔ Simpan Pending ke Firestore + Buka WhatsApp Admin
+  // Submit Customer ➔ Simpan Pending ke TiDB + Buka WhatsApp Admin
   const handleCustomerSendWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
 

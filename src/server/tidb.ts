@@ -1,4 +1,5 @@
 import process from 'node:process';
+import { readFileSync } from 'node:fs';
 import { createPool, type Pool } from 'mysql2/promise';
 
 let pool: Pool | undefined;
@@ -16,6 +17,13 @@ export const getTiDBPool = () => {
     throw new Error('TIDB_PORT tidak valid.');
   }
 
+  const caSetting = process.env.TIDB_SSL_CA?.replace(/\\n/g, '\n');
+  const ca = caSetting
+    ? caSetting.trimStart().startsWith('-----BEGIN CERTIFICATE-----')
+      ? caSetting
+      : readFileSync(caSetting, 'utf8')
+    : undefined;
+
   pool = createPool({
     host: TIDB_HOST,
     port,
@@ -24,7 +32,7 @@ export const getTiDBPool = () => {
     database: TIDB_DATABASE,
     ssl: {
       rejectUnauthorized: true,
-      ...(process.env.TIDB_SSL_CA ? { ca: process.env.TIDB_SSL_CA.replace(/\\n/g, '\n') } : {}),
+      ...(ca ? { ca } : {}),
     },
     connectionLimit: 5,
     dateStrings: true,

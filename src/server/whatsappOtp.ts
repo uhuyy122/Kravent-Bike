@@ -2,7 +2,6 @@ import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import process from 'node:process';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { Timestamp, getFirestore } from 'firebase-admin/firestore';
 
 interface ServiceAccount {
   project_id: string;
@@ -29,11 +28,6 @@ const getAdminApp = () => {
   }
 
   const serviceAccount = JSON.parse(serviceAccountJson) as ServiceAccount;
-  const databaseId = process.env.FIRESTORE_DATABASE_ID;
-  if (!databaseId) {
-    throw new Error('FIRESTORE_DATABASE_ID belum dikonfigurasi.');
-  }
-
   return initializeApp({
     credential: cert({
       projectId: serviceAccount.project_id,
@@ -42,13 +36,6 @@ const getAdminApp = () => {
     }),
     projectId: serviceAccount.project_id,
   });
-};
-
-export const getAdminDb = () => {
-  const app = getAdminApp();
-  const databaseId = process.env.FIRESTORE_DATABASE_ID;
-  if (!databaseId) throw new Error('FIRESTORE_DATABASE_ID belum dikonfigurasi.');
-  return getFirestore(app, databaseId);
 };
 
 export const getVerifiedUid = async (request: ApiRequest): Promise<string> => {
@@ -148,5 +135,3 @@ export const respondToMethodNotAllowed = (response: ApiResponse) =>
   response.status(405).json({ error: 'Metode request tidak didukung.' });
 
 export const generateOtp = (): string => String(randomInt(0, 1_000_000)).padStart(6, '0');
-
-export const timestampFromMillis = (milliseconds: number) => Timestamp.fromMillis(milliseconds);
