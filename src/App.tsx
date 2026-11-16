@@ -129,7 +129,7 @@ function MainApp() {
 
           {(activeTab === 'catalog' || currentRole === 'customer') && <Catalog />}
 
-          {activeTab === 'bookings' && <BookingList />}
+          {activeTab === 'bookings' && currentRole !== 'customer' && <BookingList />}
 
           {activeTab === 'fleet' && <FleetManager />}
 

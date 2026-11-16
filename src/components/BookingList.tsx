@@ -604,6 +604,9 @@ export const BookingList: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredBookings.map(group => {
                   const primary = group.primary;
+                  const customerPhone = typeof primary.customerPhone === 'string'
+                    ? primary.customerPhone
+                    : '';
                   const groupStatus = getGroupStatus(group.items);
                   const totalGroupPrice = group.items.reduce((sum, item) => {
                     return sum + getBookingTotalPrice(item);
@@ -680,14 +683,18 @@ export const BookingList: React.FC = () => {
                         <div className="font-semibold text-slate-800">{primary.customerName}</div>
                         <div className="text-slate-400 text-[11px] flex items-center gap-1">
                           <Phone className="w-3 h-3" />
-                          <a
-                            href={`https://wa.me/62${primary.customerPhone.replace(/^0/, '')}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hover:underline hover:text-emerald-600 font-mono"
-                          >
-                            {primary.customerPhone}
-                          </a>
+                          {customerPhone ? (
+                            <a
+                              href={`https://wa.me/62${customerPhone.replace(/^0/, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:underline hover:text-emerald-600 font-mono"
+                            >
+                              {customerPhone}
+                            </a>
+                          ) : (
+                            <span className="font-mono">-</span>
+                          )}
                         </div>
                         {primary.notes && (
                           <div className="mt-1 text-[10px] text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 max-w-[180px] truncate" title={primary.notes}>
