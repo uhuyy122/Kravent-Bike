@@ -31,7 +31,7 @@ import { checkBikeBookingConflict, getCurrentTimeStr, getSessionForTime, getToda
 import { getBookingAddonTotal, getBookingTotalPrice } from '../utils/bookingUtils';
 
 export const BookingList: React.FC = () => {
-  const { bookings, addBooking, updateBooking, updateBookingStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
+  const { bookings, addBooking, updateBooking, updateBookingStatus, updateBookingGroupStatus, deleteBooking, currentRole, bikes, financialBreakdown, financialSettings } = useApp();
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -76,12 +76,15 @@ export const BookingList: React.FC = () => {
     return 'selesai';
   };
 
-  const getGroupItemsForBooking = (booking: Booking) => {
-    if (booking.groupBookingCode) {
-      return bookings.filter(b => b.groupBookingCode === booking.groupBookingCode);
-    }
+  const getBookingGroupCode = (booking: Booking) =>
+    booking.groupBookingCode ||
+    booking.notes?.match(/(?:^|\s)\(?Rombongan \d+\/\d+ - (GRP-\d{4}-\d{3})\)?$/i)?.[1];
 
-    return [booking];
+  const getGroupItemsForBooking = (booking: Booking) => {
+    const groupCode = getBookingGroupCode(booking);
+    if (!groupCode) return [booking];
+
+    return bookings.filter(b => getBookingGroupCode(b) === groupCode);
   };
 
   const getNextBooking = (booking: Booking) =>
@@ -97,7 +100,7 @@ export const BookingList: React.FC = () => {
       .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
 
   const groupedBookings = bookings.reduce<Array<{ key: string; items: Booking[]; primary: Booking }>>((acc, booking) => {
-    const key = booking.groupBookingCode || booking.id;
+    const key = getBookingGroupCode(booking) || booking.id;
     const group = acc.find(item => item.key === key);
 
     if (group) {
@@ -232,13 +235,14 @@ export const BookingList: React.FC = () => {
     const groupItems = getGroupItemsForBooking(booking);
 
     try {
-      await Promise.all(groupItems.filter(item => item.status === 'pending').map(item =>
-        updateBookingStatus(item.id, 'booking', {
-        approvedAt: new Date().toISOString(),
-        approvedBy: staffName,
-        handoverBy: staffName,
-        })
-      ));
+      const pendingItems = groupItems.filter(item => item.status === 'pending');
+      if (pendingItems.length > 0) {
+        await updateBookingGroupStatus(pendingItems.map(item => item.id), 'booking', {
+          approvedAt: new Date().toISOString(),
+          approvedBy: staffName,
+          handoverBy: staffName,
+        });
+      }
     } catch (error) {
       alert(`Gagal menyetujui booking: ${error instanceof Error ? error.message : String(error)}`);
       return;
@@ -272,15 +276,15 @@ export const BookingList: React.FC = () => {
     const actualStartTime = getCurrentTimeStr();
 
     try {
-      await Promise.all(getGroupItemsForBooking(booking)
-        .filter(item => item.status === 'booking')
-        .map(item =>
-          updateBookingStatus(item.id, 'sedang di luar', {
+      const bookedItems = getGroupItemsForBooking(booking)
+        .filter(item => item.status === 'booking');
+      if (bookedItems.length > 0) {
+        await updateBookingGroupStatus(bookedItems.map(item => item.id), 'sedang di luar', {
           actualStartDate,
           actualStartTime,
           handoverBy: isAdmin ? 'Admin Owner' : 'Karyawan Shift',
-          })
-        ));
+        });
+      }
     } catch (error) {
       alert(`Gagal memulai booking rombongan: ${error instanceof Error ? error.message : String(error)}`);
     }

@@ -257,6 +257,126 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       }
     }
 
+    if (url.searchParams.get('action') === 'update-booking-group') {
+      if (request.method !== 'POST') {
+        return response.status(405).json({ error: 'Metode request tidak didukung.' });
+      }
+      if (role !== 'admin') {
+        return response.status(403).json({ error: 'Hanya admin yang dapat mengubah status rombongan.' });
+      }
+
+      const body = getBody(request.body);
+      if (!Array.isArray(body.ids) || body.ids.length === 0 || body.ids.length > 50) {
+        return response.status(400).json({ error: 'Daftar booking rombongan tidak valid.' });
+      }
+      if (!body.ids.every(id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(id))) {
+        return response.status(400).json({ error: 'ID booking rombongan tidak valid.' });
+      }
+      const ids = [...new Set(body.ids.map(getId))];
+      if (ids.length !== body.ids.length) {
+        return response.status(400).json({ error: 'Daftar booking rombongan berisi ID duplikat.' });
+      }
+
+      const status = body.status;
+      const expectedStatus = status === 'booking'
+        ? 'pending'
+        : status === 'sedang di luar' ? 'booking' : null;
+      if (!expectedStatus) {
+        return response.status(400).json({ error: 'Perubahan status rombongan tidak valid.' });
+      }
+
+      if (typeof body.details !== 'object' || body.details === null || Array.isArray(body.details)) {
+        return response.status(400).json({ error: 'Data perubahan status rombongan tidak valid.' });
+      }
+      const details = getBody(body.details);
+      let values: Record<string, unknown>;
+      if (status === 'booking') {
+        if (
+          typeof details.approvedAt !== 'string' ||
+          Number.isNaN(new Date(details.approvedAt).getTime()) ||
+          typeof details.approvedBy !== 'string' ||
+          typeof details.handoverBy !== 'string'
+        ) {
+          return response.status(400).json({ error: 'Data persetujuan rombongan tidak valid.' });
+        }
+        values = {
+          approved_at: normalizeValue('approved_at', details.approvedAt),
+          approved_by: details.approvedBy,
+          handover_by: details.handoverBy,
+        };
+      } else {
+        if (
+          typeof details.actualStartDate !== 'string' ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(details.actualStartDate) ||
+          typeof details.actualStartTime !== 'string' ||
+          !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(details.actualStartTime) ||
+          typeof details.handoverBy !== 'string'
+        ) {
+          return response.status(400).json({ error: 'Data mulai rombongan tidak valid.' });
+        }
+        values = {
+          actual_start_date: details.actualStartDate,
+          actual_start_time: details.actualStartTime,
+          handover_by: details.handoverBy,
+        };
+      }
+
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const placeholders = ids.map(() => '?').join(', ');
+        const [bookingRows] = await connection.execute<RowDataPacket[]>(
+          `SELECT id, bike_id, status FROM bookings WHERE id IN (${placeholders}) FOR UPDATE`,
+          ids
+        );
+        const rows = bookingRows as Array<{ id: string; bike_id: string; status: string }>;
+        if (rows.length !== ids.length) {
+          await connection.rollback();
+          return response.status(409).json({ error: 'Sebagian booking rombongan tidak ditemukan.' });
+        }
+
+        const targetStatus = status as 'booking' | 'sedang di luar';
+        if (rows.some(row => row.status !== expectedStatus && row.status !== targetStatus)) {
+          await connection.rollback();
+          return response.status(409).json({ error: 'Status booking rombongan sudah berubah. Muat ulang data lalu coba lagi.' });
+        }
+
+        const changedRows = rows.filter(row => row.status === expectedStatus);
+        if (status === 'booking') {
+          const bikeIds = changedRows.map(row => row.bike_id);
+          if (new Set(bikeIds).size !== bikeIds.length) {
+            await connection.rollback();
+            return response.status(409).json({ error: 'Satu sepeda tercatat lebih dari sekali dalam rombongan.' });
+          }
+          for (const bikeId of bikeIds) {
+            const [bikeResult] = await connection.execute(
+              "UPDATE bikes SET status = 'disewa', total_rented_count = total_rented_count + 1 WHERE id = ?",
+              [bikeId]
+            );
+            if ((bikeResult as { affectedRows?: number }).affectedRows !== 1) {
+              await connection.rollback();
+              return response.status(409).json({ error: 'Sepeda rombongan tidak ditemukan.' });
+            }
+          }
+        }
+
+        const assignments = Object.keys(values).map(column => `\`${column}\` = ?`).join(', ');
+        for (const row of changedRows) {
+          await connection.execute(
+            `UPDATE bookings SET status = ?, ${assignments} WHERE id = ? AND status = ?`,
+            [targetStatus, ...Object.values(values), row.id, expectedStatus]
+          );
+        }
+        await connection.commit();
+        return response.status(200).json({ ok: true });
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    }
+
     const table = getTable(url.searchParams.get('collection'));
     const idParam = url.searchParams.get('id');
 

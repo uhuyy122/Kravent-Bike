@@ -25,6 +25,7 @@ import {
   handleFirestoreError,
   cleanForFirestore,
   clearProductionData,
+  updateBookingGroup,
   OperationType,
 } from '../tidb';
 import { getBookingTotalPrice } from '../utils/bookingUtils';
@@ -80,6 +81,7 @@ interface AppContextType {
   addBooking: (booking: Omit<Booking, 'id' | 'bookingCode' | 'createdAt'>) => Promise<Booking>;
   updateBooking: (id: string, updated: Partial<Booking>) => Promise<void>;
   updateBookingStatus: (id: string, status: BookingStatus, returnDetails?: string | Partial<Booking>) => Promise<void>;
+  updateBookingGroupStatus: (ids: string[], status: 'booking' | 'sedang di luar', details?: Partial<Booking>) => Promise<void>;
   accGroupBookings: (groupBookingCode: string, staffName?: string) => Promise<void>;
   startGroupBookings: (groupBookingCode: string, staffName?: string) => Promise<void>;
   swapBookingBike: (bookingId: string, newBikeId: string, staffName?: string) => Promise<void>;
@@ -749,6 +751,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateBookingGroupStatus = async (
+    ids: string[],
+    status: 'booking' | 'sedang di luar',
+    details: Partial<Booking> = {}
+  ) => {
+    const uniqueIds = [...new Set(ids)];
+    const idSet = new Set(uniqueIds);
+    const selectedBookings = bookings.filter(booking => idSet.has(booking.id));
+    if (selectedBookings.length === 0) return;
+
+    const previousBookings = new Map<string, Booking>(
+      selectedBookings.map(booking => [booking.id, booking] as const)
+    );
+    const pendingBikeIds = status === 'booking'
+      ? new Set(selectedBookings.filter(booking => booking.status === 'pending').map(booking => booking.bikeId))
+      : new Set<string>();
+    const previousBikes = new Map<string, Bike>(
+      bikes
+        .filter(bike => pendingBikeIds.has(bike.id))
+        .map(bike => [bike.id, bike] as const)
+    );
+    const updatedFields = { ...details, status };
+
+    setBookings(previous =>
+      previous.map(booking => idSet.has(booking.id) ? { ...booking, ...updatedFields } : booking)
+    );
+    if (pendingBikeIds.size > 0) {
+      setBikes(previous =>
+        previous.map(bike => pendingBikeIds.has(bike.id)
+          ? {
+              ...bike,
+              status: 'disewa',
+              totalRentedCount: bike.totalRentedCount + 1,
+            }
+          : bike)
+      );
+    }
+
+    try {
+      await updateBookingGroup(uniqueIds, status, cleanForFirestore(details));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'bookings/group');
+      setBookings(previous =>
+        previous.map(booking => previousBookings.get(booking.id) || booking)
+      );
+      setBikes(previous =>
+        previous.map(bike => previousBikes.get(bike.id) || bike)
+      );
+      throw error;
+    }
+  };
+
   // Revisi Poin 1: ACC Seluruh Rombongan Sekaligus
   const accGroupBookings = async (groupBookingCode: string, staffName: string = 'Staff Kravent Bike') => {
     const targetBookings = bookings.filter(
@@ -1158,6 +1212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addBooking,
         updateBooking,
         updateBookingStatus,
+        updateBookingGroupStatus,
         accGroupBookings,
         startGroupBookings,
         swapBookingBike,

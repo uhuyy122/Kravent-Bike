@@ -129,6 +129,16 @@ export const deleteDoc = async (reference: DocumentReference) =>
 export const clearProductionData = async () =>
   request<{ ok: boolean }>('POST', { action: 'clear-production-data' });
 
+export const updateBookingGroup = async (
+  ids: string[],
+  status: 'booking' | 'sedang di luar',
+  details: object
+) => request<{ ok: boolean }>('POST', { action: 'update-booking-group' }, {
+  ids,
+  status,
+  details,
+});
+
 export const getDocs = async <T = Record<string, unknown>>(reference: CollectionReference): Promise<QuerySnapshot<T>> => {
   const result = await request<{ items: (T & { id: string })[] }>(
     'GET',
