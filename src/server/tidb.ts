@@ -14,7 +14,14 @@ export const getTiDBPool = () => {
     TIDB_PASSWORD,
     TIDB_DATABASE,
   })
-    .filter(([, value]) => !value?.trim())
+    .filter(([name, value]) => {
+      const configuredValue = value?.trim();
+      const placeholder = `YOUR_${name}`;
+      return !configuredValue ||
+        configuredValue === placeholder ||
+        configuredValue === `"${placeholder}"` ||
+        configuredValue === `'${placeholder}'`;
+    })
     .map(([name]) => name);
   if (missingSettings.length > 0) {
     throw new Error(`Konfigurasi TiDB belum lengkap: ${missingSettings.join(', ')}.`);
