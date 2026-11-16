@@ -10,6 +10,38 @@ interface ApiResponse {
   json: (body: Record<string, unknown>) => void;
 }
 
+const getSafeErrorMessage = (message: string, code?: string) => {
+  if (message.startsWith('Konfigurasi TiDB belum lengkap:') ||
+    message.startsWith('TIDB_SSL_CA bukan PEM yang valid')) {
+    return message;
+  }
+
+  switch (code) {
+    case 'ER_ACCESS_DENIED_ERROR':
+      return 'TiDB menolak akses. Periksa TIDB_USER, TIDB_PASSWORD, dan hak akses pengguna database.';
+    case 'ER_BAD_DB_ERROR':
+      return 'Database TiDB tidak ditemukan. Periksa TIDB_DATABASE.';
+    case 'ER_NO_SUCH_TABLE':
+      return 'Tabel aplikasi belum tersedia. Jalankan database/tidb_schema.sql pada database TiDB.';
+    case 'ENOTFOUND':
+      return 'Host TiDB tidak ditemukan. Periksa TIDB_HOST.';
+    case 'ETIMEDOUT':
+    case 'ECONNREFUSED':
+    case 'EHOSTUNREACH':
+    case 'ECONNRESET':
+      return 'Vercel tidak dapat menjangkau TiDB. Periksa alamat dan port, serta IP Access List TiDB Cloud.';
+    case 'CERT_HAS_EXPIRED':
+    case 'UNABLE_TO_VERIFY_LEAF_SIGNATURE':
+    case 'SELF_SIGNED_CERT_IN_CHAIN':
+    case 'ERR_TLS_CERT_ALTNAME_INVALID':
+      return 'Verifikasi TLS TiDB gagal. Periksa TIDB_SSL_CA; di Vercel gunakan isi PEM, bukan path file.';
+    default:
+      return code && /^[A-Z0-9_]+$/.test(code)
+        ? `Gagal terhubung ke TiDB (kode ${code}).`
+        : 'Gagal terhubung ke TiDB. Periksa konfigurasi dan akses jaringan.';
+  }
+};
+
 const getBearerToken = (request: ApiRequest): string | undefined => {
   const authorization = request.headers.authorization;
   const value = (Array.isArray(authorization) ? authorization[0] : authorization)
@@ -34,10 +66,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       : undefined;
     console.error('Gagal membuat sesi TiDB:', { code, message });
     return response.status(500).json({
-      error: message.startsWith('Konfigurasi TiDB belum lengkap:') ||
-        message.startsWith('TIDB_SSL_CA bukan PEM yang valid')
-        ? message
-        : 'Gagal membuat sesi. Periksa koneksi TiDB dan log fungsi /api/auth/session di Vercel.',
+      error: getSafeErrorMessage(message, code),
     });
   }
 }
