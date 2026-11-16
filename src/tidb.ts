@@ -29,6 +29,22 @@ type SnapshotHandler<T> = {
 
 const apiUrl = '/api/data';
 
+const fetchWithRetry = async (url: URL, init: RequestInit): Promise<Response> => {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+    try {
+      return await fetch(url, init);
+    } catch (retryError) {
+      const message = retryError instanceof Error ? retryError.message : String(retryError);
+      throw new Error(`Koneksi ke server database gagal setelah dicoba ulang: ${message}`);
+    }
+  }
+};
+
 const request = async <T>(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   params: Record<string, string>,
@@ -38,7 +54,7 @@ const request = async <T>(
   const url = new URL(apiUrl, window.location.origin);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method,
     headers: {
       Authorization: `Bearer ${token}`,

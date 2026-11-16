@@ -298,9 +298,19 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         });
       }
       if (table === 'bookings') {
-        const [existingRows] = await pool.execute(`SELECT id, customer_phone FROM bookings WHERE id = ? LIMIT 1`, [id]);
+        const [existingRows] = await pool.execute(`SELECT * FROM bookings WHERE id = ? LIMIT 1`, [id]);
         const existing = (existingRows as Record<string, unknown>[])[0];
         if (existing && role === 'customer') {
+          const isRetryOfSameBooking =
+            existing.booking_code === values.booking_code &&
+            existing.bike_id === values.bike_id &&
+            String(existing.start_date).slice(0, 10) === values.start_date &&
+            String(existing.start_time).slice(0, 5) === values.start_time &&
+            existing.customer_name === values.customer_name &&
+            existing.customer_phone === values.customer_phone;
+          if (isRetryOfSameBooking) {
+            return response.status(200).json({ ok: true });
+          }
           return response.status(403).json({ error: 'Pelanggan tidak dapat mengubah booking yang sudah dibuat.' });
         }
         if (!existing && role === 'customer') {
