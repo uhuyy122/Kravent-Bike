@@ -132,17 +132,54 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bayar_nanti');
   const [selectedAddons, setSelectedAddons] = useState<Record<string, Record<string, number>>>({});
 
+  const addonStockUsageMap = useMemo<Record<string, number>>(() => {
+    const usage: Record<string, number> = {};
+    OFFICIAL_ADDONS.forEach(addon => {
+      usage[addon.id] = 0;
+    });
+
+    bookings.forEach(booking => {
+      if (!booking.addons?.length) return;
+      if (booking.status === 'selesai' || booking.status === 'dibatalkan') return;
+
+      booking.addons.forEach(addonItem => {
+        if (!addonItem || addonItem.quantity <= 0) return;
+        usage[addonItem.id] = (usage[addonItem.id] || 0) + addonItem.quantity;
+      });
+    });
+
+    return usage;
+  }, [bookings]);
+
+  const getAddonAvailability = (addonId: string) => {
+    const target = OFFICIAL_ADDONS.find(a => a.id === addonId);
+    const usedByOtherOrders = addonStockUsageMap[addonId] || 0;
+    const maxStock = target ? target.maxStock : 99;
+    const availableStock = Math.max(0, maxStock - usedByOtherOrders);
+
+    return {
+      maxStock,
+      usedByOtherOrders,
+      availableStock,
+    };
+  };
+
   const handleUpdateAddonQty = (bikeId: string, addonId: string, delta: number) => {
     setSelectedAddons(prev => {
-      const currentBikeQty = prev[bikeId]?.[addonId] || 0;
       const target = OFFICIAL_ADDONS.find(a => a.id === addonId);
-      const max = target ? target.maxStock : 99;
-      const totalQty = selectedBikeIds.reduce(
+      if (!target) return prev;
+
+      const maxAvailable = Math.max(0, target.maxStock - (addonStockUsageMap[addonId] || 0));
+      const totalQtyInCurrentOrder = selectedBikeIds.reduce(
         (sum, selectedBikeId) => sum + (prev[selectedBikeId]?.[addonId] || 0),
         0
       );
-      if (delta > 0 && totalQty >= max) return prev;
 
+      if (delta > 0 && totalQtyInCurrentOrder + delta > maxAvailable) {
+        return prev;
+      }
+
+      const currentBikeQty = prev[bikeId]?.[addonId] || 0;
       const next = Math.max(0, currentBikeQty + delta);
       return {
         ...prev,
@@ -1392,7 +1429,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             (sum, bikeId) => sum + (selectedAddons[bikeId]?.[addon.id] || 0),
                             0
                           );
-                          const isMax = totalAssigned >= addon.maxStock;
+                          const availability = getAddonAvailability(addon.id);
+                          const isMax = totalAssigned >= availability.availableStock;
 
                           return (
                             <div
@@ -1414,7 +1452,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                   </span>
                                   {addon.maxStock < 99 && (
                                     <span className="text-[10px] text-slate-400 ml-1.5">
-                                      ({totalAssigned}/{addon.maxStock} terpilih)
+                                      ({availability.availableStock}/{addon.maxStock} tersedia)
                                     </span>
                                   )}
                                 </div>
@@ -1439,9 +1477,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleUpdateAddonQty(selectedBike.id, addon.id, 1)}
-                                  disabled={isMax}
+                                  disabled={isMax || availability.availableStock === 0}
                                   className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition-colors ${
-                                    isMax
+                                    isMax || availability.availableStock === 0
                                       ? 'text-slate-300 cursor-not-allowed'
                                       : 'bg-white text-emerald-700 hover:bg-emerald-100 shadow-2xs cursor-pointer'
                                   }`}
