@@ -1466,13 +1466,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             0
                           );
                           const availability = getAddonAvailability(addon.id);
+                          const isStockEmpty = availability.availableStock === 0;
                           const isMax = totalAssigned >= availability.availableStock;
+                          const remainingSelectableStock = Math.max(
+                            0,
+                            availability.availableStock - totalAssigned
+                          );
 
                           return (
                             <div
                               key={addon.id}
                               className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
-                                currentQty > 0
+                                isStockEmpty
+                                  ? 'bg-slate-50 border-slate-200 opacity-70'
+                                  : currentQty > 0
                                   ? 'bg-white border-emerald-400 shadow-2xs'
                                   : 'bg-white/80 border-slate-200'
                               }`}
@@ -1486,9 +1493,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                   <span className="font-extrabold text-emerald-700 font-mono">
                                     {formatRupiah(addon.price)} <span className="text-[10px] font-normal text-slate-400">/sewa</span>
                                   </span>
-                                  <span className="text-[10px] text-slate-400 ml-1.5">
-                                    ({availability.availableStock}/{addon.maxStock} tersedia)
-                                  </span>
+                                  {isStockEmpty ? (
+                                    <span className="text-[10px] font-bold text-rose-600 ml-1.5">
+                                      Stok habis
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400 ml-1.5">
+                                      (sisa {remainingSelectableStock}/{addon.maxStock} tersedia)
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
@@ -1511,9 +1524,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleUpdateAddonQty(selectedBike.id, addon.id, 1)}
-                                  disabled={isMax || availability.availableStock === 0}
+                                  disabled={isMax || isStockEmpty}
                                   className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition-colors ${
-                                    isMax || availability.availableStock === 0
+                                    isMax || isStockEmpty
                                       ? 'text-slate-300 cursor-not-allowed'
                                       : 'bg-white text-emerald-700 hover:bg-emerald-100 shadow-2xs cursor-pointer'
                                   }`}
