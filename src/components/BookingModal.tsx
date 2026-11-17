@@ -1486,11 +1486,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                   <span className="font-extrabold text-emerald-700 font-mono">
                                     {formatRupiah(addon.price)} <span className="text-[10px] font-normal text-slate-400">/sewa</span>
                                   </span>
-                                  {addon.maxStock < 99 && (
-                                    <span className="text-[10px] text-slate-400 ml-1.5">
-                                      ({availability.availableStock}/{addon.maxStock} tersedia)
-                                    </span>
-                                  )}
+                                  <span className="text-[10px] text-slate-400 ml-1.5">
+                                    ({availability.availableStock}/{addon.maxStock} tersedia)
+                                  </span>
                                 </div>
                               </div>
 

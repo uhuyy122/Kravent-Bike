@@ -3,6 +3,7 @@ import type { SessionRole } from '../src/server/session.js';
 import { getTiDBPool } from '../src/server/tidb.js';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { MAX_BOOKING_START_TIME, MAX_RETURN_TIME } from '../src/utils/scheduleUtils.js';
+import { OFFICIAL_ADDONS } from '../src/data/addons.js';
 
 type SqlParameter = string | number | bigint | boolean | Date | Buffer | Uint8Array | null;
 
@@ -171,6 +172,7 @@ const getPublicBooking = (row: Record<string, unknown>) => fromRow({
   duration_type: row.duration_type,
   booking_session: row.booking_session,
   status: row.status,
+  addons: row.addons,
 });
 
 const buildInsert = (
@@ -222,6 +224,61 @@ const hasScheduleConflict = async (
     parameters
   );
   return rows.length > 0;
+};
+
+const getAddonQuantities = (value: unknown): Map<string, number> => {
+  const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+  const quantities = new Map<string, number>();
+  if (!Array.isArray(parsed)) return quantities;
+
+  parsed.forEach(item => {
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      typeof item.id !== 'string' ||
+      !Number.isInteger(item.quantity) ||
+      item.quantity <= 0
+    ) {
+      return;
+    }
+    quantities.set(item.id, (quantities.get(item.id) || 0) + item.quantity);
+  });
+  return quantities;
+};
+
+const getAddonStockError = async (
+  connection: PoolConnection,
+  requestedAddons: unknown,
+  excludeBookingId?: string
+): Promise<string | null> => {
+  const [rows] = await connection.execute<RowDataPacket[]>(
+    `SELECT addons
+     FROM bookings
+     WHERE status NOT IN ('selesai', 'dibatalkan')
+       ${excludeBookingId ? 'AND id <> ?' : ''}
+     FOR UPDATE`,
+    excludeBookingId ? [excludeBookingId] : []
+  );
+  const reserved = new Map<string, number>();
+
+  rows.forEach(row => {
+    getAddonQuantities(row.addons).forEach((quantity, addonId) => {
+      reserved.set(addonId, (reserved.get(addonId) || 0) + quantity);
+    });
+  });
+
+  for (const [addonId, quantity] of getAddonQuantities(requestedAddons)) {
+    const addon = OFFICIAL_ADDONS.find(item => item.id === addonId);
+    if (!addon) continue;
+
+    const alreadyReserved = reserved.get(addonId) || 0;
+    if (alreadyReserved + quantity > addon.maxStock) {
+      const available = Math.max(0, addon.maxStock - alreadyReserved);
+      return `Stok ${addon.name} tidak cukup. Tersisa ${available} dari ${addon.maxStock} unit.`;
+    }
+  }
+
+  return null;
 };
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
@@ -386,7 +443,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       }
       if (idParam) {
         const select = role === 'customer' && table === 'bookings'
-          ? 'SELECT id, bike_id, start_date, start_time, end_date, end_time, duration_type, booking_session, status'
+          ? 'SELECT id, bike_id, start_date, start_time, end_date, end_time, duration_type, booking_session, status, addons'
           : 'SELECT *';
         const [rows] = await pool.execute(`${select} FROM \`${table}\` WHERE id = ? LIMIT 1`, [getId(idParam)]);
         const row = (rows as Record<string, unknown>[])[0];
@@ -396,7 +453,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         return response.status(200).json({ item });
       }
       const select = role === 'customer' && table === 'bookings'
-        ? 'SELECT id, bike_id, start_date, start_time, end_date, end_time, duration_type, booking_session, status'
+        ? 'SELECT id, bike_id, start_date, start_time, end_date, end_time, duration_type, booking_session, status, addons'
         : 'SELECT *';
       const [rows] = await pool.query(`${select} FROM \`${table}\``);
       const items = (rows as Record<string, unknown>[]).map(row =>
@@ -471,6 +528,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
           const connection = await pool.getConnection();
           try {
             await connection.beginTransaction();
+            await connection.execute('SELECT id FROM bikes ORDER BY id LIMIT 1 FOR UPDATE');
             const [bikeRows] = await connection.execute(
               'SELECT id, status FROM bikes WHERE id = ? FOR UPDATE',
               [bikeId]
@@ -490,6 +548,12 @@ export default async function handler(request: ApiRequest, response: ApiResponse
               return response.status(409).json({
                 error: 'Sepeda sudah memiliki booking pada sesi waktu tersebut.',
               });
+            }
+
+            const addonStockError = await getAddonStockError(connection, values.addons);
+            if (addonStockError) {
+              await connection.rollback();
+              return response.status(409).json({ error: addonStockError });
             }
 
             const insert = buildInsert(table, id, values, false);
@@ -555,14 +619,26 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       }
       if (
         table === 'bookings' &&
-        ('bike_id' in values || 'start_date' in values || 'start_time' in values)
+        (
+          'bike_id' in values ||
+          'start_date' in values ||
+          'start_time' in values ||
+          'addons' in values ||
+          'status' in values
+        )
       ) {
         const connection = await pool.getConnection();
         try {
           await connection.beginTransaction();
+          const hasScheduleUpdate =
+            'bike_id' in values || 'start_date' in values || 'start_time' in values;
+          const hasStockUpdate = 'addons' in values || 'status' in values;
+          if (hasStockUpdate) {
+            await connection.execute('SELECT id FROM bikes ORDER BY id LIMIT 1 FOR UPDATE');
+          }
           const [currentRows] = await connection.execute<RowDataPacket[]>(
             `SELECT bike_id, DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
-                    CAST(start_time AS CHAR) AS start_time
+                    CAST(start_time AS CHAR) AS start_time, status, addons
              FROM bookings
              WHERE id = ?
              FOR UPDATE`,
@@ -573,39 +649,54 @@ export default async function handler(request: ApiRequest, response: ApiResponse
             await connection.rollback();
             return response.status(404).json({ error: 'Booking tidak ditemukan.' });
           }
-          const bikeId = typeof values.bike_id === 'string' ? values.bike_id : String(current.bike_id);
-          const startDate = typeof values.start_date === 'string' ? values.start_date : String(current.start_date);
-          const startTime = typeof values.start_time === 'string' ? values.start_time : String(current.start_time);
-          if (
-            !/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
-            !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(startTime)
-          ) {
-            await connection.rollback();
-            return response.status(400).json({ error: 'Jadwal booking tidak valid.' });
+          if (hasScheduleUpdate) {
+            const bikeId = typeof values.bike_id === 'string' ? values.bike_id : String(current.bike_id);
+            const startDate = typeof values.start_date === 'string' ? values.start_date : String(current.start_date);
+            const startTime = typeof values.start_time === 'string' ? values.start_time : String(current.start_time);
+            if (
+              !/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+              !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(startTime)
+            ) {
+              await connection.rollback();
+              return response.status(400).json({ error: 'Jadwal booking tidak valid.' });
+            }
+            const [bikeRows] = await connection.execute<RowDataPacket[]>(
+              'SELECT id, status FROM bikes WHERE id = ? FOR UPDATE',
+              [bikeId]
+            );
+            const bike = bikeRows[0] as (RowDataPacket & { status: string }) | undefined;
+            if (!bike) {
+              await connection.rollback();
+              return response.status(404).json({ error: 'Sepeda tidak ditemukan.' });
+            }
+            if (bike.status === 'maintenance') {
+              await connection.rollback();
+              return response.status(409).json({ error: 'Sepeda sedang dalam perawatan dan tidak dapat dipesan.' });
+            }
+            if (startTime < '06:00' || startTime > MAX_BOOKING_START_TIME) {
+              await connection.rollback();
+              return response.status(409).json({ error: `Jam mulai booking harus berada pada pukul 06:00 sampai ${MAX_BOOKING_START_TIME} WIB.` });
+            }
+            if (await hasScheduleConflict(connection, bikeId, startDate, startTime, role, id)) {
+              await connection.rollback();
+              return response.status(409).json({
+                error: 'Sepeda sudah memiliki booking pada sesi waktu tersebut.',
+              });
+            }
           }
-          const [bikeRows] = await connection.execute<RowDataPacket[]>(
-            'SELECT id, status FROM bikes WHERE id = ? FOR UPDATE',
-            [bikeId]
-          );
-          const bike = bikeRows[0] as (RowDataPacket & { status: string }) | undefined;
-          if (!bike) {
-            await connection.rollback();
-            return response.status(404).json({ error: 'Sepeda tidak ditemukan.' });
+
+          if (hasStockUpdate) {
+            const nextStatus = typeof values.status === 'string' ? values.status : String(current.status);
+            if (nextStatus !== 'selesai' && nextStatus !== 'dibatalkan') {
+              const nextAddons = 'addons' in values ? values.addons : current.addons;
+              const addonStockError = await getAddonStockError(connection, nextAddons, id);
+              if (addonStockError) {
+                await connection.rollback();
+                return response.status(409).json({ error: addonStockError });
+              }
+            }
           }
-          if (bike.status === 'maintenance') {
-            await connection.rollback();
-            return response.status(409).json({ error: 'Sepeda sedang dalam perawatan dan tidak dapat dipesan.' });
-          }
-          if (startTime < '06:00' || startTime > MAX_BOOKING_START_TIME) {
-            await connection.rollback();
-            return response.status(409).json({ error: `Jam mulai booking harus berada pada pukul 06:00 sampai ${MAX_BOOKING_START_TIME} WIB.` });
-          }
-          if (await hasScheduleConflict(connection, bikeId, startDate, startTime, role, id)) {
-            await connection.rollback();
-            return response.status(409).json({
-              error: 'Sepeda sudah memiliki booking pada sesi waktu tersebut.',
-            });
-          }
+
           await connection.execute(
             `UPDATE bookings
              SET ${entries.map(([column]) => `\`${column}\` = ?`).join(', ')}
