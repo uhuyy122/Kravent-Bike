@@ -213,6 +213,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const getBikeAddonTotal = (bikeId: string) =>
     getBikeAddonList(bikeId).reduce((sum, addon) => sum + addon.price * addon.quantity, 0);
 
+  const validateSelectedAddonsStock = () => {
+    const overLimit: string[] = [];
+
+    OFFICIAL_ADDONS.forEach(addon => {
+      const totalSelected = selectedBikeIds.reduce(
+        (sum, bikeId) => sum + (selectedAddons[bikeId]?.[addon.id] || 0),
+        0
+      );
+      const available = getAddonAvailability(addon.id).availableStock;
+
+      if (totalSelected > available) {
+        overLimit.push(`${addon.name} (${totalSelected}/${addon.maxStock} dipilih, sisa ${Math.max(0, available)} tersedia)`);
+      }
+    });
+
+    return overLimit;
+  };
+
   const grandTotalAddonCost = useMemo(() => {
     return selectedAddonList.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [selectedAddonList]);
@@ -401,6 +419,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       alert(`Ada sepeda yang bentrok dengan penyewa lain di jam tersebut:\n${conflictMsg}\n\nSilakan hapus pilihan sepeda yang bentrok.`);
       return;
     }
+
+    const overLimit = validateSelectedAddonsStock();
+    if (overLimit.length > 0) {
+      alert(`Stok perlengkapan tidak cukup untuk pilihan saat ini:\n• ${overLimit.join('\n• ')}\n\nSilakan kurangi jumlah atau pilih item yang masih tersedia.`);
+      return;
+    }
+
     setCurrentStep(4);
   };
 
@@ -413,6 +438,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
+    const overLimit = validateSelectedAddonsStock();
+    if (overLimit.length > 0) {
+      alert(`Stok perlengkapan tidak cukup untuk transaksi ini:\n• ${overLimit.join('\n• ')}\n\nSilakan sesuaikan jumlah perlengkapan.`);
+      return;
+    }
 
     if (hasAnyConflict) {
       const conflictMsg = conflictItems
@@ -485,6 +515,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     if (selectedBikes.length === 0) {
       alert('Silakan pilih minimal 1 sepeda terlebih dahulu.');
+      return;
+    }
+
+    const overLimit = validateSelectedAddonsStock();
+    if (overLimit.length > 0) {
+      alert(`Stok perlengkapan tidak cukup untuk pesanan ini:\n• ${overLimit.join('\n• ')}\n\nSilakan sesuaikan jumlah perlengkapan.`);
       return;
     }
 
