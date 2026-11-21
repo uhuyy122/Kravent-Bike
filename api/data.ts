@@ -421,7 +421,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         for (const row of changedRows) {
           await connection.execute(
             `UPDATE bookings SET status = ?, ${assignments} WHERE id = ? AND status = ?`,
-            [targetStatus, ...Object.values(values), row.id, expectedStatus]
+            [targetStatus, ...Object.values(values).map(toSqlParameter), row.id, expectedStatus]
           );
         }
         await connection.commit();
