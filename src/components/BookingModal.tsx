@@ -1335,6 +1335,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             )}
                           </div>
                         )}
+
+                        {currentRole === 'admin' && isAvailable && avail?.nextBooking && (
+                          <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-900">
+                            <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                            <span>
+                              Ada booking berikutnya {formatDateIndo(avail.nextBooking.startDate)} pukul{' '}
+                              <strong>{avail.nextBooking.startTime} WIB</strong>. Pastikan sepeda kembali sebelum waktu tersebut.
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
